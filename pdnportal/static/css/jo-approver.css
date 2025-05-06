@@ -1,0 +1,856 @@
+/* Job Order Approver CSS - Built on the base job-order.css */
+
+:root {
+    /* Status and priority colors */
+    --ad-overdue-color: #f14668;
+    --ad-overdue-bg: rgba(241, 70, 104, 0.1);
+    --ad-today-color: #ffa502;
+    --ad-today-bg: rgba(255, 165, 2, 0.1);
+    --ad-pending-color: #8395a7;
+    --ad-required-color: #f14668;
+    
+    /* Timeline colors */
+    --ad-timeline-complete: #4caf50;
+    --ad-timeline-active: #3366ff;
+    --ad-timeline-pending: #8395a7;
+    --ad-timeline-rejected: #f14668;
+    
+    /* Animation durations */
+    --ad-animation-short: 0.3s;
+    --ad-animation-medium: 0.5s;
+    --ad-animation-long: 0.8s;
+}
+
+/* Modal visibility */
+.JO-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.JO-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.JO-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px) scale(0.95);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    overflow: hidden;
+}
+
+.JO-modal.active .JO-modal-content {
+    transform: translateY(0) scale(1);
+}
+
+.JO-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.JO-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--jo-text);
+}
+
+.JO-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--jo-transition);
+}
+
+.JO-modal-close:hover {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-primary);
+}
+
+.JO-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.JO-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--jo-border);
+}
+
+/* Stats card enhancements */
+.AD-stats-card {
+    transform: translateY(20px);
+    opacity: 0;
+    animation: AD-slide-up var(--ad-animation-medium) ease-out forwards;
+}
+
+.AD-stats-card:nth-child(1) { animation-delay: 0.1s; }
+.AD-stats-card:nth-child(2) { animation-delay: 0.2s; }
+.AD-stats-card:nth-child(3) { animation-delay: 0.3s; }
+.AD-stats-card:nth-child(4) { animation-delay: 0.4s; }
+
+.AD-stat-trend {
+    display: inline-flex;
+    align-items: center;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.AD-stat-trend.up {
+    color: var(--jo-status-rejected);
+}
+
+.AD-stat-trend.down {
+    color: var(--jo-status-approved);
+}
+
+.AD-stat-trend.up.positive {
+    color: var(--jo-status-approved);
+}
+
+.AD-stat-trend.down.negative {
+    color: var(--jo-status-rejected);
+}
+
+.AD-stat-trend i {
+    margin-right: 3px;
+    font-size: 0.8rem;
+}
+
+/* Action Required Section */
+.AD-action-required {
+    margin-bottom: 24px;
+    animation: JO-fade-in var(--ad-animation-medium) ease-out;
+}
+
+.AD-tag {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+    border-radius: 50px;
+    margin-left: 8px;
+    animation: AD-pulse 2s infinite;
+}
+
+@keyframes AD-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 8px rgba(51, 102, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0);
+    }
+}
+
+.AD-priority-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.AD-priority-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--jo-border);
+    transition: all 0.3s ease;
+    animation: AD-slide-right var(--ad-animation-medium) ease-out forwards;
+    opacity: 0;
+    transform: translateX(0);
+}
+
+.AD-priority-item:nth-child(1) { animation-delay: 0.1s; }
+.AD-priority-item:nth-child(2) { animation-delay: 0.2s; }
+.AD-priority-item:nth-child(3) { animation-delay: 0.3s; }
+
+.AD-priority-item:hover {
+    background-color: var(--jo-bg-color);
+    transform: translateX(5px);
+}
+
+.AD-priority-item.AD-overdue {
+    background-color: var(--ad-overdue-bg);
+    border-left: 4px solid var(--ad-overdue-color);
+}
+
+.AD-priority-item.AD-today {
+    background-color: var(--ad-today-bg);
+    border-left: 4px solid var(--ad-today-color);
+}
+
+.AD-priority-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.AD-priority-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.AD-priority-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.AD-overdue .AD-priority-badge {
+    background-color: var(--ad-overdue-bg);
+    color: var(--ad-overdue-color);
+}
+
+.AD-today .AD-priority-badge {
+    background-color: var(--ad-today-bg);
+    color: var(--ad-today-color);
+}
+
+.AD-priority-indicators {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.AD-time-indicator {
+    font-size: 0.8rem;
+    color: var(--jo-text-light);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.AD-overdue .AD-time-indicator {
+    color: var(--ad-overdue-color);
+    font-weight: 500;
+    animation: AD-blink 2s infinite;
+}
+
+@keyframes AD-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.AD-priority-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.AD-details-col {
+    flex: 1;
+    min-width: 250px;
+}
+
+.AD-details-col p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+}
+
+.AD-approval-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.AD-approval-actions button {
+    transition: all 0.3s ease;
+}
+
+.AD-approval-actions button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Empty state for no requests */
+.AD-empty-state {
+    height: 400px;
+    padding: 40px 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: JO-fade-in 0.8s ease-out;
+}
+
+.AD-empty-state i {
+    font-size: 48px;
+    color: var(--jo-status-approved);
+    margin-bottom: 20px;
+    animation: bounce 2s infinite alternate ease-in-out;
+}
+
+.AD-empty-state h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0 0 10px;
+    color: var(--jo-text);
+}
+
+.AD-empty-state p {
+    font-size: 1rem;
+    color: var(--jo-text-light);
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+@keyframes bounce {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(-10px);
+    }
+}
+
+/* Table enhancements */
+.AD-requests-table tbody tr {
+    opacity: 0;
+    animation: JO-fade-in var(--ad-animation-medium) ease-out forwards;
+}
+
+.AD-requests-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.AD-requests-table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+.AD-requests-table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+.AD-requests-table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+
+.AD-overdue-row td {
+    background-color: var(--ad-overdue-bg);
+}
+
+.AD-due-today-row td {
+    background-color: var(--ad-today-bg);
+}
+
+.AD-due-date {
+    font-size: 0.85rem;
+    color: var(--jo-text);
+}
+
+.AD-due-date.overdue {
+    color: var(--ad-overdue-color);
+    font-weight: 500;
+    animation: AD-blink 2s infinite;
+}
+
+.AD-due-date.today {
+    color: var(--ad-today-color);
+    font-weight: 500;
+}
+
+.AD-table-actions {
+    display: flex;
+    gap: 5px;
+}
+
+/* Job Order Details Modal (Redesign) */
+.JO-detail-header-section {
+    margin-bottom: 24px;
+    animation: JO-fade-in 0.5s ease-out;
+}
+
+.JO-detail-id-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.JO-detail-id-row h3 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--jo-text);
+}
+
+.JO-tag-container {
+    display: flex;
+    gap: 8px;
+}
+
+.JO-detail-date {
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+    margin: 0;
+}
+
+.JO-detail-section {
+    margin-bottom: 24px;
+    animation: JO-fade-in 0.5s ease-out;
+}
+
+.JO-detail-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--jo-text);
+    border-bottom: 1px solid var(--jo-border);
+    padding-bottom: 8px;
+    margin: 0 0 12px;
+}
+
+.JO-detail-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.JO-detail-info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.JO-detail-info-item label {
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+    margin-bottom: 4px;
+}
+
+.JO-detail-info-item span {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--jo-text);
+}
+
+/* Approval Timeline */
+.JO-approval-timeline {
+    position: relative;
+    margin-left: 8px;
+    animation: JO-fade-in 0.5s ease-out;
+}
+
+.JO-approval-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 10px;
+    width: 2px;
+    background-color: var(--jo-border);
+    z-index: 1;
+}
+
+.JO-timeline-item {
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 24px;
+}
+
+.JO-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.JO-timeline-dot {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--jo-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    z-index: 2;
+    transition: all 0.3s ease;
+}
+
+.JO-timeline-item:hover .JO-timeline-dot {
+    transform: scale(1.2);
+}
+
+/* Timeline styling updates */
+.JO-timeline-item.JO-timeline-complete .JO-timeline-dot {
+    background-color: #4caf50; /* Green for completed */
+}
+
+.JO-timeline-item.JO-timeline-active .JO-timeline-dot {
+    background-color: #ffc107; /* Yellow for active/current */
+}
+
+.JO-timeline-item.JO-timeline-pending .JO-timeline-dot {
+    background-color: #8395a7; /* Gray for pending */
+}
+
+.JO-timeline-item.JO-timeline-rejected .JO-timeline-dot {
+    background-color: #f14668; /* Red for rejected */
+}
+
+.JO-timeline-content {
+    padding-top: 2px;
+}
+
+.JO-timeline-content h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 5px;
+    color: var(--jo-text);
+}
+
+.JO-timeline-content p {
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+    margin: 0;
+}
+
+/* Removed hover transform effect */
+
+/* Confirmation modal */
+.JO-confirmation-modal .JO-modal-content {
+    max-width: 450px;
+    animation: JO-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes JO-scale-in {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes count-change {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.counter-animate {
+    animation: count-change 0.5s ease-out;
+}
+
+.JO-confirmation-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    animation: JO-icon-pulse 1.5s infinite alternate;
+}
+
+.JO-confirmation-icon.warning {
+    color: var(--jo-status-pending);
+}
+
+.JO-confirmation-icon.danger {
+    color: var(--jo-status-rejected);
+}
+
+.JO-confirmation-icon.success {
+    color: var(--jo-status-approved);
+}
+
+@keyframes JO-icon-pulse {
+    from {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    to {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+.JO-confirmation-message {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.JO-confirmation-submessage {
+    color: var(--jo-text-light);
+    margin-bottom: 20px;
+}
+
+.modal-input {
+    padding-top: 20px;
+    text-align: left;
+}
+
+/* Button styles */
+.JO-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    border: none;
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.JO-primary-button {
+    background-color: var(--jo-primary);
+    color: white;
+}
+
+.JO-primary-button:hover {
+    background-color: var(--jo-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.JO-secondary-button {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    border: 1px solid var(--jo-border);
+}
+
+.JO-secondary-button:hover {
+    background-color: #e8e8e8;
+    transform: translateY(-2px);
+}
+
+.JO-success-button {
+    background-color: #48c774;
+    color: white;
+}
+
+.JO-success-button:hover {
+    background-color: #3bb164;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(72, 199, 116, 0.3);
+}
+
+.JO-danger-button {
+    background-color: #f14668;
+    color: white;
+}
+
+.JO-danger-button:hover {
+    background-color: #e43c5a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(241, 70, 104, 0.3);
+}
+
+.JO-text-button {
+    background: none;
+    color: var(--jo-text);
+    padding: 5px 10px;
+}
+
+.JO-text-button:hover {
+    background-color: var(--jo-bg-color);
+}
+
+/* Button loading state */
+.JO-button.loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+}
+
+.JO-button.loading:after {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    top: calc(50% - 10px);
+    left: calc(50% - 10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spinner 0.8s linear infinite;
+}
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.AD-required {
+    color: var(--ad-required-color);
+}
+
+.AD-input-error {
+    color: var(--ad-required-color);
+    font-size: 0.8rem;
+    margin-top: 5px;
+    display: block;
+}
+
+/* Animations */
+@keyframes AD-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes AD-slide-right {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes AD-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-dot {
+    0% {
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(51, 102, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0);
+    }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 1024px) {
+    .JO-detail-info-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .AD-priority-details {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .AD-details-col {
+        width: 100%;
+    }
+    
+    .AD-approval-actions {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .JO-detail-info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .AD-priority-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .AD-priority-left {
+        width: 100%;
+    }
+    
+    .AD-priority-indicators {
+        width: 100%;
+        margin-top: 5px;
+    }
+    
+    .AD-approval-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .AD-approval-actions button {
+        width: 100%;
+    }
+    
+    .JO-modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .JO-modal-footer {
+        flex-direction: column;
+    }
+    
+    .JO-modal-footer button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .JO-tag-container {
+        margin-top: 8px;
+    }
+    
+    .JO-detail-id-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .JO-timeline-item {
+        padding-left: 30px;
+    }
+    
+    .JO-timeline-dot {
+        width: 18px;
+        height: 18px;
+        font-size: 0.6rem;
+    }
+    
+    .AD-empty-state i {
+        font-size: 36px;
+    }
+}
+

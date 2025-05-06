@@ -1,0 +1,1177 @@
+/* User Management Styles - Extends job-order.css */
+
+:root {
+    /* Additional colors */
+    --um-admin-color: #9c27b0;
+    --um-admin-light: #f3e5f5;
+    --um-job-order-color: #4caf50;
+    --um-job-order-light: #e8f5e9;
+    --um-manhours-color: #ff9800;
+    --um-manhours-light: #fff3e0;
+    --um-monitoring-color: #03a9f4;
+    --um-monitoring-light: #e1f5fe;
+    --um-active-color: #4caf50;
+    --um-active-light: #e8f5e9;
+    --um-inactive-color: #f44336;
+    --um-inactive-light: #ffebee;
+}
+
+/* Action Buttons */
+.UM-action-buttons {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.UM-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--jo-text-light);
+    cursor: pointer;
+    transition: var(--jo-transition);
+}
+
+.UM-icon-button:hover {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+    transform: translateY(-2px);
+}
+
+.UM-edit-user:hover {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+}
+
+.UM-delete-user:hover {
+    background-color: var(--um-inactive-light);
+    color: var(--um-inactive-color);
+}
+
+.UM-toggle-status:hover {
+    background-color: var(--um-active-light);
+    color: var(--um-active-color);
+}
+
+/* Pagination */
+.UM-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--jo-border);
+}
+
+.UM-pagination-info {
+    color: var(--jo-text-light);
+    font-size: 0.9rem;
+}
+
+.UM-pagination-pages {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.UM-pagination-page, .UM-pagination-btn {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--jo-border);
+    background-color: var(--jo-card-bg);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--jo-text);
+    transition: var(--jo-transition);
+}
+
+.UM-pagination-page:hover, .UM-pagination-btn:hover {
+    background-color: var(--jo-primary-light);
+    border-color: var(--jo-primary);
+    color: var(--jo-primary);
+    transform: translateY(-2px);
+}
+
+.UM-pagination-page.active {
+    background-color: var(--jo-primary);
+    border-color: var(--jo-primary);
+    color: white;
+}
+
+/* Search and Filter */
+.UM-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: var(--jo-transition);
+}
+
+.UM-search-container:focus-within {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.UM-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    min-width: 250px;
+}
+
+.UM-search-button {
+    background: none;
+    border: none;
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--jo-text-light);
+}
+
+.UM-select {
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    background-color: white;
+    cursor: pointer;
+    transition: var(--jo-transition);
+    width: 100%;
+}
+
+.UM-select:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+/* ==========================================================================
+   Modals - Same structure as job-order.css
+   ========================================================================== */
+
+.UM-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.UM-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.UM-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: auto;
+}
+
+.UM-modal.active .UM-modal-content {
+    transform: translateY(0);
+    animation: UM-modal-appear 0.3s ease-out;
+}
+
+.UM-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.UM-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--jo-text);
+}
+
+.UM-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--jo-transition);
+}
+
+.UM-modal-close:hover {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-primary);
+    transform: rotate(90deg);
+}
+
+.UM-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.UM-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--jo-border);
+}
+
+/* Buttons */
+.UM-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--jo-transition);
+    border: none;
+    font-size: 0.9rem;
+}
+
+.UM-primary-button {
+    background-color: var(--jo-primary);
+    color: white;
+}
+
+.UM-primary-button:hover {
+    background-color: var(--jo-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.UM-secondary-button {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    border: 1px solid var(--jo-border);
+}
+
+.UM-secondary-button:hover {
+    background-color: var(--jo-border);
+}
+
+.UM-danger-button {
+    background-color: var(--um-inactive-color);
+    color: white;
+}
+
+.UM-danger-button:hover {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+/* Confirmation Modal */
+.UM-confirmation-modal .UM-modal-content {
+    max-width: 450px;
+}
+
+.UM-confirmation-content {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.UM-confirmation-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    animation: UM-icon-pulse 1.5s infinite alternate;
+}
+
+.UM-confirmation-icon.danger {
+    color: var(--um-inactive-color);
+}
+
+.UM-confirmation-icon.success {
+    color: var(--um-active-color);
+}
+
+.UM-confirmation-message {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.UM-confirmation-submessage {
+    color: var(--jo-text-light);
+    margin-bottom: 10px;
+}
+
+/* ==========================================================================
+   Form Elements
+   ========================================================================== */
+
+.UM-form-section {
+    margin-bottom: 24px;
+}
+
+.UM-form-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--jo-text);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.UM-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.UM-form-group {
+    margin-bottom: 10px;
+}
+
+.UM-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--jo-text);
+    font-size: 0.9rem;
+}
+
+.UM-input, .UM-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--jo-transition);
+}
+
+.UM-input:focus, .UM-textarea:focus, .UM-select:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.UM-password-field {
+    position: relative;
+}
+
+.UM-password-toggle {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--jo-text-light);
+    cursor: pointer;
+}
+
+/* Checkbox & Radio Styles */
+.UM-checkbox-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.UM-checkbox-container, .UM-radio-container {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    padding-left: 30px;
+    margin-right: 15px;
+    font-size: 0.9rem;
+    user-select: none;
+}
+
+.UM-checkbox-container input, .UM-radio-container input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.UM-checkbox-label, .UM-radio-label {
+    padding: 3px 0;
+    transition: var(--jo-transition);
+}
+
+.UM-checkbox-label:before, .UM-radio-label:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--jo-border);
+    background-color: white;
+    transition: var(--jo-transition);
+}
+
+.UM-checkbox-label:before {
+    border-radius: 4px;
+}
+
+.UM-radio-label:before {
+    border-radius: 50%;
+}
+
+.UM-checkbox-container input:checked ~ .UM-checkbox-label:before {
+    background-color: var(--jo-primary);
+    border-color: var(--jo-primary);
+}
+
+.UM-radio-container input:checked ~ .UM-radio-label:before {
+    border-color: var(--jo-primary);
+    border-width: 5px;
+}
+
+.UM-checkbox-label:after {
+    content: '✓';
+    position: absolute;
+    left: 4px;
+    top: 45%;
+    transform: translateY(-50%);
+    color: white;
+    font-size: 0.7rem;
+    opacity: 0;
+    transition: var(--jo-transition);
+}
+
+.UM-checkbox-container input:checked ~ .UM-checkbox-label:after {
+    opacity: 1;
+}
+
+.UM-checkbox-container:hover .UM-checkbox-label:before,
+.UM-radio-container:hover .UM-radio-label:before {
+    border-color: var(--jo-primary);
+}
+
+/* Category label */
+.UM-category-label {
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+/* Permission sections */
+.UM-permission-category {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.UM-permission-category:last-child {
+    border-bottom: none;
+}
+
+.UM-permission-header {
+    margin-bottom: 10px;
+}
+
+.UM-subpermissions {
+    margin-left: 25px;
+    padding: 10px 0;
+    display: none;
+    animation: UM-fade-in 0.3s ease-out;
+}
+
+.UM-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* Avatar Carousel */
+.UM-avatar-carousel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+    position: relative;
+    height: 160px;
+}
+
+.UM-avatar-container {
+    position: relative;
+    width: 100%;
+    max-width: 650px;
+    overflow: hidden;
+    padding: 15px 0;
+}
+
+.UM-avatar-slider {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.645, 0.045, 0.355, 1);
+    align-items: center;
+    justify-content: center;
+}
+
+.UM-avatar-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    margin: 0 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    transform-origin: center center;
+}
+
+.UM-avatar-img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+    opacity: 0.6;
+}
+
+.UM-avatar-option.active .UM-avatar-img {
+    width: 90px;
+    height: 90px;
+    border-color: var(--jo-primary);
+    box-shadow: 0 5px 15px rgba(51, 102, 255, 0.3);
+    opacity: 1;
+}
+
+.UM-avatar-option:hover .UM-avatar-img:not(.active .UM-avatar-img) {
+    transform: scale(1.1);
+    opacity: 0.8;
+}
+
+.UM-avatar-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: white;
+    border: 1px solid var(--jo-border);
+    color: var(--jo-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+    transition: var(--jo-transition);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.UM-avatar-nav-btn:hover {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+    transform: translateY(-50%) scale(1.1);
+}
+
+#avatar-prev {
+    left: 10px;
+}
+
+#avatar-next {
+    right: 10px;
+}
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes UM-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes UM-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes UM-stats-appear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes UM-modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes UM-icon-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+@keyframes UM-row-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes UM-slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes UM-fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .UM-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .UM-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .UM-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .UM-stats-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .UM-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .UM-card-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .UM-search-container {
+        width: 100%;
+    }
+    
+    .UM-table-container {
+        padding: 0 10px;
+        max-height: 450px;
+    }
+    
+    /* Responsive table styles */
+    .UM-table {
+        border: 0;
+    }
+    
+    .UM-table thead {
+        display: none;
+    }
+    
+    .UM-table tr {
+        margin-bottom: 15px;
+        display: block;
+        border: 1px solid var(--jo-border);
+        border-radius: 8px;
+        padding: 10px;
+    }
+    
+    .UM-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--jo-border);
+    }
+    
+    .UM-table td:last-child {
+        border-bottom: none;
+    }
+    
+    .UM-table td:before {
+        content: attr(data-label);
+        font-weight: 600;
+        margin-right: 10px;
+        text-align: left;
+        color: var(--jo-text);
+    }
+    
+    .UM-pagination {
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .UM-avatar-carousel {
+        padding: 15px 0;
+    }
+    
+    .UM-avatar-container {
+        max-width: 250px;
+    }
+    
+    .UM-radio-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .UM-avatar-option {
+        min-width: 60px;
+        margin: 0 5px;
+    }
+    
+    .UM-avatar-img {
+        width: 50px;
+        height: 50px;
+    }
+    
+    .UM-avatar-option.active .UM-avatar-img {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .UM-modal-content {
+        width: 95%;
+    }
+    
+    .UM-form-group {
+        margin-bottom: 12px;
+    }
+    
+    .toast {
+        min-width: auto;
+        max-width: 300px;
+    }
+}
+
+/* ==========================================================================
+   Header and Page Title - Same structure as job-order.css
+   ========================================================================== */
+
+.UM-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    animation: UM-slide-down 0.5s ease-out;
+}
+
+.UM-title-section {
+    flex: 1;
+}
+
+.UM-page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--jo-text);
+    margin: 0;
+}
+
+.UM-subtitle {
+    font-size: 1rem;
+    color: var(--jo-text-light);
+    margin: 5px 0 0;
+}
+
+/* ==========================================================================
+   User Approvers Styles
+   ========================================================================== */
+
+   .UM-approvers-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.UM-approver-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr auto;
+    gap: 15px;
+    align-items: end;
+    padding: 10px;
+    background-color: var(--jo-bg-color);
+    border-radius: 8px;
+    transition: var(--jo-transition);
+    animation: UM-fade-in 0.3s ease-out;
+}
+
+.UM-approver-row:hover {
+    background-color: var(--jo-hover-color);
+}
+
+.UM-approver-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 10px;
+}
+
+.UM-remove-approver-btn {
+    color: var(--um-inactive-color);
+}
+
+.UM-remove-approver-btn:hover {
+    background-color: var(--um-inactive-light);
+    color: var(--um-inactive-color);
+}
+
+.UM-remove-approver-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#add-approver-btn {
+    align-self: flex-start;
+    margin-top: 10px;
+}
+
+#add-approver-btn:hover {
+    transform: translateY(-2px);
+}
+
+.UM-inline-form {
+    display: inline;
+}
+
+.UM-avatar-container {
+    position: relative;
+    width: 100%;
+    max-width: 350px;
+    overflow: hidden;
+    border-radius: 10px;
+    padding: 15px 0;
+    height: 120px; /* Fixed height for container */
+}
+
+/* ==========================================================================
+   Stats Cards - Same structure as job-order.css
+   ========================================================================== */
+
+.UM-stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.UM-stats-card {
+    background-color: var(--jo-card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--jo-shadow);
+    transition: var(--jo-transition);
+    position: relative;
+    overflow: hidden;
+    transform: translateY(20px);
+    opacity: 0;
+    animation: UM-stats-appear 0.6s ease forwards;
+}
+
+.UM-stats-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.UM-stats-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.UM-stats-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.UM-stats-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.UM-stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    margin-right: 16px;
+    transition: var(--jo-transition);
+}
+
+.UM-total .UM-stats-icon {
+    color: var(--jo-primary);
+    background-color: var(--jo-primary-light);
+}
+
+.UM-admin .UM-stats-icon {
+    color: var(--um-admin-color);
+    background-color: var(--um-admin-light);
+}
+
+.UM-active .UM-stats-icon {
+    color: var(--um-active-color);
+    background-color: var(--um-active-light);
+}
+
+.UM-inactive .UM-stats-icon {
+    color: var(--um-inactive-color);
+    background-color: var(--um-inactive-light);
+}
+
+.UM-stats-content {
+    flex: 1;
+}
+
+.UM-stats-content h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--jo-text-light);
+    margin: 0 0 5px;
+}
+
+.UM-stats-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--jo-text);
+    margin: 0;
+}
+
+/* ==========================================================================
+   Cards & Tables - Same structure as job-order.css
+   ========================================================================== */
+
+.UM-card {
+    background: var(--jo-card-bg);
+    border-radius: 12px;
+    box-shadow: var(--jo-shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: var(--jo-transition);
+    animation: UM-fade-in 0.5s ease-out;
+}
+
+.UM-card-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--jo-border);
+    position: sticky;
+    top: 0;
+    background: var(--jo-card-bg);
+    z-index: 10;
+}
+
+.UM-card-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--jo-text);
+}
+
+.UM-card-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.UM-table-container {
+    padding: 0 20px;
+    max-height: 650px;
+    overflow-y: auto;
+}
+
+.UM-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.UM-table th {
+    text-align: left;
+    padding: 12px 15px;
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--jo-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.UM-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--jo-border);
+    color: var(--jo-text);
+    transition: var(--jo-transition);
+}
+
+.UM-table tr {
+    transition: var(--jo-transition);
+}
+
+.UM-table tr:hover {
+    background-color: var(--jo-bg-color);
+}
+
+.UM-table tbody tr {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: UM-row-appear 0.5s ease forwards;
+}
+
+.UM-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.UM-table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+.UM-table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+.UM-table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+.UM-table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+.UM-table tbody tr:nth-child(6) { animation-delay: 0.6s; }
+
+.UM-user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.UM-user-avatar:hover {
+    transform: scale(1.2);
+}
+
+/* Permission Pills */
+.UM-permission-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.UM-permission-pill {
+    display: inline-flex;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.UM-admin-pill {
+    background-color: var(--um-admin-light);
+    color: var(--um-admin-color);
+}
+
+.UM-job-order-pill {
+    background-color: var(--um-job-order-light);
+    color: var(--um-job-order-color);
+}
+
+.UM-manhours-pill {
+    background-color: var(--um-manhours-light);
+    color: var(--um-manhours-color);
+}
+
+.UM-monitoring-pill {
+    background-color: var(--um-monitoring-light);
+    color: var(--um-monitoring-color);
+}
+
+/* Status */
+.UM-status {
+    display: inline-flex;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.UM-status-active {
+    background-color: var(--um-active-light);
+    color: var(--um-active-color);
+}
+
+.UM-status-inactive {
+    background-color: var(--um-inactive-light);
+    color: var(--um-inactive-color);
+}

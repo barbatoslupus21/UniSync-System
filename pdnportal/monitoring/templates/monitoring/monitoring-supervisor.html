@@ -1,0 +1,793 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Product Output Monitoring{% endblock %}
+
+{% block extra_css %}
+
+<link rel="stylesheet" href="{% static 'css/monitoring/monitoring-supervisor.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header -->
+    <div class="PM-header">
+        <div class="PM-title-section">
+            <h1 class="PM-page-title">Production Output Monitoring</h1>
+            <p class="PM-subtitle">Track and manage production efficiency across all departments</p>
+        </div>
+        <button id="new-group-btn" class="PM-button PM-primary-button">
+            <i class="fas fa-plus"></i> New Monitoring Group
+        </button>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="PM-stats-container">
+        <div class="PM-stats-card PM-total">
+            <div class="PM-stats-icon">
+                <i class="fas fa-layer-group"></i>
+            </div>
+            <div class="PM-stats-content">
+                <h3>Total Groups</h3>
+                <h2 class="PM-stats-number">{{ total_groups }}</h2>
+                <p>Active monitoring groups</p>
+            </div>
+        </div>
+        
+        <div class="PM-stats-card PM-lines">
+            <div class="PM-stats-icon">
+                <i class="fas fa-industry"></i>
+            </div>
+            <div class="PM-stats-content">
+                <h3>Production Lines</h3>
+                <h2 class="PM-stats-number">{{ total_lines }}</h2>
+                <p>Under active monitoring</p>
+            </div>
+        </div>
+        
+        <div class="PM-stats-card PM-efficiency">
+            <div class="PM-stats-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="PM-stats-content">
+                <h3>Today's Output</h3>
+                <h2 class="PM-stats-number">{{ todays_output }}</h2>
+                <p>Units produced</p>
+            </div>
+        </div>
+        
+        <div class="PM-stats-card PM-alerts">
+            <div class="PM-stats-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="PM-stats-content">
+                <h3>Backlog Issues</h3>
+                <h2 class="PM-stats-number">{{ backlog_issues }}</h2>
+                <p>Require attention</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart and Monitoring Groups section -->
+    <div class="PM-main-content-grid">
+        <div class="PM-card PM-chart-container">
+            <div class="PM-card-header">
+                <h2>Production Output Trends</h2>
+                <div class="PM-card-actions">
+                    <select id="chart-period-selector" class="PM-select">
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="quarter">This Quarter</option>
+                    </select>
+                </div>
+            </div>
+            <div class="PM-chart-wrapper">
+                <canvas id="output-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Monitoring status overview -->
+        <div class="PM-card PM-monitoring-overview">
+            <div class="PM-card-header">
+                <h2>Recent Activity</h2>
+                <div class="PM-card-actions">
+                    <select id="shift-selector" class="PM-select">
+                        <option value="all">All Shifts</option>
+                        <option value="AM">AM Shift</option>
+                        <option value="PM">PM Shift</option>
+                    </select>
+                </div>
+            </div>
+            <div class="PM-activity-list">
+                {% for activity in recent_activities %}
+                <div class="PM-activity-item">
+                    <div class="PM-activity-icon {% if activity.activity_type == 'success' %}success{% elif activity.activity_type == 'warning' %}warning{% elif activity.activity_type == 'error' %}error{% else %}info{% endif %}">
+                        <i class="fas {% if activity.activity_type == 'success' %}fa-check-circle{% elif activity.activity_type == 'warning' %}fa-clock{% elif activity.activity_type == 'error' %}fa-exclamation-circle{% else %}fa-box{% endif %}"></i>
+                    </div>
+                    <div class="PM-activity-content">
+                        <h4>{{ activity.title }}</h4>
+                        <p>{{ activity.description }}</p>
+                        <span class="PM-activity-time">{{ activity.created_at|timesince }} ago • {{ activity.shift }} Shift</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="PM-activity-item">
+                    <div class="PM-activity-icon info">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="PM-activity-content">
+                        <h4>No Recent Activities</h4>
+                        <p>Activity logs will appear here as monitoring events occur</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Monitoring Groups Section -->
+    <div class="PM-card PM-monitoring-groups">
+        <div class="PM-card-header">
+            <h2>Monitoring Groups</h2>
+            <div class="PM-card-actions">
+                <div class="PM-search-container">
+                    <input type="text" class="PM-search-input" placeholder="Search by title, line or product...">
+                    <button class="PM-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="PM-filter-container">
+                    <select class="PM-select PM-filter-select">
+                        <option value="all">All Status</option>
+                        <option value="Running">Running</option>
+                        <option value="On Hold">On Hold</option>
+                        <option value="Stopped">Stopped</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="PM-groups-container">
+            <!-- Group cards -->
+            {% for group in monitoring_groups %}
+            <div class="PM-group-card" data-id="{{ group.id }}" data-status="{{ group.status }}">
+                <div class="PM-group-card-header">
+                    <h3>{{ group.title }}</h3>
+                    <div class="PM-group-actions">
+                        <button class="PM-action-button edit-group" data-id="{{ group.id }}">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="PM-action-button view-details" data-id="{{ group.id }}">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="PM-group-stats">
+                    <div class="PM-group-stat">
+                        <span class="PM-stat-label">Lines</span>
+                        <span class="PM-stat-value">{{ group.monitoring_lines.count }}</span>
+                    </div>
+                    <div class="PM-group-stat">
+                        <span class="PM-stat-label">Percentage</span>
+                        <span class="PM-stat-value {% if group.efficiency_percentage >= 70 %}PM-percentage-high{% elif group.efficiency_percentage >= 50 %}PM-percentage-medium{% else %}PM-percentage-low{% endif %}">{{ group.efficiency_percentage }}%</span>
+                    </div>
+                    <div class="PM-group-stat">
+                        <span class="PM-stat-label">Status</span>
+                        <span class="PM-status {% if group.status == 'Running' %}active{% elif group.status == 'On Hold' %}warning{% else %}inactive{% endif %}">{{ group.status }}</span>
+                    </div>
+                </div>
+                <div class="PM-group-lines">
+                    {% for line in group.monitoring_lines.all %}
+                    <span class="PM-line-tag">{{ line.line.line_name }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="PM-empty-state">
+                <i class="fas fa-layer-group"></i>
+                <h3>No Monitoring Groups</h3>
+                <p>Create a new monitoring group to start tracking production output</p>
+                <button id="empty-create-btn" class="PM-button PM-primary-button">
+                    Create Monitoring Group
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</main>
+
+<!-- New Monitoring Group Modal -->
+<div class="PM-modal" id="new-group-modal">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Create Monitoring Group</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="monitoring-group-form" method="post" action="{% url 'create_group' %}">
+            {% csrf_token %}
+            <div class="PM-modal-body">
+                <div class="PM-form-group">
+                    <label for="id_title">Group Title <span class="PM-required">*</span></label>
+                    {{ form.title }}
+                    <div class="PM-validation-message">{{ form.title.errors }}</div>
+                </div>
+                <div class="PM-form-group">
+                    <label for="id_status">Status <span class="PM-required">*</span></label>
+                    {{ form.status }}
+                    <div class="PM-validation-message">{{ form.status.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label>Production Lines <span class="PM-required">*</span></label>
+                    <div class="PM-lines-container">
+                        <div id="available-lines" class="PM-available-lines">
+                            <h4>Available Lines</h4>
+                            <div class="PM-search-box">
+                                <input type="text" id="lines-search" placeholder="Search lines...">
+                            </div>
+                            <div class="PM-lines-list">
+                                {% for line in available_lines %}
+                                <div class="PM-line-item" data-id="{{ line.id }}">
+                                    <input type="checkbox" id="line-{{ line.id }}" class="line-checkbox" value="{{ line.id }}">
+                                    <label for="line-{{ line.id }}">{{ line.line_name }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="PM-actions-column">
+                            <button type="button" id="add-lines" class="PM-action-button">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button type="button" id="remove-lines" class="PM-action-button">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                        </div>
+                        
+                        <div id="selected-lines" class="PM-selected-lines">
+                            <h4>Selected Lines</h4>
+                            <div class="PM-lines-list">
+                                <!-- Selected lines will be added here dynamically -->
+                            </div>
+                            <div class="selected-lines-hidden-inputs">
+                                <!-- Hidden inputs for selected lines will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="PM-validation-message">{{ form.lines.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label>Assign Supervisors</label>
+                    <div class="PM-supervisors-checkbox-container">
+                        {% for supervisor in supervisors %}
+                        <div class="PM-supervisor-checkbox">
+                            <input type="checkbox" id="supervisor-{{ supervisor.id }}" name="supervisors" value="{{ supervisor.id }}">
+                            <label for="supervisor-{{ supervisor.id }}">{{ supervisor.name }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="PM-validation-message">{{ form.supervisors.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label for="id_description">Description</label>
+                    {{ form.description }}
+                    <div class="PM-validation-message">{{ form.description.errors }}</div>
+                </div>
+            </div>
+            <div class="PM-modal-footer">
+                <button type="button" class="PM-button PM-secondary-button" id="cancel-group">Cancel</button>
+                <button type="submit" class="PM-button PM-primary-button" id="save-group">Create Group</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Monitoring Group Modal -->
+<div class="PM-modal" id="edit-group-modal">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Edit Monitoring Group</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="edit-group-form" method="post" action="{% url 'edit_group' 0 %}">
+            {% csrf_token %}
+            <div class="PM-modal-body">
+                <input type="hidden" id="edit-group-id" name="group_id">
+                <div class="PM-form-group">
+                    <label for="id_edit_title">Group Title <span class="PM-required">*</span></label>
+                    {{ edit_form.title }}
+                    <div class="PM-validation-message">{{ edit_form.title.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label for="id_edit_status">Status <span class="PM-required">*</span></label>
+                    {{ edit_form.status }}
+                    <div class="PM-validation-message">{{ edit_form.status.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label>Production Lines <span class="PM-required">*</span></label>
+                    <div class="PM-lines-container">
+                        <div id="edit-available-lines" class="PM-available-lines">
+                            <h4>Available Lines</h4>
+                            <div class="PM-search-box">
+                                <input type="text" id="edit-lines-search" placeholder="Search lines...">
+                            </div>
+                            <div class="PM-lines-list">
+                                <!-- Available lines will be populated dynamically -->
+                            </div>
+                        </div>
+                        
+                        <div class="PM-actions-column">
+                            <button type="button" id="edit-add-lines" class="PM-action-button">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                            <button type="button" id="edit-remove-lines" class="PM-action-button">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                        </div>
+                        
+                        <div id="edit-selected-lines" class="PM-selected-lines">
+                            <h4>Selected Lines</h4>
+                            <div class="PM-lines-list">
+                                <!-- Selected lines will be populated dynamically -->
+                            </div>
+                            <div class="edit-selected-lines-hidden-inputs">
+                                <!-- Hidden inputs for selected lines will be added here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="PM-validation-message">{{ edit_form.lines.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label>Assign Supervisors</label>
+                    <div class="PM-supervisors-checkbox-container">
+                        {% for supervisor in supervisors %}
+                        <div class="PM-supervisor-checkbox">
+                            <input type="checkbox" id="edit-supervisor-{{ supervisor.id }}" name="edit_supervisors" value="{{ supervisor.id }}">
+                            <label for="edit-supervisor-{{ supervisor.id }}">{{ supervisor.username }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="PM-validation-message">{{ edit_form.supervisors.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label for="id_edit_description">Description</label>
+                    {{ edit_form.description }}
+                    <div class="PM-validation-message">{{ edit_form.description.errors }}</div>
+                </div>
+            </div>
+            <div class="PM-modal-footer">
+                <button type="button" class="PM-button PM-secondary-button" id="cancel-edit">Cancel</button>
+                <button type="submit" class="PM-button PM-primary-button" id="update-group">Update Group</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Group Details Modal -->
+<div class="PM-modal" id="view-details-modal">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Group Details</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="PM-modal-body">
+            <div class="PM-details-content">
+                <div class="PM-detail-header">
+                    <h3 id="detail-group-name" data-id="">Group Name</h3>
+                    <span class="PM-status-badge" id="detail-status">Status</span>
+                </div>
+                <div class="PM-detail-metrics">
+                    <div class="PM-detail-metric">
+                        <div class="PM-metric-value" id="detail-lines-count">0</div>
+                        <div class="PM-metric-label">Production Lines</div>
+                    </div>
+                    <div class="PM-detail-metric">
+                        <div class="PM-metric-value PM-percentage-high" id="detail-percentage">0%</div>
+                        <div class="PM-metric-label">Output Percentage</div>
+                    </div>
+                    <div class="PM-detail-metric">
+                        <div class="PM-metric-value" id="detail-today-output">0</div>
+                        <div class="PM-metric-label">Today's Output</div>
+                    </div>
+                </div>
+                
+                <div class="PM-detail-tabs">
+                    <button class="PM-tab-button active" data-tab="performance">Performance</button>
+                    <button class="PM-tab-button" data-tab="products">Products</button>
+                    <button class="PM-tab-button" data-tab="schedule">Production Schedule</button>
+                </div>
+                
+                <div class="PM-tab-content active" id="performance-tab">
+                    <div class="PM-detail-chart-container">
+                        <div class="PM-chart-controls">
+                            <h4>Daily Output</h4>
+                            <div class="PM-chart-filters">
+                                <div class="PM-filter-group">
+                                    <label for="chart-date-filter">Date:</label>
+                                    <input type="date" id="chart-date-filter" class="PM-chart-filter" value="{{ today_date }}">
+                                </div>
+                                <div class="PM-filter-group">
+                                    <label for="chart-shift-filter">Shift:</label>
+                                    <select id="chart-shift-filter" class="PM-chart-filter">
+                                        <option value="all">All Shifts</option>
+                                        <option value="AM">AM Shift (7AM-6PM)</option>
+                                        <option value="PM">PM Shift (6PM-7AM)</option>
+                                    </select>
+                                </div>
+                                <div class="PM-filter-group">
+                                    <label for="line-selector">Line:</label>
+                                    <select id="line-selector" class="PM-chart-filter">
+                                        <option value="total">Total Output</option>
+                                        <!-- Lines will be populated dynamically -->
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="PM-detail-chart">
+                            <canvas id="detail-performance-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="PM-tab-content" id="products-tab">
+                    <div class="PM-product-list">
+                        <div class="PM-product-header">
+                            <div class="PM-product-col">Product Name</div>
+                            <div class="PM-product-col">Description</div>
+                            <div class="PM-product-col">Line</div>
+                            <div class="PM-product-col">Qty Per Box</div>
+                            <div class="PM-product-col">Qty Per Hour</div>
+                            <div class="PM-product-col" style="text-align: center" >Actions</div>
+                        </div>
+                        <!-- Product items will be populated dynamically -->
+                    </div>
+                    <div class="PM-add-product">
+                        <button class="PM-button PM-primary-button" id="add-product-btn">
+                            <i class="fas fa-plus"></i> Add Product
+                        </button>
+                        <button class="PM-button PM-secondary-button" id="import-product">
+                            <i class="fas fa-file-import"></i> Import Product
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="PM-tab-content" id="schedule-tab">
+                    <div class="PM-schedule-filters">
+                        <div class="PM-form-group">
+                            <label for="schedule-date">Date:</label>
+                            <input type="date" id="schedule-date" value="{{ today_date }}">
+                        </div>
+                        <div class="PM-form-group">
+                            <label for="schedule-shift">Shift:</label>
+                            <select id="schedule-shift">
+                                <option value="all">All Shifts</option>
+                                <option value="AM">AM Shift</option>
+                                <option value="PM">PM Shift</option>
+                            </select>
+                        </div>
+                        <div class="PM-form-group">
+                            <label for="schedule-status">Status:</label>
+                            <select id="schedule-status">
+                                <option value="all">All Status</option>
+                                <option value="Planned">Planned</option>
+                                <option value="Change Load">Change Load</option>
+                                <option value="Backlog">Backlog</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="PM-schedule-list">
+                        <div class="PM-schedule-header">
+                            <div class="PM-schedule-col">Date Planned</div>
+                            <div class="PM-schedule-col">Product</div>
+                            <div class="PM-schedule-col">Line</div>
+                            <div class="PM-schedule-col">Shift</div>
+                            <div class="PM-schedule-col">Planned Qty</div>
+                            <div class="PM-schedule-col">Produced</div>
+                            <div class="PM-schedule-col">Balance</div>
+                            <div class="PM-schedule-col">Status</div>
+                            <div class="PM-schedule-col">Actions</div>
+                        </div>
+                        <!-- Schedule items will be populated dynamically -->
+                    </div>
+                    
+                    <div class="PM-add-schedule">
+                        <button class="PM-button PM-primary-button" id="add-schedule-btn">
+                            <i class="fas fa-plus"></i> Add Schedule
+                        </button>
+                        <button class="PM-button PM-secondary-button" id="import-schedule">
+                            <i class="fas fa-file-import"></i> Import Schedule
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="PM-detail-supervisors">
+                    <h4>Assigned Supervisors</h4>
+                    <div class="PM-supervisors-list" id="detail-supervisors-list">
+                        <!-- Supervisors will be populated dynamically -->
+                    </div>
+                </div>
+                
+                <div class="PM-detail-description">
+                    <h4>Description</h4>
+                    <p id="detail-description"></p>
+                </div>
+            </div>
+        </div>
+        <div class="PM-modal-footer">
+            <button class="PM-button PM-secondary-button close-details">Close</button>
+            {% if request.user.monitoring_supervisor or request.user.monitoring_manager %}
+                <button class="PM-button PM-primary-button" id="open-dashboard-btn">
+                    <i class="fas fa-chart-line"></i> Open Dashboard
+                </button>
+            {% endif %}
+            <button class="PM-button PM-primary-button" id="edit-from-details">Edit Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="PM-modal modal-center" id="add-product-modal" style="display: none;">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Add Product</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="add-product-form" method="POST" action="{% url 'add_product' %}">
+            {% csrf_token %}
+            <div class="PM-modal-body">
+                <input type="hidden" id="product-group-id" name="monitoring_id">
+                <div class="PM-form-group">
+                    <label for="id_product_name">Product Name <span class="PM-required">*</span></label>
+                    {{ product_form.product_name }}
+                    <div class="PM-validation-message">{{ product_form.product_name.errors }}</div>
+                </div>
+
+                <div class="PM-form-group">
+                    <label for="id_description">Description <span class="PM-required">*</span></label>
+                    {{ product_form.description }}
+                    <div class="PM-validation-message">{{ product_form.description.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label for="id_line">Production Line <span class="PM-required">*</span></label>
+                    {{ product_form.line }}
+                    <div class="PM-validation-message">{{ product_form.line.errors }}</div>
+                </div>
+                
+                <div class="PM-form-row">
+                    <div class="PM-form-group">
+                        <label for="id_qty_per_box">Quantity Per Box <span class="PM-required">*</span></label>
+                        {{ product_form.qty_per_box }}
+                        <div class="PM-validation-message">{{ product_form.qty_per_box.errors }}</div>
+                    </div>
+                    
+                    <div class="PM-form-group">
+                        <label for="id_qty_per_hour">Quantity Per Hour <span class="PM-required">*</span></label>
+                        {{ product_form.qty_per_hour }}
+                        <div class="PM-validation-message">{{ product_form.qty_per_hour.errors }}</div>
+                    </div>
+                </div>
+                
+            </div>
+            <div class="PM-modal-footer">
+                <button type="button" class="PM-button PM-secondary-button" id="cancel-product">Cancel</button>
+                <button type="submit" class="PM-button PM-primary-button" id="save-product">Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Product Confirmation Modal -->
+<div class="PM-confirm-dialog" id="delete-product-confirmation">
+    <div class="PM-confirm-content">
+        <div class="PM-confirm-icon">
+            <i class="fas fa-trash-alt"></i>
+        </div>
+        <h3 class="PM-confirm-title">Delete Product</h3>
+        <p class="PM-confirm-message">Are you sure you want to delete <strong id="confirm-product-name"></strong>? This action cannot be undone.</p>
+        <div class="PM-confirm-actions">
+            <button class="PM-button PM-secondary-button" id="cancel-delete-product">Cancel</button>
+            <button class="PM-button PM-danger-button" id="confirm-delete-product">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Schedule Confirmation Modal -->
+<div class="PM-confirm-dialog" id="delete-schedule-confirmation">
+    <div class="PM-confirm-content">
+        <div class="PM-confirm-icon">
+            <i class="fas fa-trash-alt"></i>
+        </div>
+        <h3 class="PM-confirm-title">Delete Schedule</h3>
+        <p class="PM-confirm-message">Are you sure you want to delete <strong id="confirm-schedule-name"></strong>? This action cannot be undone.</p>
+        <div class="PM-confirm-actions">
+            <button class="PM-button PM-secondary-button" id="cancel-schedule-product">Cancel</button>
+            <button class="PM-button PM-danger-button" id="confirm-schedule-product">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Products Modal -->
+<div class="PM-modal modal-center" id="import-product-modal" style="display: none;">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Import Products</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="import-product-form" method="post" action="{% url 'import_products' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="PM-modal-body">
+                <input type="hidden" id="import-product-group-id" name="monitoring_id">
+                <div class="PM-form-group">
+                    <label for="product-file">Upload Excel File <span class="PM-required">*</span></label>
+                    <div class="PM-file-upload">
+                        <input type="file" id="product-file" name="product_file" accept=".xlsx, .xls" required>
+                        <label for="product-file" class="PM-file-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Choose File</span>
+                        </label>
+                        <div class="PM-file-name">No file chosen</div>
+                    </div>
+                    <div class="PM-validation-message"></div>
+                </div>
+                
+                <div class="PM-import-instructions">
+                    <h3>Instructions</h3>
+                    <p>Please use the template below to ensure your data is correctly formatted. Your Excel file should contain the following columns:</p>
+                    <ul>
+                        <li><strong>product_name</strong>: Name of the product</li>
+                        <li><strong>line_id</strong>: ID of the production line</li>
+                        <li><strong>qty_per_box</strong>: Quantity per box</li>
+                        <li><strong>qty_per_hour</strong>: Quantity per hour</li>
+                        <li><strong>description</strong>: Product description (optional)</li>
+                    </ul>
+                    <div class="PM-template-download">
+                        <a href="{% url 'export_product_template' %}" class="PM-button PM-secondary-button">
+                            <i class="fas fa-download"></i> Download Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="PM-modal-footer">
+                <button type="button" class="PM-button PM-secondary-button" id="cancel-product-import">Cancel</button>
+                <button type="submit" class="PM-button PM-primary-button" id="import-products-btn">Import Products</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Schedule Modal -->
+<div class="PM-modal modal-center" id="add-schedule-modal" style="display: none;">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Add Production Schedule</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="add-schedule-form" method="post" action="{% url 'add_schedule' %}">
+            {% csrf_token %}
+            <div class="PM-modal-body">
+                <input type="hidden" id="schedule-group-id" name="monitoring_id">
+                <div class="PM-form-group">
+                    <label for="id_product_number">Product <span class="PM-required">*</span></label>
+                    {{ schedule_form.product_number }}
+                    <div class="PM-validation-message">{{ schedule_form.product_number.errors }}</div>
+                </div>
+                
+                <div class="PM-form-row">
+                    <div class="PM-form-group">
+                        <label for="id_date_planned">Date Planned <span class="PM-required">*</span></label>
+                        {{ schedule_form.date_planned }}
+                        <div class="PM-validation-message">{{ schedule_form.date_planned.errors }}</div>
+                    </div>
+                    
+                    <div class="PM-form-group">
+                        <label for="id_shift">Shift <span class="PM-required">*</span></label>
+                        {{ schedule_form.shift }}
+                        <div class="PM-validation-message">{{ schedule_form.shift.errors }}</div>
+                    </div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label for="id_planned_qty">Planned Quantity <span class="PM-required">*</span></label>
+                    {{ schedule_form.planned_qty }}
+                    <div class="PM-validation-message">{{ schedule_form.planned_qty.errors }}</div>
+                </div>
+                
+                <div class="PM-form-group">
+                    <label for="id_status">Status <span class="PM-required">*</span></label>
+                    <select name="status" id="id_status" class="PM-select" data-is-sales="{% if request.user.monitoring_sales %}true{% else %}false{% endif %}">
+                        <option value="" Disabled >Choose...</option>
+                        <option value="Planned" {% if not request.user.monitoring_sales %}disabled{% endif %}>Planned</option>
+                        <option value="Change Load">Change Load</option>
+                        <option value="Backlog">Backlog</option>
+                    </select>
+                    <div class="PM-validation-message">{{ schedule_form.status.errors }}</div>
+                </div>
+            </div>
+            <div class="PM-modal-footer">
+                <button type="button" class="PM-button PM-secondary-button" id="cancel-schedule">Cancel</button>
+                <button type="submit" class="PM-button PM-primary-button" id="save-schedule">Add Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import Schedule Modal -->
+<div class="PM-modal modal-center" id="import-schedule-modal" style="display: none;">
+    <div class="PM-modal-content">
+        <div class="PM-modal-header">
+            <h2>Import Production Schedule</h2>
+            <button class="PM-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="import-schedule-form" method="post" action="{% url 'import_schedules' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="PM-modal-body">
+                <input type="hidden" id="import-schedule-group-id" name="monitoring_id">
+                <div class="PM-form-group">
+                    <label for="schedule-file">Upload Excel File <span class="PM-required">*</span></label>
+                    <div class="PM-file-upload">
+                        <input type="file" id="schedule-file" name="schedule_file" accept=".xlsx, .xls" required>
+                        <label for="schedule-file" class="PM-file-label">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Choose File</span>
+                        </label>
+                        <div class="PM-file-name">No file chosen</div>
+                    </div>
+                    <div class="PM-validation-message"></div>
+                </div>
+                
+                <div class="PM-import-instructions">
+                    <h3>Instructions</h3>
+                    <p>Please use the template below to ensure your data is correctly formatted. Your Excel file should contain the following columns:</p>
+                    <ul>
+                        <li><strong>product_id</strong>: ID of the product from the system</li>
+                        <li><strong>date_planned</strong>: Date in YYYY-MM-DD format</li>
+                        <li><strong>shift</strong>: Shift (AM or PM)</li>
+                        <li><strong>planned_qty</strong>: Planned quantity</li>
+                        <li><strong>status</strong>: Status (Planned, Change Load, or Backlog)</li>
+                    </ul>
+                    <div class="PM-template-download">
+                        <a href="{% url 'export_schedule_template' %}" class="PM-button PM-secondary-button">
+                            <i class="fas fa-download"></i> Download Template
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="PM-modal-footer">
+                <button type="button" class="PM-button PM-secondary-button" id="cancel-schedule-import">Cancel</button>
+                <button type="submit" class="PM-button PM-primary-button" id="import-schedules-btn">Import Schedules</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/monitoring/monitoring-supervisor.js' %}"></script>
+{% endblock %}

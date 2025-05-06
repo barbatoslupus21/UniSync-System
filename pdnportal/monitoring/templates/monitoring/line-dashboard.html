@@ -1,0 +1,292 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Product Output Monitoring{% endblock %}
+
+{% block extra_css %}
+
+<link rel="stylesheet" href="{% static 'css/monitoring/line-dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title and action button -->
+    <div class="PM-header">
+        <div class="PM-title-section">
+            <h1 class="PM-page-title">{{ page_title }}</h1>
+            <p class="PM-subtitle">{{ subtitle }}</p>
+        </div>
+        {% if schedule_exists %}
+        <button id="add-output-btn" class="JO-button JO-primary-button">
+            <i class="fas fa-plus"></i> Add Output
+        </button>
+        {% endif %}
+    </div>
+
+    {% if not schedule_exists %}
+    <div class="no-schedule-container">
+        <div class="no-schedule-message">
+            <div class="no-schedule-icon">
+                <i class="fas fa-calendar-times"></i>
+            </div>
+            <h2>No Production Schedule</h2>
+            <p>There is no active production schedule for your line during this shift.</p>
+        </div>
+    </div>
+    {% else %}
+    <!-- Stats cards -->
+    <div class="PM-stats-grid">
+        <div class="PM-stat-card">
+            <div class="PM-stat-icon planned">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+            <div class="PM-stat-content">
+                <h3>Planned Quantity</h3>
+                <h2 class="PM-stat-number" id="planned-qty">{{ planned_qty }}</h2>
+                <p>Daily Target</p>
+            </div>
+        </div>
+        
+        <div class="PM-stat-card">
+            <div class="PM-stat-icon current">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="PM-stat-content">
+                <h3>Current Output</h3>
+                <h2 class="PM-stat-number" id="current-output">{{ total_produced }}</h2>
+                <div class="completion-bar-container">
+                    <div class="completion-bar" id="completion-bar" style="width: {{ completion_percentage|floatformat:0 }}%;"></div>
+                </div>
+                <p><span id="output-percentage">{{ completion_percentage|floatformat:1 }}%</span> of target</p>
+            </div>
+        </div>
+        
+        <div class="PM-stat-card">
+            <div class="PM-stat-icon average">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="PM-stat-content">
+                <h3>Remaining Balance</h3>
+                <h2 class="PM-stat-number" id="balance">{{ balance }}</h2>
+                <p>Units to complete</p>
+            </div>
+        </div>
+        
+        <div class="PM-stat-card status">
+            <div class="PM-stat-icon status">
+                <i class="fas fa-percentage"></i>
+            </div>
+            <div class="PM-stat-content">
+                <h3>Output Percentage</h3>
+                <h2 class="PM-stat-number" id="output-percentage">{{ completion_percentage|floatformat:1 }}%</h2>
+                <p id="product-name">{{ product_name }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Production Status Visual with Chart -->
+    <div class="PM-status-container">
+        <div class="JO-card JO-chart-container">
+            <div class="JO-card-header">
+                <h2>{{ product_name }} - Hourly Output</h2>
+            </div>
+            <div class="PM-chart-wrapper" style="height: 400px;">
+                <canvas id="production-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Output Log -->
+    <div class="JO-card PM-output-log">
+        <div class="JO-card-header">
+            <h2>Output Log</h2>
+            <div class="JO-card-actions">
+                <div class="JO-search-container">
+                    <input type="text" class="JO-search-input" placeholder="Search by hour, operator...">
+                    <button class="JO-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="JO-table-container">
+            <table class="JO-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Operator</th>
+                        <th>Line</th>
+                        <th>Output</th>
+                        <th>Target</th>
+                        <th>Variance</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="output-log-tbody">
+                    {% for log in logs %}
+                    <tr>
+                        <td data-label="Time">{{ log.time|date:"h:i A" }}</td>
+                        <td data-label="Operator">{{ log.operator }}</td>
+                        <td data-label="Line">{{ log.line }}</td>
+                        <td data-label="Output">{{ log.output }}</td>
+                        <td data-label="Target">{{ log.target }}</td>
+                        <td data-label="Variance">
+                            <span class="{% if log.variance >= 0 %}PM-positive{% else %}PM-negative{% endif %}">
+                                {% if log.variance >= 0 %}+{% endif %}{{ log.variance }}
+                            </span>
+                        </td>
+                        <td data-label="Status">
+                            <span class="JO-status {% if log.status == 'Met' %}JO-status-approved{% else %}JO-status-rejected{% endif %}">
+                                {{ log.status }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="JO-empty-table">No output logs found for today.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</main>
+
+<!-- Add Output Modal -->
+<div class="JO-modal" id="add-output-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Add Production Output</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'line_dashboard' %}">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="{{ form.operator.id_for_label }}">Operator</label>
+                    <div class="prefilled-field-container">
+                        {{ form.operator }}
+                    </div>
+                </div>
+                
+                <div class="JO-form-group">
+                    <label for="{{ form.quantity.id_for_label }}">Quantity Produced</label>
+                    {{ form.quantity }}
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-output">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button" id="submit-output">Submit Output</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Target Met Celebration Modal -->
+<div class="JO-modal PM-celebration-modal" id="target-met-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Target Met! 🎉</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="PM-celebration-content">
+                <div class="PM-celebration-icon">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h3>Great Job!</h3>
+                <p>Your team has successfully met the production target!</p>
+                <div class="PM-stats-highlight">
+                    <div class="PM-stat-item">
+                        <span class="PM-stat-label">Target:</span>
+                        <span class="PM-stat-value" id="celebration-target">{{ planned_qty }}</span>
+                    </div>
+                    <div class="PM-stat-item">
+                        <span class="PM-stat-label">Produced:</span>
+                        <span class="PM-stat-value" id="celebration-actual">{{ total_produced }}</span>
+                    </div>
+                </div>
+                <p class="PM-celebration-message">Well done! You've achieved today's production goal!</p>
+            </div>
+            
+            <!-- Confetti Canvas -->
+            <canvas id="confetti-canvas" class="PM-confetti-canvas"></canvas>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-success-button" id="celebration-continue">Continue</button>
+        </div>
+    </div>
+</div>
+
+<!-- Target Not Met Modal -->
+<div class="JO-modal PM-feedback-modal" id="target-not-met-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Target Not Met 😔</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="PM-feedback-content">
+                <div class="PM-feedback-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3>Let's Improve</h3>
+                <p>The production target for this hour was not met.</p>
+                <div class="PM-stats-highlight">
+                    <div class="PM-stat-item">
+                        <span class="PM-stat-label">Target:</span>
+                        <span class="PM-stat-value" id="feedback-target">{{ target_per_hour }}</span>
+                    </div>
+                    <div class="PM-stat-item">
+                        <span class="PM-stat-label">Actual:</span>
+                        <span class="PM-stat-value" id="feedback-actual"></span>
+                    </div>
+                    <div class="PM-stat-item">
+                        <span class="PM-stat-label">Variance:</span>
+                        <span class="PM-stat-value PM-negative" id="feedback-variance"></span>
+                    </div>
+                </div>
+                <p class="PM-feedback-message">Let's focus on improving efficiency for the next hour to catch up.</p>
+                
+                <div class="PM-feedback-suggestions">
+                    <h4>Suggestions:</h4>
+                    <ul>
+                        <li>Check for any bottlenecks in the production line</li>
+                        <li>Ensure all equipment is functioning properly</li>
+                        <li>Verify that materials are readily available</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-primary-button" id="feedback-continue">I Understand</button>
+        </div>
+    </div>
+</div>
+    
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const chartData = {{ chart_data|safe }};
+    const plannedQty = {{ planned_qty|default:"0" }};
+    const currentOutput = {{ total_produced|default:"0" }};
+    const completionPercentage = {{ completion_percentage|floatformat:1 }};
+    const remainingBalance = {{ balance|default:"0" }};
+    const targetPerHour = {{ target_per_hour|default:"0" }};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/monitoring/line-dashboard.js' %}"></script>
+{% endblock %}

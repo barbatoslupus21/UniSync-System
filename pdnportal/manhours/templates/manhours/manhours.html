@@ -1,0 +1,451 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Production Manhours{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/manhours/manhours.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title and action button -->
+    <div class="MH-header">
+        <div class="MH-title-section">
+            <h1 class="MH-page-title">Production Manhours</h1>
+            <p class="MH-subtitle">Track and analyze production manhours and performance metrics</p>
+        </div>
+        <div class="MH-header-actions">
+            {% if request.user.manhours_user and request.user.manhours_supervisor %}
+            <button id="export-btn" class="MH-button MH-secondary-button">
+                <i class="fas fa-file-export"></i> Export Data
+            </button>
+            {% else %}
+            <button id="new-entry-btn" class="MH-button MH-primary-button">
+                <i class="fas fa-plus"></i> New Entry
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="MH-stats-container">
+        <div class="MH-stats-card MH-total">
+            <div class="MH-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="MH-stats-content">
+                <h3>Total Hours</h3>
+                <h2 class="MH-stats-number">{{ total_hours|default:"0" }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+        
+        <div class="MH-stats-card MH-output">
+            <div class="MH-stats-icon">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="MH-stats-content">
+                <h3>Total Setup</h3>
+                <h2 class="MH-stats-number">{{ total_setup|default:"0" }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+        
+        <div class="MH-stats-card MH-efficiency">
+            <div class="MH-stats-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="MH-stats-content">
+                <h3>Overall Output</h3>
+                <h2 class="MH-stats-number">{{ total_output|default:"0" }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+        
+        <div class="MH-stats-card MH-shifts">
+            <div class="MH-stats-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="MH-stats-content">
+                <h3>Active Operators</h3>
+                <h2 class="MH-stats-number">{{ active_operators|default:"0" }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart and Analysis Grid -->
+    <div class="MH-main-content-grid">
+        <!-- Chart section -->
+        <div class="MH-card MH-chart-container">
+            <div class="MH-card-header">
+                <h2>Shift Output Trends</h2>
+                <div class="MH-card-actions">
+                    <select id="chart-period-selector" class="JO-select">
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="quarter">This Quarter</option>
+                    </select>
+                </div>
+            </div>
+            <div class="MH-chart-wrapper">
+                <canvas id="mh-analysis-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Performance metrics section -->
+        <div class="MH-card MH-metrics-container">
+            <div class="MH-card-header">
+                <h2>Machine Performance Metrics</h2>
+                <div class="MH-card-actions">
+                    <select id="chart-period-selector" class="JO-select">
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                    </select>
+                </div>
+            </div>
+            <div class="MH-metric-chart">
+                <canvas id="machine-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manhours Entries Table -->
+    <div class="MH-card MH-table-card">
+        <div class="MH-card-header">
+            <h2>Manhours Entries</h2>
+            <div class="MH-card-actions">
+                <div class="MH-search-container">
+                    <input type="text" class="MH-search-input" placeholder="Search by operator, line, date...">
+                    <button class="MH-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <select id="shift-filter" class="JO-select" style="margin-left: 10px; width: 120px;">
+                    <option value="all">All Shifts</option>
+                    <option value="AM">AM Shift</option>
+                    <option value="PM">PM Shift</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="MH-table-container">
+            <table class="MH-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Operator</th>
+                        <th>Shift</th>
+                        <th>Line</th>
+                        <th>Machine</th>
+                        <th>Setup</th>
+                        <th>Man-hours</th>
+                        <th>Output</th>
+                        <th>Output/Hour</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in logsheet_entries %}
+                    <tr>
+                        <td data-label="Date">{{ entry.date_completed|date:"M d, Y" }}</td>
+                        <td data-label="Operator">{{ entry.operator }}</td>
+                        <td data-label="Shift">{{ entry.shift }}</td>
+                        <td data-label="Line">{{ entry.line }}</td>
+                        <td data-label="Machine">{{ entry.machine.machine_name }}</td>
+                        <td data-label="Setup">{{ entry.setup }}</td>
+                        <td data-label="Man-hours">{{ entry.manhours }}</td>
+                        <td data-label="Output">{{ entry.output }}</td>
+                        <td data-label="Output/Hour">{{ entry.total_output }}</td>
+                        <td data-label="Actions">
+                            <button class="MH-icon-button view-details-btn" title="View Details" data-id="{{ entry.id }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if request.user.manhours_user and request.user.manhours_staff %}
+                            <button class="MH-icon-button edit-manhours-btn" title="Edit Entry" data-id="{{ entry.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center">No manhours entries found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="MH-pagination">
+            <span class="MH-pagination-info">
+                Showing {{ logsheet_entries.start_index }}-{{ logsheet_entries.end_index }} of {{ logsheet_entries.paginator.count }} entries
+            </span>
+            <div class="MH-pagination-pages">
+                <button class="MH-pagination-btn {% if not logsheet_entries.has_previous %}disabled{% endif %}"
+                        {% if logsheet_entries.has_previous %}onclick="window.location.href='?page={{ logsheet_entries.previous_page_number }}'"{% endif %}>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="MH-page-numbers">
+                    {% for i in logsheet_entries.paginator.page_range %}
+                        {% if logsheet_entries.number == i %}
+                            <span class="MH-pagination-page active">{{ i }}</span>
+                        {% elif i > logsheet_entries.number|add:'-3' and i < logsheet_entries.number|add:'3' %}
+                            <span class="MH-pagination-page" onclick="window.location.href='?page={{ i }}'">{{ i }}</span>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <button class="MH-pagination-btn {% if not logsheet_entries.has_next %}disabled{% endif %}"
+                        {% if logsheet_entries.has_next %}onclick="window.location.href='?page={{ logsheet_entries.next_page_number }}'"{% endif %}>
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+</main>
+<!-- New Manhours Entry Modal -->
+<div class="JO-modal" id="new-manhours-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>New Manhours Entry</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="manhours-form" method="post" action="{% url 'create_manhours' %}">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="MH-form-grid">
+                    <div class="JO-form-group">
+                        <label for="date-input">Date of Completion*</label>
+                        <input type="date" id="date-input" name="date_completed" class="JO-input" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="operator-input">Operator Name*</label>
+                        <select id="operator-input" name="operator" class="MH-select" required>
+                            <option value="">Select operator</option>
+                            {% for operator in operators %}
+                                <option value="{{ operator.operator_name }}">{{ operator.operator_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="shift-input">Shift*</label>
+                        <select id="shift-input" name="shift" class="MH-select" required>
+                            <option value="">Select shift</option>
+                            <option value="AM">AM Shift</option>
+                            <option value="PM">PM Shift</option>
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="line-input">Line*</label>
+                        <input type="text" id="line-input" name="line" value="Naganuma Pre-Assy" class="JO-input" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="machine-input">Machine*</label>
+                        <select id="machine-input" name="machine" class="MH-select" required>
+                            <option value="">Select machine</option>
+                            {% for machine in machines %}
+                                <option value="{{ machine.id }}">{{ machine.machine_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="setup-input">Setup (hours)*</label>
+                        <input type="number" id="setup-input" name="setup" class="JO-input" min="0" step="1" placeholder="0" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="manhours-input">Man-hours*</label>
+                        <input type="number" id="manhours-input" name="manhours" class="JO-input" min="0" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="output-input">Output*</label>
+                        <input type="number" id="output-input" name="output" class="JO-input" min="0" step="0.01" placeholder="0.00" required>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-entry">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button" id="submit-entry">Submit Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Entry Modal -->
+<div class="JO-modal" id="edit-manhours-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Edit Manhours Entry</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="edit-manhours-form" method="post" action="{% url "update_manhours" %}">
+            {% csrf_token %}
+            <input type="hidden" id="edit-entry-id" name="entry_id" value="">
+            <div class="JO-modal-body">
+                <div class="MH-form-grid">
+                    <div class="JO-form-group">
+                        <label for="edit-date-input">Date of Completion*</label>
+                        <input type="date" id="edit-date-input" name="date_completed" class="JO-input" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-operator-input">Operator Name*</label>
+                        <select id="edit-operator-input" name="operator" class="MH-select" required>
+                            <option value="">Select operator</option>
+                            {% for operator in operators %}
+                                <option value="{{ operator.operator_name }}">{{ operator.operator_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-shift-input">Shift*</label>
+                        <select id="edit-shift-input" name="shift" class="MH-select" required>
+                            <option value="">Select shift</option>
+                            <option value="AM">AM Shift</option>
+                            <option value="PM">PM Shift</option>
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-line-input">Line*</label>
+                        <input type="text" id="edit-line-input" name="line" class="JO-input" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-machine-input">Machine*</label>
+                        <select id="edit-machine-input" name="machine" class="MH-select" required>
+                            <option value="">Select machine</option>
+                            {% for machine in machines %}
+                                <option value="{{ machine.id }}">{{ machine.machine_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-setup-input">Setup (hours)*</label>
+                        <input type="number" id="edit-setup-input" name="setup" class="JO-input" min="0" step="1" placeholder="0" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-manhours-input">Man-hours*</label>
+                        <input type="number" id="edit-manhours-input" name="manhours" class="JO-input" min="0" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-output-input">Output*</label>
+                        <input type="number" id="edit-output-input" name="output" class="JO-input" min="0" step="0.01" placeholder="0.00" required>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="edit-cancel-btn">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button" id="edit-submit-btn">Update Entry</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Details Modal -->
+<div class="JO-modal" id="view-details-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Manhours Entry Details</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" id="view-details-content">
+            <div class="JO-loading text-center p-5">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading entry details...</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+            <button class="JO-button JO-primary-button" id="view-edit-btn" data-id="">Edit Entry</button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Options Modal -->
+<div class="JO-modal" id="export-options-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Export Data</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url "export_reports" %}">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="MH-form-group">
+                    <label>Date Range</label>
+                    <div class="MH-form-grid">
+                        <div class="JO-form-group">
+                            <label for="export-start-date">From *</label>
+                            <input type="date" id="export-start-date" name="start_date" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group">
+                            <label for="export-end-date">To *</label>
+                            <input type="date" id="export-end-date" name="end_date" class="JO-input" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="MH-form-group">
+                    <label>Data to Include</label>
+                    <div class="JO-details-grid">
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="daily_summary" checked>
+                            <span class="MH-checkbox-label">Daily Manhours Summary</span>
+                        </label>
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="operator_performance" checked>
+                            <span class="MH-checkbox-label">Operator Performance</span>
+                        </label>
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="machine_utilization">
+                            <span class="MH-checkbox-label">Machine Utilization</span>
+                        </label>
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="shift_comparison">
+                            <span class="MH-checkbox-label">Shift Comparison</span>
+                        </label>
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="daily_output">
+                            <span class="MH-checkbox-label">Daily Output Summary</span>
+                        </label>
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="setup_time_analysis">
+                            <span class="MH-checkbox-label">Setup Time Analysis</span>
+                        </label>
+                        <label class="MH-checkbox-container">
+                            <input type="checkbox" name="export_reports[]" value="operator_machine_pairing">
+                            <span class="MH-checkbox-label">Operator-Machine Pairing</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button close-export-modal">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Export</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/manhours/manhours.js' %}"></script>
+{% endblock %}
+
+
+
+

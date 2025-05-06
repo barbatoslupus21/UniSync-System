@@ -1,0 +1,170 @@
+{% extends "homepage.html" %}
+{% load static %}
+{% csrf_token %}
+
+{% block content %}
+
+  <!-- Hero Section with Navigation -->
+  <section class="ryonan_hero" id="home">
+    <nav class="ryonan_navbar">
+        <a href="#" class="ryonan_logo">UniSync</a>
+        <div class="ryonan_nav_links">
+            <ul class="ryonan_nav_list">
+                <li class="ryonan_nav_item"><a href="#home" class="ryonan_nav_link">Home</a></li>
+                <li class="ryonan_nav_item"><a href="#features1" class="ryonan_nav_link">Features</a></li>
+                <li class="ryonan_nav_item"><a href="#features2" class="ryonan_nav_link">Benefits</a></li>
+                <li class="ryonan_nav_item"><a href="#contact" class="ryonan_nav_link">Contact</a></li>
+            </ul>
+            <button class="ryonan_login_btn" id="loginBtn">Login</button>
+        </div>
+    </nav>
+    
+    <div class="ryonan_hero_content ryonan_animated ryonan_slideInLeft">
+        <div class="ryonan_subtitle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+            </svg>
+            Streamlining Industrial Excellence
+        </div>
+        <h1 class="ryonan_hero_title">Centralized Production Management Solution</h1>
+        <p class="ryonan_hero_description">
+            Transform your manufacturing workflow with our comprehensive production portal. 
+            Monitor real-time metrics, streamline processes, and make data-driven decisions 
+            with a unified platform designed for industrial efficiency.
+        </p>
+        <button class="ryonan_cta_btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="10 8 16 12 10 16 10 8" fill="white"></polygon>
+            </svg>
+            Access Dashboard
+        </button>
+    </div>
+</section>
+
+<!-- Features Section 1 -->
+<section class="ryonan_features_section" id="features1">
+    <div class="ryonan_features_container">
+        <div class="ryonan_section_header">
+            <h2>Streamlined Production Management</h2>
+            <p>Discover how our Production Portal transforms your workflow</p>
+        </div>
+        <div class="ryonan_features_grid">
+            <div class="ryonan_feature_card" data-delay="0">
+                <div class="ryonan_feature_icon">
+                    <i class="ryonan_feature_circle">⚡</i>
+                </div>
+                <h3>Real-time Monitoring</h3>
+                <p>Track production progress in real-time with comprehensive dashboards and automated alerts.</p>
+            </div>
+            <div class="ryonan_feature_card" data-delay="150">
+                <div class="ryonan_feature_icon">
+                    <i class="ryonan_feature_circle">🔄</i>
+                </div>
+                <h3>Seamless Integration</h3>
+                <p>Connect all aspects of your production process in one unified platform with zero compatibility issues.</p>
+            </div>
+            <div class="ryonan_feature_card" data-delay="300">
+                <div class="ryonan_feature_icon">
+                    <i class="ryonan_feature_circle">📊</i>
+                </div>
+                <h3>Advanced Analytics</h3>
+                <p>Make data-driven decisions with powerful analytics tools and customizable reporting features.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section 2 -->
+<section class="ryonan_features_section alternate" id="features2">
+    <div class="ryonan_features_container">
+        <div class="ryonan_section_header">
+            <h2>Operational Excellence</h2>
+            <p>Enhancing efficiency across your entire production ecosystem</p>
+        </div>
+        <div class="ryonan_features_grid">
+            <div class="ryonan_feature_card" data-delay="0">
+                <div class="ryonan_feature_icon">
+                    <i class="ryonan_feature_circle">🔒</i>
+                </div>
+                <h3>Enhanced Security</h3>
+                <p>Advanced security protocols protecting your production data with role-based access control.</p>
+            </div>
+            <div class="ryonan_feature_card" data-delay="150">
+                <div class="ryonan_feature_icon">
+                    <i class="ryonan_feature_circle">📱</i>
+                </div>
+                <h3>Mobile Access</h3>
+                <p>Monitor and manage production from anywhere with fully responsive mobile optimization.</p>
+            </div>
+            <div class="ryonan_feature_card" data-delay="300">
+                <div class="ryonan_feature_icon">
+                    <i class="ryonan_feature_circle">⏱️</i>
+                </div>
+                <h3>Time Savings</h3>
+                <p>Reduce administrative overhead by up to 75% with automated workflows and intuitive interfaces.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="ryonan_footer" id="contact">
+    <div class="ryonan_footer_content">
+        <p>&copy; 2025 Ryonan Electric Philippines. All rights reserved.</p>
+        <p>Production Portal System v1.0</p>
+    </div>
+</footer>
+
+<!-- Login Modal -->
+<div class="ryonan_modal_container {% if login_modal %}active{% endif %}" id="modalContainer">
+    <div class="ryonan_modal">
+        <div class="ryonan_modal_header">
+            <h3>Login</h3>
+            <button class="ryonan_close_modal" id="closeModal">&times;</button>
+        </div>
+        <div class="ryonan_modal_body">
+            {% if messages %}
+            <div class="ryonan_error_message show" id="errorMessage">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="ryonan_error_message" id="errorMessage"></div>
+            {% endif %}
+            
+            <form id="loginForm" method="POST" action="{% url 'user-login' %}">
+                {% csrf_token %}
+                <div class="ryonan_form_group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="ryonan_form_group">
+                    <label for="password">Password</label>
+                    <div class="ryonan_password_container">
+                        <input type="password" id="password" name="password" required>
+                        <button type="button" class="ryonan_password_toggle" id="passwordToggle">
+                            <svg class="ryonan_eye_icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg class="ryonan_eye_off_icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <button type="submit" class="ryonan_submit_btn" id="submitBtn">
+                    <span>Login</span>
+                    <div class="ryonan_spinner"></div>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+
+

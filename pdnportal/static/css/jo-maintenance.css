@@ -1,0 +1,336 @@
+/* Additional styles for Job Order Management page */
+.jo-target-date {
+    font-weight: 500;
+}
+
+.jo-overdue {
+    color: var(--jo-danger);
+    animation: pulse-overdue 2s infinite;
+}
+
+.jo-no-target {
+    color: var(--jo-text-light);
+    font-style: italic;
+}
+
+.highlight-action {
+    animation: highlight-pulse 1.5s infinite;
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+}
+
+.JO-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--jo-transition);
+}
+
+.JO-input:focus,
+.JO-textarea:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.JO-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    transition: var(--jo-transition);
+    resize: vertical;
+}
+
+.JO-date-guidance {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.8rem;
+    color: var(--jo-text-light);
+}
+
+.JO-date-warning {
+    color: var(--jo-status-pending);
+}
+
+/* Animation for overdue items */
+@keyframes pulse-overdue {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Animation for highlighted action buttons */
+@keyframes highlight-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0.4);
+    }
+    70% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 10px rgba(51, 102, 255, 0);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0);
+    }
+}
+
+/* Workload card progress styles */
+.workload-progress-container {
+    width: 100%;
+    background-color: var(--jo-bg-color);
+    border-radius: 4px;
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.workload-progress-bar {
+    height: 100%;
+    background-color: var(--jo-primary);
+    border-radius: 4px;
+    transition: width 0.8s ease;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .JO-details-id {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .JO-details-id h3 {
+        margin-bottom: 8px;
+    }
+    
+    .JO-pagination {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .JO-pagination-info {
+        text-align: center;
+    }
+}
+
+/* Additional animations and styling */
+.JO-stats-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.JO-stats-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+}
+
+.JO-stats-card:hover::after {
+    transform: translateX(100%);
+}
+
+/* Custom styling for overdue items */
+.jo-overdue {
+    position: relative;
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background-color: rgba(241, 70, 104, 0.1);
+    font-weight: 600;
+}
+
+/* Additional animation for charts */
+.JO-chart-wrapper {
+    opacity: 0;
+    transform: translateY(15px);
+    animation: fadeInUp 1s ease forwards;
+    animation-delay: 0.3s;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Row hover animation */
+.JO-table tbody tr {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.JO-table tbody tr:hover {
+    transform: none;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+/* Icon button animations */
+.JO-icon-button {
+    position: relative;
+    overflow: hidden;
+}
+
+.JO-icon-button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1px;
+    height: 1px;
+    background: rgba(51, 102, 255, 0.3);
+    opacity: 0;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.3s ease;
+}
+
+.JO-icon-button:active::after {
+    width: 50px;
+    height: 50px;
+    opacity: 1;
+}
+
+/* Input focus animations */
+.JO-input:focus, 
+.JO-textarea:focus, 
+.JO-select:focus {
+    animation: input-pulse 1s infinite alternate;
+}
+
+@keyframes input-pulse {
+    from {
+        box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    }
+    to {
+        box-shadow: 0 0 0 4px rgba(51, 102, 255, 0.1);
+    }
+}
+
+/* Modal animations */
+.JO-modal.active .JO-modal-content {
+    animation: modal-appear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Toast animations enhancement */
+.toast.JO-toast-show {
+    animation: toast-bounce-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes toast-bounce-in {
+    0% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    70% {
+        transform: translateX(-5px);
+        opacity: 1;
+    }
+    100% {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Additional table row animations */
+.JO-table tbody tr {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: JO-row-appear 0.5s ease forwards;
+}
+
+.JO-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.JO-table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+.JO-table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+.JO-table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+.JO-table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+
+/* Modal visibility fix */
+.JO-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    /* Start with display:none */
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* When the active class is added, make it display flex */
+.JO-modal.active {
+    display: flex !important;
+    animation: fadeModalBackground 0.3s ease forwards;
+}
+
+@keyframes fadeModalBackground {
+    from { background-color: rgba(0, 0, 0, 0); }
+    to { background-color: rgba(0, 0, 0, 0.5); }
+}
+
+.JO-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(30px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    overflow: hidden;
+}
+
+.JO-modal.active .JO-modal-content {
+    transform: translateY(0);
+    opacity: 1;
+    animation: modalContentAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes modalContentAppear {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}

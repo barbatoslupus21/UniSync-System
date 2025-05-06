@@ -1,0 +1,1120 @@
+/* static/css/jo-facilitator.css */
+
+/* Empty assignments message */
+.JO-empty-assignments {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--jo-text-light);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    height: 100%;
+    min-height: 250px;
+}
+
+.JO-empty-icon {
+    font-size: 3rem;
+    color: var(--jo-border);
+    margin-bottom: 20px;
+    animation: pulse-fade 3s infinite;
+}
+
+.JO-empty-assignments p {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 5px 0;
+}
+
+.JO-empty-subtitle {
+    font-size: 0.9rem !important;
+    opacity: 0.8;
+}
+
+/* ======================================
+   Job Order Assignment & Monitoring Styles
+   ====================================== */
+
+:root {
+    /* Additional colors for assignment page */
+    --jo-assigned: #3366ff;
+    --jo-assigned-light: #e0e8ff;
+    --jo-overdue: #f44336;
+    --jo-overdue-light: #ffebee;
+    --jo-warning: #ffc107;
+    --jo-warning-light: #fff8e1;
+    --jo-workload-high: #f44336;
+    --jo-workload-medium: #ffc107;
+    --jo-workload-low: #4caf50;
+}
+
+/* Header Section */
+.JO-header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* Stats Cards Update */
+.JO-stats-container {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.JO-stats-content p .up, 
+.JO-stats-content p .down {
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    animation: pulse-fade 2s infinite;
+}
+
+.JO-stats-content p .up {
+    background-color: var(--jo-green-light);
+    color: var(--jo-green);
+}
+
+.JO-stats-content p .down {
+    background-color: var(--jo-danger-light);
+    color: var(--jo-danger);
+}
+
+.JO-assigned .JO-stats-icon {
+    color: var(--jo-assigned);
+    background-color: var(--jo-assigned-light);
+}
+
+.JO-overdue .JO-stats-icon {
+    color: var(--jo-overdue);
+    background-color: var(--jo-overdue-light);
+}
+
+/* Equal height for main content grids */
+.JO-main-content-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.JO-main-content-grid .JO-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.JO-card-header {
+    flex-shrink: 0;
+}
+
+/* Chart section - With min/max height */
+.JO-chart-container {
+    min-height: 400px;
+    max-height: 500px;
+    height: auto;
+}
+
+.JO-chart-wrapper {
+    flex: 1;
+    padding: 20px;
+    height: auto !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 320px;
+}
+
+#jo-analytics-chart {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 350px;
+}
+
+/* Workload Section */
+.JO-workload-section {
+    min-height: 400px;
+    max-height: 500px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.JO-workload-chart-container {
+    height: 180px;
+    padding: 10px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+
+.JO-workload-list {
+    padding: 0 20px 10px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 150px;
+    max-height: calc(100% - 220px);
+}
+
+.JO-workload-item {
+    padding: 15px 0;
+    border-bottom: 1px solid var(--jo-border);
+    animation: fade-in-up 0.5s forwards;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+.JO-workload-item:nth-child(1) { animation-delay: 0.1s; }
+.JO-workload-item:nth-child(2) { animation-delay: 0.2s; }
+.JO-workload-item:nth-child(3) { animation-delay: 0.3s; }
+
+.JO-workload-item:last-child {
+    border-bottom: none;
+}
+
+.JO-workload-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.JO-workload-name {
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.JO-workload-tasks {
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+    background-color: var(--jo-bg-color);
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.JO-workload-bar-container {
+    height: 16px;
+    background-color: var(--jo-bg-color);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.JO-workload-bar {
+    height: 100%;
+    background-color: var(--jo-workload-low);
+    border-radius: 8px;
+    transition: width 1s ease-in-out;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    animation: progress-load 1.5s ease-out;
+}
+
+.JO-workload-bar[style*="width: 45%"] {
+    background-color: var(--jo-workload-low);
+}
+
+.JO-workload-bar[style*="width: 75%"] {
+    background-color: var(--jo-workload-medium);
+}
+
+.JO-workload-high {
+    background-color: var(--jo-workload-high) !important;
+}
+
+/* Assignment Section */
+.JO-assignment-section {
+    min-height: 450px;
+    max-height: 600px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.JO-assignment-list {
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 350px;
+}
+
+/* static/css/jo-facilitator.css (continued) */
+
+.JO-assignment-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--jo-border);
+    transition: all 0.3s ease;
+    animation: slide-in-right 0.5s forwards;
+    opacity: 0;
+    transform: translateX(20px);
+}
+
+.JO-assignment-item:nth-child(1) { animation-delay: 0.1s; }
+.JO-assignment-item:nth-child(2) { animation-delay: 0.2s; }
+.JO-assignment-item:nth-child(3) { animation-delay: 0.3s; }
+
+.JO-assignment-item:last-child {
+    border-bottom: none;
+}
+
+.JO-assignment-item:hover {
+    background-color: var(--jo-bg-color);
+}
+
+/* Overdue item styles */
+.JO-assignment-item.overdue-critical {
+    background-color: var(--jo-overdue-light);
+    border-left: 4px solid var(--jo-overdue);
+}
+
+.JO-assignment-item.overdue-warning {
+    background-color: var(--jo-warning-light);
+    border-left: 4px solid var(--jo-warning);
+}
+
+.JO-overdue-indicator {
+    color: var(--jo-overdue);
+    font-weight: 600;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: pulse-fade 1.5s infinite;
+}
+
+.JO-assignment-item.overdue-warning .JO-overdue-indicator {
+    color: var(--jo-warning);
+}
+
+.JO-assignment-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.JO-assignment-id {
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.JO-assignment-details {
+    margin-bottom: 12px;
+}
+
+.JO-assignment-details p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+}
+
+.JO-assignment-form {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.JO-assignee-select {
+    flex: 1;
+}
+
+/* All Job Order Requests section */
+.JO-all-requests {
+    min-height: 450px;
+    max-height: 600px;
+    height: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.JO-table-container {
+    overflow-y: auto;
+    overflow-x: auto;
+    flex: 1;
+    min-height: 220px;
+    max-height: calc(100% - 135px);
+}
+
+/* Pagination Updates */
+.JO-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--jo-border);
+    flex-shrink: 0;
+}
+
+.JO-pagination-info {
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+}
+
+.JO-pagination-numbers {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.JO-pagination-page {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--jo-border);
+    background-color: white;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.JO-pagination-page:hover {
+    background-color: var(--jo-primary-light);
+    border-color: var(--jo-primary);
+    color: var(--jo-primary);
+}
+
+.JO-pagination-page.active {
+    background-color: var(--jo-primary);
+    border-color: var(--jo-primary);
+    color: white;
+}
+
+.JO-pagination-ellipsis {
+    margin: 0 5px;
+}
+
+/* Animation Keyframes */
+@keyframes pulse-fade {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+@keyframes slide-in-right {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes progress-load {
+    from {
+        width: 0;
+    }
+}
+
+/* Loading and error states */
+.JO-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+}
+
+.JO-error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: var(--jo-danger);
+}
+
+/* Modal styles */
+.JO-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.JO-modal.active {
+    opacity: 1;
+}
+
+.JO-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.JO-modal.active .JO-modal-content {
+    transform: translateY(0);
+    animation: JO-modal-appear 0.3s ease-out;
+}
+
+@keyframes JO-modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Confirmation modal styles */
+.JO-confirmation-modal .JO-modal-content {
+    max-width: 450px;
+}
+
+.JO-confirmation-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    animation: JO-icon-pulse 1.5s infinite alternate;
+}
+
+.JO-confirmation-icon.success {
+    color: var(--jo-status-approved);
+}
+
+.JO-confirmation-icon.warning {
+    color: var(--jo-status-pending);
+}
+
+.JO-confirmation-icon.danger {
+    color: var(--jo-status-rejected);
+}
+
+@keyframes JO-icon-pulse {
+    from {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    to {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Responsive Design for Tablet and Mobile */
+@media (max-width: 1200px) {
+    .JO-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .JO-main-content-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .JO-card {
+        height: auto;
+        min-height: 350px;
+    }
+    
+    .JO-workload-section, 
+    .JO-chart-container, 
+    .JO-assignment-section, 
+    .JO-all-requests {
+        width: 100%;
+    }
+    
+    .JO-header-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .JO-card-actions {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+@media (max-width: 768px) {
+    .JO-stats-container {
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .JO-assignment-form {
+        flex-direction: column;
+    }
+    
+    .JO-pagination {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .JO-pagination-numbers {
+        margin-top: 10px;
+    }
+    
+    .JO-table-container {
+        overflow-x: auto;
+    }
+    
+    .JO-table {
+        min-width: 700px;
+    }
+}
+
+@media (max-width: 480px) {
+    .JO-stats-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .JO-workload-header,
+    .JO-workload-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .JO-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .JO-card-actions {
+        width: 100%;
+    }
+}
+
+/* Export Modal Styles */
+.JO-export-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.JO-export-modal.active {
+    opacity: 1;
+}
+
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    display: none;
+}
+
+.modal-backdrop.active {
+    opacity: 1;
+    display: block;
+}
+
+.JO-export-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    width: 700px;
+    max-width: 90%;
+    max-height: 90vh;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    transform: translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.JO-export-modal.active .JO-export-modal-content {
+    transform: translateY(0);
+}
+
+.JO-export-modal-header {
+    padding: 20px;
+    border-bottom: 1px solid var(--jo-border, #e6e6e6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.JO-export-modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--jo-text, #333);
+}
+
+.JO-export-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--jo-text-light, #666);
+    transition: color 0.2s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.JO-export-modal-close:hover {
+    color: var(--jo-text, #333);
+    background-color: var(--jo-bg-color, #f8f9fa);
+}
+
+.JO-export-modal-body {
+    padding: 20px;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.JO-export-section {
+    margin-bottom: 20px;
+}
+
+.JO-export-section h5 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+    color: var(--jo-text, #333);
+}
+
+.JO-export-date-range {
+    display: flex;
+    gap: 15px;
+    animation: fadeIn 0.3s ease;
+}
+
+.JO-export-date-field {
+    flex: 1;
+}
+
+.JO-export-date-field label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: var(--jo-text-light, #666);
+}
+
+.JO-export-date-input input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--jo-border, #e6e6e6);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.JO-export-date-input input:focus {
+    border-color: var(--jo-primary, #3366ff);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.JO-export-columns {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.JO-export-column {
+    flex: 1;
+}
+
+.JO-export-checkbox-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.JO-export-checkbox {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.JO-export-checkbox input {
+    margin-right: 8px;
+}
+
+.JO-export-checkbox:hover {
+    color: var(--jo-primary, #3366ff);
+}
+
+.JO-export-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+/* Processing animation */
+.JO-export-processing {
+    text-align: center;
+    padding: 40px 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.JO-export-processing-icon {
+    font-size: 3rem;
+    color: var(--jo-primary, #3366ff);
+    margin-bottom: 20px;
+    animation: spin 2s linear infinite;
+}
+
+.JO-export-processing-text {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: var(--jo-text, #333);
+}
+
+.JO-export-processing-subtext {
+    color: var(--jo-text-light, #666);
+}
+
+/* Success view */
+.JO-export-success {
+    text-align: center;
+    padding: 40px 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.JO-export-success-icon {
+    font-size: 3rem;
+    color: var(--jo-success, #48c774);
+    margin-bottom: 20px;
+    animation: pulse 1.5s infinite;
+}
+
+.JO-export-success-text {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: var(--jo-text, #333);
+}
+
+.JO-export-success-subtext {
+    color: var(--jo-text-light, #666);
+    margin-bottom: 20px;
+}
+
+/* Error view */
+.JO-export-error {
+    text-align: center;
+    padding: 40px 20px;
+    animation: fadeIn 0.3s ease;
+}
+
+.JO-export-error-icon {
+    font-size: 3rem;
+    color: var(--jo-danger, #f14668);
+    margin-bottom: 20px;
+    animation: shake 0.5s ease-in-out;
+}
+
+.JO-export-error-text {
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    color: var(--jo-text, #333);
+}
+
+.JO-export-error-subtext {
+    color: var(--jo-text-light, #666);
+    margin-bottom: 20px;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    20%, 60% {
+        transform: translateX(-5px);
+    }
+    40%, 80% {
+        transform: translateX(5px);
+    }
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+    .JO-export-columns {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .JO-export-date-range {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .toast {
+        min-width: auto;
+        max-width: 85vw;
+    }
+}
+
+/* Button styles */
+.JO-button.JO-primary-button {
+    background-color: var(--jo-primary, #3366ff);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.JO-button.JO-primary-button:hover {
+    background-color: var(--jo-primary-dark, #2952cc);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.JO-button.JO-primary-button:disabled {
+    background-color: #a8c0ff;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.JO-button.JO-primary-button i {
+    transition: transform 0.3s ease;
+}
+
+/* Export button animation */
+.JO-export-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.JO-export-btn:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: all 0.5s ease;
+}
+
+.JO-export-btn:hover:before {
+    left: 100%;
+}
+
+.JO-export-btn.active {
+    pointer-events: none;
+}
+
+/* Show export processing animation */
+@keyframes progressBar {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.JO-export-submit.loading {
+    position: relative;
+    background-image: linear-gradient(45deg, var(--jo-primary, #3366ff) 25%, var(--jo-primary-dark, #2952cc) 25%, var(--jo-primary-dark, #2952cc) 50%, var(--jo-primary, #3366ff) 50%, var(--jo-primary, #3366ff) 75%, var(--jo-primary-dark, #2952cc) 75%, var(--jo-primary-dark, #2952cc) 100%);
+    background-size: 28.28px 28.28px;
+    animation: progressBar 2s linear infinite;
+}
+
+/* Export success animation */
+.JO-export-done {
+    position: relative;
+    overflow: hidden;
+}
+
+.JO-export-done:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
+    transition: all 0.5s ease;
+}
+
+.JO-export-done:hover:before {
+    left: 100%;
+}
+
+/* Checkbox style improvements */
+.JO-export-checkbox input[type="checkbox"] {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: 1px solid var(--jo-border, #e6e6e6);
+    border-radius: 3px;
+    outline: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.JO-export-checkbox input[type="checkbox"]:checked {
+    background-color: var(--jo-primary, #3366ff);
+    border-color: var(--jo-primary, #3366ff);
+}
+
+.JO-export-checkbox input[type="checkbox"]:checked:after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 10px;
+}
+
+.JO-export-checkbox input[type="checkbox"]:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Date input improvements */
+.JO-export-date-input input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.JO-export-date-input input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+}
+
+/* Focus visible for better accessibility */
+.JO-button:focus-visible,
+.JO-export-date-input input:focus-visible,
+.JO-export-checkbox input:focus-visible {
+    outline: 2px solid var(--jo-primary, #3366ff);
+    outline-offset: 2px;
+}

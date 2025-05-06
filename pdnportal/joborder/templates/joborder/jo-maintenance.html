@@ -1,0 +1,315 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Job Order{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/manhours/jo-maintenance.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title -->
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">Job Order Management</h1>
+            <p class="JO-subtitle">Manage and track assigned job orders</p>
+        </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="JO-stats-container">
+        <div class="JO-stats-card JO-total">
+            <div class="JO-stats-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Total Assigned</h3>
+                <h2 class="JO-stats-number">{{ totalAssigned }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-pending">
+            <div class="JO-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Pending Requests</h3>
+                <h2 class="JO-stats-number">{{ pending }}</h2>
+                <p>Awaiting Processing</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-approval" style="--stats-color: #ff6b6b; --stats-bg: rgba(255, 107, 107, 0.1);">
+            <div class="JO-stats-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Overdue</h3>
+                <h2 class="JO-stats-number">{{ overdueRequests }}</h2>
+                <p>Past Target Date</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-approved">
+            <div class="JO-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Completed</h3>
+                <h2 class="JO-stats-number">{{ completedRequest }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart and Workload sections -->
+    <div class="JO-main-content-grid">
+        <!-- Chart section -->
+        <div class="JO-card JO-chart-container">
+            <div class="JO-card-header">
+                <h2>Job Order Trends</h2>
+                <div class="JO-card-actions">
+                    <select id="chart-period-selector" class="JO-select">
+                        <option value="month" selected>This Month</option>
+                        <option value="quarter">This Quarter</option>
+                        <option value="year">This Year</option>
+                    </select>
+                </div>
+            </div>
+            <div class="JO-chart-wrapper">
+                <canvas id="maintenance-trends-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Upcoming Deadlines -->
+        <div class="JO-card">
+            <div class="JO-card-header">
+                <h2>Upcoming Deadlines</h2>
+            </div>
+            <div class="JO-chart-wrapper" style="display: flex; justify-content: center; align-items: center;">
+                <canvas id="upcoming-deadlines-chart" style="max-width: 100%; max-height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Workload Section -->
+    <div class="JO-card JO-all-requests">
+        <div class="JO-card-header">
+            <h2>Current Workload</h2>
+            <div class="JO-card-actions">
+                <div class="JO-search-container">
+                    <input type="text" class="JO-search-input" placeholder="Search by JO Number, category, status...">
+                    <button class="JO-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="JO-filter-container">
+                    <select class="JO-select JO-priority-filter">
+                        <option value="all">All Categories</option>
+                        <option value="green">Green</option>
+                        <option value="yellow">Yellow</option>
+                        <option value="white">White</option>
+                        <option value="orange">Orange</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="JO-table-container">
+            <table class="JO-table">
+                <thead>
+                    <tr>
+                        <th>JO Number</th>
+                        <th>Category</th>
+                        <th>Tool</th>
+                        <th>Requestor</th>
+                        <th>Target Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in overallJO %}
+                    <tr>
+                        <td data-label="JO Number">{{ job.jo_number }}</td>
+                        <td data-label="Category"><span class="JO-category-pill JO-category-{{ job.jo_color|lower }}">{{ job.jo_color }}</span></td>
+                        <td data-label="Tool">{{ job.jo_tools }}</td>
+                        <td data-label="Requestor">{{ job.requestor }}</td>
+                        <td data-label="Target Date">
+                            {% if job.target_date %}
+                                {% if job.is_overdue %}
+                                    <span class="jo-target-date jo-overdue">{{ job.target_date|date:"M d, Y" }}</span>
+                                {% else %}
+                                    <span class="jo-target-date">{{ job.target_date|date:"M d, Y" }}</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="jo-no-target">Not Set</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Status">
+                            <span class="JO-status JO-status-{{ job.status|lower }}">
+                                {% if job.is_overdue and job.status == 'In Progress' %}
+                                    Overdue
+                                {% else %}
+                                    {{ job.status }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td data-label="Actions">
+                            <button class="JO-icon-button view-details-btn" title="View Details" data-id="{{ job.id }}" data-number="{{ job.jo_number }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if not job.target_date  %}
+                                <button class="JO-icon-button set-target-btn {% if job.high_priority %}highlight-action{% endif %}" title="Set Target Date" data-id="{{ job.id }}" data-number="{{ job.jo_number }}">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </button>
+                            {% elif job.target_date and job.has_pending_routing %}
+                                <button class="JO-icon-button complete-jo-btn" title="Mark as Complete" data-id="{{ job.id }}" data-number="{{ job.jo_number }}">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="JO-empty-table">No job orders found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<!-- Job Order Details Modal -->
+<div class="JO-modal" id="jo-details-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Job Order Details</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" id="jo-details-content">
+            <div class="JO-loading text-center p-5">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading job order details...</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Set Target Date Modal -->
+<div class="JO-modal" id="set-target-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Set Target Completion Date</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <!-- Create a form element to properly handle the submission -->
+            <form id="target-date-form" method="POST" action="{% url "set_target_date" %}">
+                {% csrf_token %}
+                <input type="hidden" name="job_id" id="hidden-target-job-id" value="">
+                
+                <div class="JO-details-header">
+                    <div class="JO-details-id">
+                        <h3 id="target-jo-number"></h3>
+                        <span class="JO-category-pill" id="target-jo-category"></span>
+                    </div>
+                </div>
+                <div class="JO-details-section">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Date Submitted:</span>
+                        <span class="JO-details-value" id="target-submission-date"></span>
+                    </div>
+                </div>
+        
+                <div class="JO-form-group">
+                    <label for="target-date-input">Target Completion Date</label>
+                    <input type="date" id="target-date-input" name="target_date" class="JO-input" required>
+                    <small class="JO-date-guidance"></small>
+                </div>
+        
+                <div class="JO-form-group" id="delay-reason-container" style="display: none;">
+                    <label for="delay-reason-input">Reason for Extended Timeline</label>
+                    <textarea id="delay-reason-input" name="target_date_reason" rows="3" class="JO-textarea" placeholder="Please explain why this job order requires an extended timeline..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-target-btn" type="button">Cancel</button>
+            <button class="JO-button JO-primary-button" id="save-target-btn" type="button">Save Target Date</button>
+        </div>
+    </div>
+</div>
+
+<!-- Mark as Complete Modal -->
+<div class="JO-modal" id="complete-jo-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Mark Job Order as Complete</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-details-header">
+                <div class="JO-details-id">
+                    <h3 id="complete-jo-number"></h3>
+                    <span class="JO-category-pill" id="complete-jo-category"></span>
+                </div>
+            </div>
+            <div class="JO-details-section">
+                <div class="JO-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Date Submitted:</span>
+                        <span class="JO-details-value" id="complete-submission-date"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Target Completion Date:</span>
+                        <span class="JO-details-value" id="complete-target-date"></span>
+                    </div>
+                </div>
+            </div>
+    
+            <form id="complete-job-form" method="POST" action="/joborder/complete-request/">
+                {% csrf_token %}
+                <input type="hidden" name="job_id" id="hidden-job-id" value="">
+
+                <div class="JO-form-group">
+                    <label for="action-taken-input">Action Taken</label>
+                    <textarea id="action-taken-input" name="action_taken" rows="4" class="JO-textarea" placeholder="Describe the actions taken to complete this job order..." required></textarea>
+                </div>
+                
+                <div class="JO-form-group">
+                    <label for="completion-remarks">Suggestions (Optional)</label>
+                    <textarea id="completion-remarks" name="completion_remarks" rows="3" class="JO-textarea" placeholder="Any additional information or remarks..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-complete-btn" type="button">Cancel</button>
+            <button class="JO-button JO-success-button" id="confirm-complete-btn" type="button">Mark as Complete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/jo-maintenance.js' %}"></script>
+{% endblock %}

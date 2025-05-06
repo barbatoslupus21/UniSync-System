@@ -1,0 +1,365 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Job Order{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/jo-facilitator.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">Job Order Assignment & Monitoring</h1>
+            <p class="JO-subtitle">Assign, track and manage maintenance job order requests</p>
+        </div>
+        <div class="JO-header-actions">
+            <button id="open-dashboard-btn" class="JO-button JO-primary-button">
+                <i class="fas fa-th-large"></i> Maintenance Dashboard
+            </button>
+        </div>
+    </div>
+
+    <div class="JO-stats-container">
+        <div class="JO-stats-card JO-total">
+            <div class="JO-stats-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Total Requests</h3>
+                <h2 class="JO-stats-number">{{ joRequestsCount }}</h2>
+                <p>this month</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-assigned">
+            <div class="JO-stats-icon">
+                <i class="fas fa-user-check"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Assigned Request</h3>
+                <h2 class="JO-stats-number">{{ assignJOCount }}</h2>
+                <p>this month</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-pending">
+            <div class="JO-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Unassigned Request</h3>
+                <h2 class="JO-stats-number">{{ pendingJOCount }}</h2>
+                <p>this month</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-overdue">
+            <div class="JO-stats-icon">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Overdue</h3>
+                <h2 class="JO-stats-number">{{ overdueCount }}</h2>
+                <p>this month</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="JO-main-content-grid">
+        <!-- Chart section - Only showing monthly trend -->
+        <div class="JO-card JO-chart-container">
+            <div class="JO-card-header">
+                <h2>Job Order Analytics</h2>
+                <div class="JO-card-actions">
+                    <select id="chart-period-selector" class="JO-select">
+                        <option value="1month">Last Month</option>
+                        <option value="3month">Last 3 Months</option>
+                        <option value="6month" selected>Last 6 Months</option>
+                    </select>
+                </div>
+            </div>
+            <div class="JO-chart-wrapper">
+                <canvas id="jo-analytics-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Maintenance Workload-->
+        <div class="JO-card JO-workload-section">
+            <div class="JO-card-header">
+                <h2>Maintenance Workload</h2>
+            </div>
+            <div class="JO-workload-chart-container">
+                <canvas id="workload-chart"></canvas>
+            </div>
+            <div class="JO-workload-list" id="workload-list">
+                <!-- Will be populated by JS -->
+                <div class="JO-loading" style="text-align: center; padding: 2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Loading workload data...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="JO-main-content-grid">
+        <div class="JO-card JO-all-requests">
+            <div class="JO-card-header">
+                <h2>All Job Order Requests</h2>
+                <div class="JO-card-actions">
+                    <div class="JO-search-container">
+                        <input type="text" class="JO-search-input" placeholder="Search by JO Number, line, type...">
+                        <button class="JO-search-button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <!-- Export Button -->
+                    <button class="JO-button JO-secondary-button JO-export-btn">
+                        <i class="fas fa-file-export"></i> Export
+                    </button>
+                </div>
+            </div>
+            
+            <div class="JO-table-container">
+                <table class="JO-table">
+                    <thead>
+                        <tr>
+                            <th>JO Number</th>
+                            <th>Category</th>
+                            <th>Tool</th>
+                            <th>Nature</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for jo in recent_job_orders %}
+                        <tr>
+                            <td>{{ jo.jo_number }}</td>
+                            <td><span class="JO-category-pill JO-category-{{ jo.jo_color|lower }}">{{ jo.jo_color }}</span></td>
+                            <td>{{ jo.jo_tools }}</td>
+                            <td>{{ jo.jo_type }}</td>
+                            <td><span class="JO-status JO-status-{{ jo.status|lower }}">{{ jo.status }}</span></td>
+                            <td>
+                                <button class="JO-icon-button view-details-btn" title="View Details" data-id="{{ jo.id }}" data-number="{{ jo.jo_number }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" style="text-align: center;">No job orders found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="JO-card JO-assignment-section">
+            <div class="JO-card-header">
+                <h2>Assign Person In-Charge</h2>
+            </div>
+            <div class="JO-assignment-list" id="assignment-list">
+                {% for jo in pending_assignments_list %}
+                <div class="JO-assignment-item {% if jo.is_overdue_critical %}overdue-critical{% elif jo.is_overdue_warning %}overdue-warning{% endif %}" 
+                data-id="{{ jo.jo_number.id }}" data-number="{{ jo.jo_number.jo_number }}">
+                    <div class="JO-assignment-header">
+                        <span class="JO-assignment-id">{{ jo.jo_number.jo_number}}</span>
+                        <span class="JO-category JO-category-{{ jo.jo_number.jo_color|lower }}">{{ jo.jo_number.jo_color }}</span>
+                    </div>
+                    <div class="JO-assignment-details">
+                        <p><strong>Tool:</strong> {{ jo.jo_number.jo_tools }}</p>
+                        <p><strong>Nature:</strong> {{ jo.jo_number.jo_type }}</p>
+                        <p><strong>Submitted:</strong> {{ jo.jo_number.date_created|date:"M d, Y" }}</p>
+                        {% if jo.is_overdue_warning %}
+                        <p class="JO-overdue-indicator">
+                            <i class="fas fa-exclamation-circle"></i> 
+                            Overdue: {{ jo.jo_number.date_created|date:"M d, Y" }}
+                        </p>
+                        {% endif %}
+                    </div>
+                    <div class="JO-assignment-form">
+                        <select class="JO-select JO-assignee-select">
+                            <option value="">Select Assignee</option>
+                            {% for person in maintenance_personnel %}
+                            <option value="{{ person.id }}">{{ person.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="JO-button JO-primary-button JO-assign-btn">
+                            Assign
+                        </button>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="JO-empty-assignments">
+                    <div class="JO-empty-icon">
+                        <i class="fas fa-clipboard-check"></i>
+                    </div>
+                    <p>No pending requests for assigning personnel</p>
+                    <p class="JO-empty-subtitle">All job orders have been assigned to maintenance personnel</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Job Order Details Modal -->
+<div class="JO-modal" id="jo-details-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Job Order Details</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" id="jo-details-content">
+            <div class="JO-loading" style="text-align: center; padding: 2rem;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p>Loading job order details...</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Assignment Confirmation Modal -->
+<div class="JO-modal JO-confirmation-modal" id="confirm-assignment-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Confirm Assignment</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div style="text-align: center;">
+                <i class="fas fa-user-check JO-confirmation-icon success"></i>
+                <p class="JO-confirmation-message">Are you sure you want to assign <strong id="assignee-name"></strong> to job order <strong id="assign-jo-number"></strong>?</p>
+                <p class="JO-confirmation-submessage">This will notify the person and update the job order status.</p>
+                
+                <form id="assignment-form" method="POST" action="{% url 'assign-incharge' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="jo_id" id="assign-jo-id">
+                    <input type="hidden" name="assignee_id" id="assign-assignee-id">
+                </form>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="JO-button JO-secondary-button" id="cancel-assignment">Cancel</button>
+            <button type="button" class="JO-button JO-success-button" id="confirm-assignment-btn">Confirm Assignment</button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="JO-export-modal" id="export-modal">
+    <div class="JO-export-modal-content">
+        <div class="JO-export-modal-header">
+            <h3>Export Job Orders</h3>
+            <button class="JO-export-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-export-modal-body">
+            <form method="POST" action="{% url 'export-job-orders' %}" id="export-form">
+                {% csrf_token %}
+                <div class="JO-export-section">
+                    <h5>Date Range</h5>
+                    <div class="JO-export-date-range">
+                        <div class="JO-export-date-field">
+                            <label for="export-date-from">From</label>
+                            <div class="JO-export-date-input">
+                                <input type="date" id="export-date-from" name="date_from">
+                            </div>
+                        </div>
+                        <div class="JO-export-date-field">
+                            <label for="export-date-to">To</label>
+                            <div class="JO-export-date-input">
+                                <input type="date" id="export-date-to" name="date_to">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="JO-export-columns">
+                    <div class="JO-export-column">
+                        <div class="JO-export-section">
+                            <h5>Status</h5>
+                            <div class="JO-export-checkbox-grid">
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="all" checked> All
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="Routing"> Routing
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="Completed"> Completed
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="Checked"> Checked
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="Cancelled"> Cancelled
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="Closed"> Closed
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="status" value="Rejected"> Rejected
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="JO-export-column">
+                        <div class="JO-export-section">
+                            <h5>Category</h5>
+                            <div class="JO-export-checkbox-grid">
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="category" value="all" checked> All Categories
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="category" value="Green"> Green
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="category" value="Yellow"> Yellow
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="category" value="White"> White
+                                </label>
+                                <label class="JO-export-checkbox">
+                                    <input type="checkbox" name="category" value="Orange"> Orange
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="JO-export-actions">
+                    <button type="submit" class="JO-button JO-primary-button JO-export-submit">
+                        <i class="fas fa-download"></i> Export to Excel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal backdrop -->
+<div id="modal-backdrop" class="modal-backdrop"></div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/jo-facilitator.js' %}"></script>
+{% endblock %}

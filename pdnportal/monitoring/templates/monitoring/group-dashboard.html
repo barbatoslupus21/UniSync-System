@@ -1,0 +1,199 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniSync - Product Output Overview</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static "css/style-ver2.css" %}">
+    <link rel="stylesheet" href="{% static 'css/job-order.css' %}"> 
+    <link rel="stylesheet" href="{% static 'css/monitoring/monitoring-supervisor.css' %}"> 
+    <link rel="stylesheet" href="{% static 'css/monitoring/group-dashboard.css' %}"> 
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <main class="overall-content">
+        <div class="PM-dashboard-container">
+            <div class="PM-dashboard-header">
+                <div class="PM-title-section">
+                    <h1 class="PM-page-title">Production Schedule Overview</h1>
+                    <p class="PM-subtitle">Monitor and track production schedules, efficiency, and output across all lines</p>
+                </div>
+                <div class="PM-dashboard-controls">
+                    <div class="PM-filter-group">
+                        <div class="PM-filter-item">
+                            <select id="dateFilter" class="PM-select">
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                                <option value="customDate">Custom Date</option>
+                            </select>
+                        </div>
+                        <div class="PM-filter-item">
+                            <input type="date" id="specificDate" class="PM-date-input">
+                        </div>
+                        <div class="PM-filter-item">
+                            <select id="shiftFilter" class="PM-select">
+                                <option value="all">All Shifts</option>
+                                <option value="am">AM Shift</option>
+                                <option value="pm">PM Shift</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="PM-dashboard-summary">
+                <div class="PM-stats-container">
+                    <div class="PM-stats-card PM-total animated">
+                        <div class="PM-stats-icon">
+                            <i class="fas fa-tasks"></i>
+                        </div>
+                        <div class="PM-stats-content">
+                            <h3>Total Schedules</h3>
+                            <div class="PM-stats-number" id="totalSchedules">0</div>
+                            <p>out of <span id="totalSchedulesTarget">0</span> schedules</p>
+                        </div>
+                    </div>
+
+                    <div class="PM-stats-card PM-lines animated">
+                        <div class="PM-stats-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <div class="PM-stats-content">
+                            <h3>Production Progress</h3>
+                            <div class="PM-stats-number" id="productionProgress">0%</div>
+                            <p>out of <span id="productionProgressTarget">100%</span> target</p>
+                        </div>
+                    </div>
+
+                    <div class="PM-stats-card PM-shift animated">
+                        <div class="PM-stats-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="PM-stats-content">
+                            <h3>Not Met Target</h3>
+                            <div class="PM-stats-number" id="notMetTarget">0%</div>
+                            <p>schedules behind target</p>
+                        </div>
+                    </div>
+
+                    <div class="PM-stats-card PM-efficiency animated">
+                        <div class="PM-stats-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="PM-stats-content">
+                            <h3>Total Production</h3>
+                            <div class="PM-stats-number" id="totalProduction">0 / 0</div>
+                            <p>out of <span id="totalProductionTarget">0</span> planned</p>
+                        </div>
+                    </div>
+
+                    <div class="PM-stats-card PM-active animated">
+                        <div class="PM-stats-icon">
+                            <i class="fas fa-play-circle"></i>
+                        </div>
+                        <div class="PM-stats-content">
+                            <h3>Active Lines</h3>
+                            <div class="PM-stats-number" id="activeLines">0</div>
+                            <p>out of <span id="totalLines">0</span> lines</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="PM-charts-grid">
+                <div class="PM-chart-card">
+                    <div class="PM-chart-header">
+                        <h2>Production Output per Day</h2>
+                    </div>
+                    <div class="PM-chart-body">
+                        <canvas id="outputPerDayChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="PM-chart-card">
+                    <div class="PM-chart-header">
+                        <h2>Efficiency Percentage Over Time</h2>
+                    </div>
+                    <div class="PM-chart-body">
+                        <canvas id="efficiencyChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="PM-chart-card">
+                    <div class="PM-chart-header">
+                        <h2>Output by Line</h2>
+                    </div>
+                    <div class="PM-chart-body">
+                        <canvas id="outputByLineChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="PM-summary-charts">
+                    <div class="PM-chart-card">
+                        <div class="PM-chart-header">
+                            <h2>Shift-wise Output</h2>
+                        </div>
+                        <div class="PM-chart-body">
+                            <canvas id="shiftOutputChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="PM-chart-card">
+                        <div class="PM-chart-header">
+                            <h2>Monitoring Status Distribution</h2>
+                        </div>
+                        <div class="PM-chart-body">
+                            <canvas id="statusDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="PM-schedule-overview">
+                <div class="PM-schedule-filters">
+                    <div class="PM-search-container">
+                        <input type="text" id="searchSchedules" class="PM-search-input" placeholder="Search schedules...">
+                        <button class="PM-search-button"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+
+                <div class="PM-schedule-list">
+                    <div class="PM-schedule-header">
+                        <div class="PM-schedule-col">Date</div>
+                        <div class="PM-schedule-col">Product</div>
+                        <div class="PM-schedule-col">Line</div>
+                        <div class="PM-schedule-col">Shift</div>
+                        <div class="PM-schedule-col">Planned Qty</div>
+                        <div class="PM-schedule-col">Produced Qty</div>
+                        <div class="PM-schedule-col">Progress</div>
+                        <div class="PM-schedule-col">Status</div>
+                    </div>
+                    <div id="scheduleListBody" class="PM-schedule-body">
+                        <!-- Schedule items will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="PM-dashboard-loading">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading dashboard...</p>
+        </div>
+
+        <div id="errorOverlay" class="PM-dashboard-error" style="display: none;">
+            <i class="fas fa-exclamation-circle"></i>
+            <p id="errorMessage">An error occurred</p>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="{% static "js/monitoring/group-dashboard.js" %}"></script>
+</body>
+</html>

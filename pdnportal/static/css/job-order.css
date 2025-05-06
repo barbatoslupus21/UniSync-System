@@ -1,0 +1,1354 @@
+:root {
+    /* Main colors */
+    --jo-primary: #3366ff;
+    --jo-primary-light: #e0e8ff;
+    --jo-primary-dark: #2952cc;
+    --jo-text: #333333;
+    --jo-text-light: #666666;
+    --jo-bg-color: #f8f9fa;
+    --jo-card-bg: #ffffff;
+    --jo-border: #e6e6e6;
+    
+    /* Category colors */
+    --jo-green: #4caf50;
+    --jo-green-light: #e8f5e9;
+    --jo-yellow: #ffc107;
+    --jo-yellow-light: #fff8e1;
+    --jo-white: #90a4ae;
+    --jo-white-light: #eceff1;
+    --jo-orange: #ff5722;
+    --jo-orange-light: #fbe9e7;
+    
+    /* Status colors */
+    --jo-status-pending: #ffc107;
+    --jo-status-approved: #4caf50;
+    --jo-status-rejected: #f44336;
+    --jo-status-completed: #3366ff;
+    
+    /* Shadows and effects */
+    --jo-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --jo-shadow-hover: 0 5px 15px rgba(0, 0, 0, 0.15);
+    --jo-transition: all 0.3s ease;
+
+    /* button color */
+    --jo-success: #48c774;
+    --jo-success-light: rgba(72, 199, 116, 0.15);
+    --jo-danger: #f14668;
+    --jo-danger-light: rgba(241, 70, 104, 0.15);
+}
+
+/* ==========================================================================
+   General Layout & Typography
+   ========================================================================== */
+.JO-success-button {
+    background-color: #48c774;
+    color: white;
+}
+
+.JO-success-button:hover {
+    background-color: #3bb164;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(72, 199, 116, 0.3);
+}
+
+
+.JO-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    animation: JO-slide-down 0.5s ease-out;
+}
+
+.JO-title-section {
+    flex: 1;
+}
+
+.JO-page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--jo-text);
+    margin: 0;
+}
+
+.JO-subtitle {
+    font-size: 1rem;
+    color: var(--jo-text-light);
+    margin: 5px 0 0;
+}
+
+/* ==========================================================================
+   Cards & Containers
+   ========================================================================== */
+
+.JO-card {
+    background: var(--jo-card-bg);
+    border-radius: 12px;
+    box-shadow: var(--jo-shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: var(--jo-transition);
+    animation: JO-fade-in 0.5s ease-out;
+}
+
+.JO-card-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--jo-border);
+    position: sticky;
+    top: 0;
+    background: var(--jo-card-bg);
+    z-index: 10;
+}
+
+.JO-card-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--jo-text);
+}
+
+.JO-card-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* ==========================================================================
+   Stats Cards
+   ========================================================================== */
+
+.JO-stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.JO-stats-card {
+    background-color: var(--jo-card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--jo-shadow);
+    transition: var(--jo-transition);
+    position: relative;
+    overflow: hidden;
+    transform: translateY(20px);
+    opacity: 0;
+    animation: JO-stats-appear 0.6s ease forwards;
+}
+
+.JO-stats-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.JO-stats-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.JO-stats-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.JO-stats-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.JO-stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    margin-right: 16px;
+    transition: var(--jo-transition);
+}
+
+.JO-total .JO-stats-icon {
+    color: var(--jo-primary);
+    background-color: var(--jo-primary-light);
+}
+
+.JO-approved .JO-stats-icon {
+    color: var(--jo-status-approved);
+    background-color: var(--jo-green-light);
+}
+
+.JO-pending .JO-stats-icon {
+    color: var(--jo-status-pending);
+    background-color: var(--jo-yellow-light);
+}
+
+.JO-approval .JO-stats-icon {
+    color: var(--jo-orange);
+    background-color: var(--jo-orange-light);
+}
+
+.JO-stats-content {
+    flex: 1;
+}
+
+.JO-stats-content h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--jo-text-light);
+    margin: 0 0 5px;
+}
+
+.JO-stats-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--jo-text);
+    margin: 0 0 5px;
+}
+
+.JO-stats-content p {
+    font-size: 0.8rem;
+    color: var(--jo-text-light);
+    margin: 0;
+}
+
+/* ==========================================================================
+   Main Content Grid
+   ========================================================================== */
+
+.JO-main-content-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* Chart Container */
+.JO-chart-container {
+    min-height: 500px;
+    max-height: 500px;
+    overflow: hidden;
+}
+
+.JO-chart-wrapper {
+    padding: 20px;
+    height: 85% !important;
+    animation: JO-chart-appear 0.8s ease-out forwards;
+    opacity: 0;
+    display: flex;
+    align-items: end;
+}
+
+#jo-stats-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+@keyframes JO-chart-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Pending Approvals */
+.JO-timeline-rejected .JO-timeline-icon {
+    background-color: var(--jo-status-rejected);
+    animation: none;
+}
+
+.JO-pending-approvals {
+    min-height: 500px;
+    max-height: 500px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.JO-pending-list {
+    padding: 0;
+}
+
+.JO-pending-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--jo-border);
+    transition: var(--jo-transition);
+    animation: JO-fade-in 0.5s ease-out;
+}
+
+.JO-pending-item:last-child {
+    border-bottom: none;
+}
+
+.JO-pending-item:hover {
+    background-color: var(--jo-bg-color);
+}
+
+.JO-pending-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.JO-pending-id {
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.JO-pending-details {
+    margin-bottom: 12px;
+}
+
+.JO-pending-details p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+}
+
+.JO-pending-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.JO-date {
+    font-size: 0.8rem;
+    color: var(--jo-text-light);
+}
+
+/* All Requests Table */
+.JO-table-container {
+    padding: 0 20px;
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+.JO-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.JO-table th {
+    text-align: left;
+    padding: 12px 15px;
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--jo-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.JO-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--jo-border);
+    color: var(--jo-text);
+    transition: var(--jo-transition);
+}
+
+.JO-table tr {
+    transition: var(--jo-transition);
+}
+
+.JO-table tbody tr {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: JO-row-appear 0.5s ease forwards;
+}
+
+@keyframes JO-row-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.JO-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.JO-table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+.JO-table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+.JO-table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+.JO-table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+.JO-table tbody tr:nth-child(6) { animation-delay: 0.6s; }
+
+/* Pagination */
+.JO-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--jo-border);
+}
+
+.JO-pagination-pages {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.JO-pagination-page {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--jo-border);
+    background-color: var(--jo-card-bg);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--jo-transition);
+}
+
+.JO-pagination-page:hover {
+    background-color: var(--jo-primary-light);
+    border-color: var(--jo-primary);
+    color: var(--jo-primary);
+}
+
+.JO-pagination-page.active {
+    background-color: var(--jo-primary);
+    border-color: var(--jo-primary);
+    color: white;
+}
+
+.JO-pagination-ellipsis {
+    margin: 0 5px;
+}
+
+.JO-pagination-btn {
+    background-color: var(--jo-card-bg);
+    border: 1px solid var(--jo-border);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    transition: var(--jo-transition);
+}
+
+.JO-pagination-btn:hover:not(.disabled) {
+    background-color: var(--jo-primary-light);
+    border-color: var(--jo-primary);
+    color: var(--jo-primary);
+}
+
+.JO-pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Categories and Status Styles
+   ========================================================================== */
+
+.JO-category, .JO-category-pill {
+    display: inline-flex;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.JO-category-green {
+    background-color: var(--jo-green-light);
+    color: var(--jo-green);
+}
+
+.JO-category-yellow {
+    background-color: var(--jo-yellow-light);
+    color: var(--jo-yellow);
+}
+
+.JO-category-white {
+    background-color: var(--jo-white-light);
+    color: var(--jo-white);
+}
+
+.JO-category-orange {
+    background-color: var(--jo-orange-light);
+    color: var(--jo-orange);
+}
+
+.JO-status {
+    display: inline-flex;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.JO-status-pending,
+.JO-status-routing {
+    background-color: var(--jo-yellow-light);
+    color: var(--jo-status-pending);
+}
+
+.JO-status-approved,
+.JO-status-closed {
+    background-color: var(--jo-green-light);
+    color: var(--jo-status-approved);
+}
+
+.JO-status-rejected,
+.JO-status-cancelled {
+    background-color: var(--jo-orange-light);
+    color: var(--jo-status-rejected);
+}
+
+.JO-status-completed,
+.JO-status-checked {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-status-completed);
+}
+
+/* ==========================================================================
+   Buttons & Form Elements
+   ========================================================================== */
+.JO-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--jo-transition);
+}
+
+.JO-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    transition: var(--jo-transition);
+    resize: vertical;
+}
+
+.JO-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--jo-transition);
+    border: none;
+    font-size: 0.9rem;
+}
+
+.JO-primary-button {
+    background-color: var(--jo-primary);
+    color: white;
+}
+
+.JO-primary-button:hover {
+    background-color: var(--jo-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.JO-secondary-button {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    border: 1px solid var(--jo-border);
+}
+
+.JO-secondary-button:hover {
+    background-color: var(--jo-border);
+}
+
+.JO-text-button {
+    background: none;
+    color: var(--jo-text);
+    padding: 5px 10px;
+}
+
+.JO-text-button:hover {
+    background-color: var(--jo-bg-color);
+}
+
+.JO-view-details-btn {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+}
+
+.JO-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--jo-text-light);
+    cursor: pointer;
+    transition: var(--jo-transition);
+}
+
+.JO-icon-button:hover {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+}
+
+.JO-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: var(--jo-transition);
+}
+
+.JO-search-container:focus-within {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.JO-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    width: 250px;
+}
+
+.JO-search-button {
+    background: none;
+    border: none;
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--jo-text-light);
+}
+
+.JO-select {
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    background-color: white;
+    cursor: pointer;
+    transition: var(--jo-transition);
+}
+
+.JO-select:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.JO-filter-container {
+    display: flex;
+    align-items: center;
+}
+
+.JO-danger-button {
+    background-color: #f14668;
+    color: white;
+}
+
+.JO-danger-button:hover {
+    background-color: #e43c5a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(241, 70, 104, 0.3);
+}
+
+.JO-success-button {
+    background-color: #48c774;
+    color: white;
+}
+
+.JO-success-button:hover {
+    background-color: #3bb164;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(72, 199, 116, 0.3);
+}
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.JO-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.JO-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.JO-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.JO-modal.active .JO-modal-content {
+    transform: translateY(0);
+    animation: JO-modal-appear 0.3s ease-out;
+}
+
+.JO-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.JO-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--jo-text);
+}
+
+.JO-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--jo-transition);
+}
+
+.JO-modal-close:hover {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-primary);
+}
+
+.JO-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.JO-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--jo-border);
+}
+
+/* ==========================================================================
+   Form Styles
+   ========================================================================== */
+
+.JO-form-section {
+    margin-bottom: 24px;
+}
+
+.JO-form-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--jo-text);
+}
+
+.JO-form-group {
+    margin-bottom: 16px;
+}
+
+.JO-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--jo-text);
+    font-size: 0.9rem;
+}
+
+.JO-form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--jo-transition);
+}
+
+.JO-form-group textarea:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.JO-category-options, 
+.JO-tooling-options,
+.JO-nature-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* Hide actual radio buttons and checkboxes */
+.JO-checkbox-container input[type="checkbox"],
+.JO-checkbox-container input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.JO-checkbox-label {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: var(--jo-transition);
+    background-color: var(--jo-bg-color);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.JO-checkbox-container:hover .JO-checkbox-label {
+    background-color: var(--jo-border);
+}
+
+.JO-category-label {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+}
+
+/* Selected checkboxes and radio buttons */
+.JO-checkbox-container input:checked + .JO-checkbox-label {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+    border: 1px solid var(--jo-primary);
+    font-weight: 500;
+}
+
+.JO-checkbox-container input:checked + .JO-category-label.JO-category-green {
+    background-color: var(--jo-green-light);
+    color: var(--jo-green);
+    border: 1px solid var(--jo-green);
+    font-weight: 500;
+}
+
+.JO-checkbox-container input:checked + .JO-category-label.JO-category-yellow {
+    background-color: var(--jo-yellow-light);
+    color: var(--jo-yellow);
+    border: 1px solid var(--jo-yellow);
+    font-weight: 500;
+}
+
+.JO-checkbox-container input:checked + .JO-category-label.JO-category-white {
+    background-color: var(--jo-white-light);
+    color: var(--jo-white);
+    border: 1px solid var(--jo-white);
+    font-weight: 500;
+}
+
+.JO-checkbox-container input:checked + .JO-category-label.JO-category-orange {
+    background-color: var(--jo-orange-light);
+    color: var(--jo-orange);
+    border: 1px solid var(--jo-orange);
+    font-weight: 500;
+}
+
+/* Submit button with loading state */
+.JO-primary-button.loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+}
+
+.JO-primary-button.loading::after {
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: JO-spinner 0.8s linear infinite;
+}
+
+@keyframes JO-spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   Details Modal Styles
+   ========================================================================== */
+
+.JO-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.JO-details-id {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.JO-details-id h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.JO-details-date {
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+}
+
+.JO-details-section {
+    margin-bottom: 24px;
+}
+
+.JO-details-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--jo-text);
+    border-bottom: 1px solid var(--jo-border);
+    padding-bottom: 8px;
+}
+
+.JO-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.JO-details-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.JO-details-label {
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+    margin-bottom: 4px;
+}
+
+.JO-details-value {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--jo-text);
+}
+
+.JO-details-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--jo-text);
+}
+
+/* Timeline */
+.JO-approval-timeline {
+    position: relative;
+    margin-left: 8px;
+}
+
+.JO-approval-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 10px;
+    width: 2px;
+    background-color: var(--jo-border);
+}
+
+.JO-timeline-item {
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 20px;
+}
+
+.JO-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.JO-timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--jo-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    z-index: 2;
+}
+
+.JO-timeline-item.JO-timeline-complete .JO-timeline-icon {
+    background-color: var(--jo-status-approved);
+}
+
+.JO-timeline-item.JO-timeline-active .JO-timeline-icon {
+    background-color: var(--jo-status-pending);
+    animation: JO-pulse 1.5s infinite;
+}
+
+.JO-timeline-content h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 5px;
+    color: var(--jo-text);
+}
+
+.JO-timeline-content p {
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+    margin: 0;
+}
+
+.JO-timeline-content .JO-timeline-remarks {
+    font-size: 0.95rem;
+    font-style: italic;
+    padding: 10px 0px;
+    color: var(--jo-text-light);
+    margin: 0;
+}
+
+.JO-pending-empty {
+    padding: 30px 20px;
+    text-align: center;
+    color: var(--jo-text-light);
+}
+
+.chart-dashboard {
+    padding: 20px 0;
+}
+
+.chart-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.chart-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.chart-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.stats-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+.stats-card {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background-color: var(--jo-primary-light, rgba(51, 102, 255, 0.1));
+    color: var(--jo-primary, #3366ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-right: 15px;
+}
+
+#stat-routing .stats-icon {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+}
+
+#stat-approved .stats-icon {
+    background-color: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+}
+
+#stat-today .stats-icon {
+    background-color: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+}
+
+.stats-content {
+    flex: 1;
+}
+
+.stats-content h3 {
+    font-size: 0.9rem;
+    color: var(--jo-text-light, #666);
+    margin: 0 0 5px;
+}
+
+.stat-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--jo-text, #333);
+    margin-bottom: 5px;
+}
+
+.stats-content p {
+    font-size: 0.8rem;
+    color: var(--jo-text-light, #666);
+    margin: 0;
+}
+  
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes JO-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes JO-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes JO-stats-appear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes JO-modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes JO-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(255, 193, 7, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);
+    }
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .JO-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .JO-main-content-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .JO-chart-container,
+    .JO-pending-approvals,
+    .JO-all-requests {
+        max-height: 450px;
+    }
+
+    .chart-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+}
+
+@media (max-width: 768px) {
+    .JO-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .JO-stats-card {
+        padding: 15px;
+    }
+    
+    .JO-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .JO-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    
+    .JO-card-actions {
+        width: 100%;
+    }
+    
+    .JO-search-container {
+        width: 100%;
+    }
+    
+    .JO-search-input {
+        width: 100%;
+    }
+    
+    .JO-details-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .JO-details-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    /* The table remains as a standard table with horizontal scrolling */
+    .JO-all-requests {
+        margin-bottom: 20px;
+    }
+    
+    .JO-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    }
+    
+    .chart-controls {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+    
+    .stats-card-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .JO-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .JO-stats-card {
+        padding: 12px;
+    }
+    
+    .JO-stats-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+        margin-right: 10px;
+    }
+    
+    .JO-stats-number {
+        font-size: 1.5rem;
+    }
+    
+    .JO-pending-status {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .JO-pagination {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .JO-category-options, 
+    .JO-tooling-options,
+    .JO-nature-options {
+        flex-direction: column;
+        gap: 8px;
+    }
+}

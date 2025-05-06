@@ -1,0 +1,229 @@
+:root {
+    --bg-color: #f4f6f9;
+    --card-bg: white;
+    --primary-blue: #4d8cff;
+    --light-blue: #d6e3ff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    padding: 20px;
+}
+
+.dashboard-container {
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+.chart-card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 20px;
+    position: relative;
+}
+
+.chart-title{
+    margin-bottom: 20px;
+    font-weight: 600px;
+    font-size: 1.3em;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.data-table {
+    width: 100%;  
+    border-collapse: separate;
+    border-spacing: 0;
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.data-table th, .data-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #f1f3f5 ;
+}
+
+.data-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.9em;
+    color: #495057;
+}
+
+.badge {
+    display: inline-block;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
+.badge-success { 
+    background-color: rgba(46, 204, 113, 0.2); 
+    color: #2ecc71; 
+}
+.badge-warning { 
+    background-color: rgba(241, 196, 15, 0.2); 
+    color: #f39c12; 
+}
+.badge-danger { 
+    background-color: rgba(231, 76, 60, 0.2); 
+    color: #e74c3c; 
+}
+
+/* Shift Comparison Container */
+.shift-comparison-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    height: 100%;
+    padding: 0px 30px;
+}
+
+.chart-container {
+    flex: 1;
+    position: relative;
+    height: 300px;
+}
+
+.shift-info-card {
+    width: 280px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.shift-info-header {
+    border-bottom: 1px solid #f1f3f5;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+
+.shift-info-header h3 {
+    font-size: 1.1rem;
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+.overall-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.stat-item {
+    display: flex;
+    gap: 10px;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Shift Details */
+.shift-details {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    justify-content: center;
+    align-items: center;
+}
+
+.shift-detail {
+    padding: 15px;
+    width: 100%;
+    border-radius: 8px;
+    background: #e7e7e7;
+}
+
+.shift-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.shift-header h4 {
+    font-size: 0.9rem;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.shift-color-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.am-shift .shift-color-indicator {
+    background-color: #2e85ff;
+}
+
+.pm-shift .shift-color-indicator {
+    background-color: #6bd586;
+}
+
+.shift-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Chart Center Text */
+.doughnut-center-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.doughnut-center-percentage {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1;
+}
+
+.doughnut-center-label {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin-top: 5px;
+}
