@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: UniSync
+      MYSQL_USER: misadmin
+      MYSQL_PASSWORD: FADLOCKED960052
+      TZ: Asia/Manila
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+
+  web:
+    build: .
+    container_name: django-app
+    command: bash -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - TZ=Asia/Manila
+      - DJANGO_DB_HOST=db
+      - DJANGO_DB_NAME=UniSync
+      - DJANGO_DB_USER=misadmin
+      - DJANGO_DB_PASSWORD=FADLOCKED960052
+
+volumes:
+  db_data:
