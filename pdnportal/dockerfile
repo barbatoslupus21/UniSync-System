@@ -1,17 +1,26 @@
 FROM python:3.10-slim
 
 ENV TZ=Asia/Manila
-RUN apt-get update && apt-get install -y tzdata \
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    default-libmysqlclient-dev \
+    gcc \
+    libmysqlclient-dev \
+    tzdata \
     && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
-    && echo $TZ > /etc/timezone
+    && echo $TZ > /etc/timezone \
+    && apt-get clean
 
 WORKDIR /app
 
-COPY requirements.txt ./
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN python manage.py collectstatic --noinput
 
+RUN ["bash", "-c", "python manage.py collectstatic --noinput || echo 'Skipping collectstatic'"]
+
+EXPOSE 8000
+
+# Run gunicorn
 CMD ["gunicorn", "pdnportal.wsgi:application", "--bind", "0.0.0.0:8000"]
-
