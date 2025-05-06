@@ -18,9 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Collectstatic will be run in docker-compose command
+# Removed collectstatic from here as it will be run in docker-compose command
+# to ensure environment variables are properly loaded
 
 EXPOSE 8000
 
-# Run gunicorn
+# CMD is overridden by docker-compose command
 CMD ["gunicorn", "pdnportal.wsgi:application", "--bind", "0.0.0.0:8000"]
