@@ -1,0 +1,265 @@
+<!-- Employee Importer Tab Content -->
+<div class="OT-employee-container">
+    <!-- Employee Management Panel -->
+    <div class="OT-card OT-full-width">
+        <div class="OT-card-header">
+            <h2>Employee Management</h2>
+            <div class="OT-card-actions">
+                <button class="OT-button OT-secondary-button" id="export-employees">
+                    <i class="fas fa-file-export"></i> Export List
+                </button>
+                <button class="OT-button OT-primary-button" id="add-employee">
+                    <i class="fas fa-user-plus"></i> Add Employee
+                </button>
+                <button class="OT-button OT-primary-button" id="import-employees">
+                    <i class="fas fa-upload"></i> Batch Import
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filter and Search -->
+        <div class="OT-filter-bar">
+            <div class="OT-filter-group">
+                <label for="department-filter">Department:</label>
+                <select id="department-filter" class="OT-select">
+                    <option value="all">All Departments</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept }}">{{ dept }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="OT-filter-group">
+                <label for="line-filter">Line:</label>
+                <select id="line-filter" class="OT-select">
+                    <option value="all">All Lines</option>
+                    {% for line in lines %}
+                    <option value="{{ line }}">{{ line }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="OT-search-container">
+                <input type="text" id="employee-search-input" class="OT-search-input" placeholder="Search by ID or name">
+                <button class="OT-search-button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="OT-table-container">
+            <table class="OT-table" id="employee-table">
+                <thead>
+                    <tr>
+                        <th>ID Number</th>
+                        <th>Employee Name</th>
+                        <th>Department</th>
+                        <th>Line</th>
+                        <th>Date Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr data-id="{{ employee.id }}">
+                        <td data-label="ID Number">{{ employee.id_number }}</td>
+                        <td data-label="Employee Name">{{ employee.name }}</td>
+                        <td data-label="Department">{{ employee.department|default:"-" }}</td>
+                        <td data-label="Line">{{ employee.line|default:"-" }}</td>
+                        <td data-label="Date Added">{{ employee.date_added|date:"M d, Y" }}</td>
+                        <td data-label="Actions">
+                            <button class="OT-button OT-icon-button OT-edit-employee" title="Edit Employee" data-id="{{ employee.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="OT-button OT-icon-button OT-delete-employee" title="Delete Employee" data-id="{{ employee.id }}">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="OT-empty-table">No employee records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="OT-pagination">
+            <div class="OT-pagination-info">
+                Showing <span id="employee-showing-start">1</span> to <span id="employee-showing-end">10</span> of <span id="employee-total-records">{{ employees.count }}</span> entries
+            </div>
+            <div class="OT-pagination-pages">
+                <button class="OT-pagination-btn OT-prev-btn disabled">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="OT-page-numbers" id="employee-pagination">
+                    <span class="OT-pagination-page active">1</span>
+                    <span class="OT-pagination-page">2</span>
+                    <span class="OT-pagination-page">3</span>
+                    <span class="OT-pagination-ellipsis">...</span>
+                    <span class="OT-pagination-page">10</span>
+                </div>
+                <button class="OT-pagination-btn OT-next-btn">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Employee Stats -->
+    <div class="OT-stats-grid">
+        <div class="OT-card OT-stats-card-employee">
+            <div class="OT-stats-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Total Employees</h3>
+                <h2 class="OT-stats-number">{{ employees.count }}</h2>
+            </div>
+        </div>
+        
+        <div class="OT-card OT-stats-card-employee">
+            <div class="OT-stats-icon OT-icon-department">
+                <i class="fas fa-building"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Total Departments</h3>
+                <h2 class="OT-stats-number">{{ departments|length }}</h2>
+            </div>
+        </div>
+        
+        <div class="OT-card OT-stats-card-employee">
+            <div class="OT-stats-icon OT-icon-line">
+                <i class="fas fa-industry"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Total Lines</h3>
+                <h2 class="OT-stats-number">{{ lines|length }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Department Distribution -->
+    <div class="OT-card OT-department-distribution">
+        <div class="OT-card-header">
+            <h2>Employee Distribution by Department</h2>
+        </div>
+        <div class="OT-chart-container">
+            <canvas id="department-distribution-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Employee Modal -->
+<div class="OT-modal" id="employee-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2 id="employee-modal-title">Add New Employee</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <form id="employee-form">
+                <div class="OT-form-group">
+                    <label for="employee-id">ID Number *</label>
+                    <input type="text" id="employee-id" class="OT-input" placeholder="Enter employee ID number" required>
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="employee-name">Employee Name *</label>
+                    <input type="text" id="employee-name" class="OT-input" placeholder="Enter employee name" required>
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="employee-department">Department</label>
+                    <input type="text" id="employee-department" class="OT-input" placeholder="Enter department (optional)">
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="employee-line">Line</label>
+                    <input type="text" id="employee-line" class="OT-input" placeholder="Enter line (optional)">
+                </div>
+                
+                <input type="hidden" id="employee-record-id">
+            </form>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-employee">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="save-employee">Save Employee</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Employees Modal -->
+<div class="OT-modal" id="import-employees-modal">
+    <div class="OT-modal-content">
+        <div class="OT-modal-header">
+            <h2>Import Employees</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-import-info">
+                <div class="OT-import-icon">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <div class="OT-import-text">
+                    <p>Upload an Excel file containing employee information. The file should have the following columns:</p>
+                    <ul class="OT-import-requirements">
+                        <li><strong>ID Number</strong> (required)</li>
+                        <li><strong>Employee Name</strong> (required)</li>
+                        <li><strong>Department</strong> (optional)</li>
+                        <li><strong>Line</strong> (optional)</li>
+                    </ul>
+                    <p class="OT-note">Note: Employee names will be automatically converted to proper case.</p>
+                </div>
+            </div>
+            
+            <form id="employee-import-form" class="OT-import-form">
+                <div class="OT-file-upload">
+                    <input type="file" id="employee-file" accept=".xlsx, .xls" required>
+                    <label for="employee-file">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Choose Excel File</span>
+                    </label>
+                    <p class="OT-file-name">No file selected</p>
+                </div>
+                
+                <div class="OT-import-preview" id="employee-preview">
+                    <!-- Preview data will be inserted here -->
+                </div>
+            </form>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-employee-import">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="process-employee-import">Import Data</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="OT-modal OT-confirmation-modal" id="delete-employee-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Confirm Deletion</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-confirmation-content">
+                <i class="fas fa-exclamation-triangle OT-confirmation-icon OT-icon-warning"></i>
+                <p>Are you sure you want to delete the employee <strong id="delete-employee-name"></strong>?</p>
+                <p class="OT-warning-text">This action cannot be undone. All data associated with this employee will be permanently removed.</p>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-delete">Cancel</button>
+            <button type="button" class="OT-button OT-danger-button" id="confirm-delete">Delete Employee</button>
+        </div>
+    </div>
+</div>

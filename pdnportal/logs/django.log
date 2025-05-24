@@ -1,0 +1,19 @@
+INFO 2025-05-23 14:19:02,662 autoreload Watching for file changes with StatReloader
+INFO 2025-05-23 14:19:15,184 basehttp "GET / HTTP/1.1" 301 0
+INFO 2025-05-23 14:19:15,336 basehttp code 400, message Bad request version ('\x00\x04\x03\x00\x01\x02\x00')
+INFO 2025-05-23 14:19:15,338 basehttp code 400, message Bad request version ('\x00\x04\x03\x00\x01\x02\x00')
+ERROR 2025-05-23 14:19:15,338 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+ERROR 2025-05-23 14:19:15,338 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+INFO 2025-05-23 14:19:15,345 basehttp code 400, message Bad request version ('\x02h2\x08http/1.1\x00')
+ERROR 2025-05-23 14:19:15,345 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+INFO 2025-05-23 14:19:21,269 basehttp code 400, message Bad request version ('\x11\x9a∫Ãz6\x90')
+ERROR 2025-05-23 14:19:21,269 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+INFO 2025-05-23 14:19:21,279 basehttp code 400, message Bad request version ('\x95ÕÌ\x01m\x02A¿ÙC\x84[ahÍ\x12\x13¿6"E»/Ìlu\x95')
+ERROR 2025-05-23 14:19:21,280 basehttp You're accessing the development server over HTTPS, but it only supports HTTP.
+INFO 2025-05-23 14:19:35,790 autoreload C:\Users\User\Desktop\RPA\Website\PDN_Portal\pdnportal\pdnportal\settings.py changed, reloading.
+INFO 2025-05-23 14:19:37,349 autoreload Watching for file changes with StatReloader
+INFO 2025-05-23 14:19:46,412 autoreload C:\Users\User\Desktop\RPA\Website\PDN_Portal\pdnportal\pdnportal\settings.py changed, reloading.
+INFO 2025-05-23 14:19:47,927 autoreload Watching for file changes with StatReloader
+INFO 2025-05-23 14:19:53,834 autoreload C:\Users\User\Desktop\RPA\Website\PDN_Portal\pdnportal\pdnportal\settings.py changed, reloading.
+INFO 2025-05-23 14:19:55,355 autoreload Watching for file changes with StatReloader
+INFO 2025-05-23 14:20:35,988 autoreload C:\Users\User\Desktop\RPA\Website\PDN_Portal\pdnportal\pdnportal\settings.py changed, reloading.

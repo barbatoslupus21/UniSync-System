@@ -1,0 +1,824 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Chat{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/messages/chat.css' %}">
+<link rel="stylesheet" href="{% static 'css/messages/message-options.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title and action button -->
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">UniChat</h1>
+            <p class="JO-subtitle">Connect and collaborate with your team in real-time</p>
+        </div>
+        <button id="new-chat-btn" class="JO-button JO-primary-button">
+            <i class="fas fa-plus"></i> New Conversation
+        </button>
+    </div>
+
+    <!-- Main Chat Interface -->
+    <div class="Chat-container">
+        <!-- Contacts/Chats Sidebar -->
+        <div class="Chat-sidebar">
+            <div class="Chat-sidebar-header">
+                <div class="Chat-search-container">
+                    <input type="text" id="chat-search" class="Chat-search-input" placeholder="Search messages or contacts">
+                    <button class="Chat-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="Chat-tabs">
+                    <button class="Chat-tab active" data-tab="chats">
+                        <i class="fas fa-comment-alt"></i> Chats
+                    </button>
+                    <button class="Chat-tab" data-tab="contacts">
+                        <i class="fas fa-address-book"></i> Contacts
+                    </button>
+                </div>
+            </div>
+
+            <div class="Chat-tab-content active" id="chats-tab">
+                <div class="Chat-list">
+                    <!-- Chat list items will be dynamically added here -->
+                    {% for chat in chats %}
+                    <div class="Chat-list-item {% if chat.unread %}Chat-unread{% endif %}" data-chat-id="{{ chat.id }}" data-chat-type="{{ chat.type }}">
+                        <div class="Chat-avatar-container">
+                            {% if chat.type == 'group' %}
+                            <div class="Chat-group-avatar">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            {% else %}
+                            <img src="{{ chat.avatar_url|default:'../images/profile/avatar.png' }}" alt="{{ chat.name }}" class="Chat-avatar">
+                            <span class="Chat-status-indicator {% if chat.online %}Chat-online{% endif %}"></span>
+                            {% endif %}
+                        </div>
+                        <div class="Chat-list-content">
+                            <div class="Chat-list-header">
+                                <h3 class="Chat-contact-name">{{ chat.name }}</h3>
+                                <span class="Chat-time">{{ chat.last_message_time }}</span>
+                            </div>
+                            <div class="Chat-list-body">
+                                <p class="Chat-last-message">
+                                    {% if chat.last_message_is_file %}
+                                    <i class="fas fa-paperclip"></i>
+                                    {% endif %}
+                                    {{ chat.last_message }}
+                                </p>
+                                {% if chat.unread_count %}
+                                <span class="Chat-unread-badge">{{ chat.unread_count }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="Chat-empty-state">
+                        <i class="fas fa-comments"></i>
+                        <p>No conversations yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="Chat-tab-content" id="contacts-tab">
+                <div class="Chat-contacts-actions">
+                    <button id="add-contact-btn" class="JO-button JO-text-button">
+                        <i class="fas fa-user-plus"></i> Add Contact
+                    </button>
+                </div>
+                <div class="Chat-list">
+                    <!-- Contact list items will be dynamically added here -->
+                    {% for contact in contacts %}
+                    <div class="Chat-list-item" data-user-id="{{ contact.id }}">
+                        <div class="Chat-avatar-container">
+                            <img src="{{ contact.avatar_url|default:'../images/profile/avatar.png' }}" alt="{{ contact.name }}" class="Chat-avatar">
+                            <span class="Chat-status-indicator {% if contact.online %}Chat-online{% endif %}"></span>
+                        </div>
+                        <div class="Chat-list-content">
+                            <div class="Chat-list-header">
+                                <h3 class="Chat-contact-name">{{ contact.name }}</h3>
+                                <div class="Chat-contact-actions">
+                                    <button class="Chat-icon-button Chat-start-chat" title="Start Chat">
+                                        <i class="fas fa-comment"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="Chat-list-body">
+                                <p class="Chat-contact-title">{{ contact.title }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="Chat-empty-state">
+                        <i class="fas fa-address-book"></i>
+                        <p>No contacts added yet</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="Chat-main">
+            <!-- Message display area (initially empty state) -->
+            <div class="Chat-empty-main">
+                <div class="Chat-empty-main-content">
+                    <i class="fas fa-comments"></i>
+                    <h2>Select a conversation</h2>
+                    <p>Choose a chat from the list or start a new conversation</p>
+                </div>
+            </div>
+
+            <!-- Active chat area (hidden initially) -->
+            <div class="Chat-active-area" style="display: none;">
+                <!-- Chat header -->
+                <div class="Chat-header">
+                    <div class="Chat-header-user">
+                        <div class="Chat-back-button">
+                            <i class="fas fa-arrow-left"></i>
+                        </div>
+                        <div class="Chat-header-avatar-container">
+                            <div class="Chat-header-avatar" id="chat-header-avatar">
+                                <!-- Avatar or group icon will be set dynamically -->
+                            </div>
+                            <span class="Chat-header-status-indicator" id="chat-header-status"></span>
+                        </div>
+                        <div class="Chat-header-info">
+                            <h3 class="Chat-header-name" id="chat-header-name"></h3>
+                            <p class="Chat-header-status" id="chat-header-subtitle"></p>
+                        </div>
+                    </div>
+                    <div class="Chat-header-actions">
+                        <button class="Chat-icon-button" id="chat-search-toggle" title="Search Messages">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button class="Chat-icon-button" id="chat-info-toggle" title="Conversation Info">
+                            <i class="fas fa-info-circle"></i>
+                        </button>
+                        <button class="Chat-icon-button" id="chat-settings-toggle" title="Chat Settings">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Chat search panel (hidden by default) -->
+                <div class="Chat-search-panel" id="message-search-panel">
+                    <div class="Chat-search-container">
+                        <input type="text" id="message-search-input" class="Chat-search-input" placeholder="Search in this conversation...">
+                        <button class="Chat-search-button" id="message-search-btn">
+                            <i class="fas fa-search"></i>
+                        </button>
+                        <button class="Chat-search-close" id="message-search-close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="Chat-search-filters">
+                        <div class="Chat-filter-options">
+                            <label class="Chat-filter-option">
+                                <input type="checkbox" name="filter-files" id="filter-files">
+                                <span class="Chat-filter-label">Files only</span>
+                            </label>
+                            <label class="Chat-filter-option">
+                                <input type="checkbox" name="filter-images" id="filter-images">
+                                <span class="Chat-filter-label">Images only</span>
+                            </label>
+                        </div>
+                        <div class="Chat-date-filter">
+                            <label class="Chat-date-label">From:</label>
+                            <input type="date" id="date-from" class="Chat-date-input">
+                            <label class="Chat-date-label">To:</label>
+                            <input type="date" id="date-to" class="Chat-date-input">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages area -->
+                <div class="Chat-messages" id="messages-container">
+                    <div class="Chat-date-separator">
+                        <span>Today</span>
+                    </div>
+
+                    <!-- Messages will be dynamically added here -->
+
+                    <!-- New message indicator -->
+                    <div class="Chat-new-message-indicator" id="new-message-indicator">
+                        <i class="fas fa-arrow-down"></i>
+                        <span>New messages</span>
+                    </div>
+                </div>
+
+                <!-- Upload progress and file pill container (hidden by default) -->
+                <div class="Chat-upload-progress" id="upload-progress-container">
+                    <!-- Upload progress info -->
+                    <div class="Chat-upload-info" id="upload-progress-info">
+                        <i class="fas fa-file"></i>
+                        <div class="Chat-upload-details">
+                            <p class="Chat-upload-filename" id="upload-filename">file.jpg</p>
+                            <p class="Chat-upload-status" id="upload-status">Uploading... 45%</p>
+                        </div>
+                        <button class="Chat-upload-cancel" id="upload-cancel">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="Chat-progress-bar-container" id="progress-bar-container">
+                        <div class="Chat-progress-bar" id="upload-progress-bar"></div>
+                    </div>
+
+                    <!-- File pill (hidden by default) -->
+                    <div class="Chat-file-pill" id="file-pill-container" style="display: none;">
+                        <div class="Chat-file-pill-icon">
+                            <i class="fas fa-file" id="file-pill-icon"></i>
+                        </div>
+                        <span class="Chat-file-pill-name" id="file-pill-name">filename.ext</span>
+                        <button class="Chat-file-pill-remove" id="remove-file-btn">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Message input area -->
+                <div class="Chat-input-area">
+                    <div class="Chat-input-container">
+                        <button class="Chat-input-button" id="attach-file-btn" title="Attach File">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <div class="Chat-input-wrapper">
+                            <textarea id="message-input" class="Chat-message-input" placeholder="Type your message..."></textarea>
+                        </div>
+                        <button class="Chat-input-button" id="emoji-toggle" title="Add Emoji">
+                            <i class="fas fa-smile"></i>
+                        </button>
+                        <button class="Chat-send-button" id="send-message-btn" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                    <input type="file" id="file-input" style="display: none">
+                </div>
+            </div>
+
+            <!-- Chat info sidebar (hidden by default) -->
+            <div class="Chat-info-sidebar" id="chat-info-sidebar">
+                <div class="Chat-info-header">
+                    <h3>Conversation Info</h3>
+                    <button class="Chat-close-info" id="close-info-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="Chat-info-content">
+                    <div class="Chat-info-section">
+                        <h4>Members</h4>
+                        <div class="Chat-members-list" id="members-list">
+                            <!-- Members will be dynamically added here -->
+                        </div>
+                        <button class="JO-button JO-text-button" id="add-members-btn">
+                            <i class="fas fa-user-plus"></i> Add Members
+                        </button>
+                    </div>
+
+                    <div class="Chat-info-section" id="group-options-section">
+                        <h4>Group Options</h4>
+                        <button class="JO-button JO-text-button" id="rename-group-btn">
+                            <i class="fas fa-edit"></i> Rename Group
+                        </button>
+                        <button class="JO-button JO-text-button Chat-leave-btn" id="leave-group-btn">
+                            <i class="fas fa-sign-out-alt"></i> Leave Group
+                        </button>
+                    </div>
+
+                    <div class="Chat-info-section">
+                        <h4>Shared Files</h4>
+                        <div class="Chat-files-list" id="shared-files-list">
+                            <!-- Shared files will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- New Conversation Modal -->
+<div class="JO-modal" id="new-conversation-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>New Conversation</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="Chat-tabs Chat-modal-tabs">
+                <button class="Chat-tab active" data-modal-tab="direct-message">Direct Message</button>
+                <button class="Chat-tab" data-modal-tab="group-chat">Group Chat</button>
+            </div>
+
+            <div class="Chat-modal-tab-content active" id="direct-message-tab">
+                <div class="JO-form-group">
+                    <label for="direct-contact-select">Select Contact</label>
+                    <select id="direct-contact-select" class="JO-select">
+                        <option value="">Select a contact</option>
+                        <!-- Contacts will be dynamically added here -->
+                    </select>
+                </div>
+
+                <div class="JO-form-group">
+                    <label for="direct-message-input">Message (Optional)</label>
+                    <textarea id="direct-message-input" class="JO-textarea" rows="3" placeholder="Type your message..."></textarea>
+                </div>
+            </div>
+
+            <div class="Chat-modal-tab-content" id="group-chat-tab">
+                <div class="JO-form-group">
+                    <label for="group-name-input">Group Name</label>
+                    <input type="text" id="group-name-input" class="JO-input" placeholder="Enter group name">
+                </div>
+
+                <div class="JO-form-group">
+                    <label>Select Members</label>
+                    <div class="Chat-members-selection" id="group-members-selection">
+                        <!-- Checkboxes for contacts will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-conversation-btn">Cancel</button>
+            <button class="JO-button JO-primary-button" id="create-conversation-btn">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="JO-modal" id="add-contact-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Add Contact</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-form-group">
+                <label for="contact-search-input">Search User</label>
+                <div class="Chat-search-container">
+                    <input type="text" id="contact-search-input" class="Chat-search-input" placeholder="Search by name or email">
+                    <button class="Chat-search-button" id="contact-search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="Chat-search-results" id="contact-search-results">
+                <!-- Search results will be dynamically added here -->
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-add-contact-btn">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Members Modal -->
+<div class="JO-modal" id="add-members-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Add Members</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-form-group">
+                <label>Select Contacts</label>
+                <div class="Chat-members-selection" id="add-members-selection">
+                    <!-- Checkboxes for contacts will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-add-members-btn">Cancel</button>
+            <button class="JO-button JO-primary-button" id="confirm-add-members-btn">Add</button>
+        </div>
+    </div>
+</div>
+
+<!-- Rename Group Modal -->
+<div class="JO-modal" id="rename-group-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Rename Group</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-form-group">
+                <label for="new-group-name">New Group Name</label>
+                <input type="text" id="new-group-name" class="JO-input" placeholder="Enter new group name">
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-rename-btn">Cancel</button>
+            <button class="JO-button JO-primary-button" id="confirm-rename-btn">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Forward Message Modal -->
+<div class="JO-modal" id="forward-message-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Forward Message</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="Chat-forward-message-preview" id="forward-message-preview">
+                <!-- Message preview will be added here -->
+            </div>
+
+            <div class="JO-form-group">
+                <label>Select Recipients</label>
+                <div class="Chat-forward-tabs">
+                    <button class="Chat-tab active" data-forward-tab="chats">Recent Chats</button>
+                    <button class="Chat-tab" data-forward-tab="contacts">Contacts</button>
+                </div>
+
+                <div class="Chat-forward-tab-content active" id="forward-chats-tab">
+                    <div class="Chat-forward-selection" id="forward-chats-selection">
+                        <!-- Checkboxes for recent chats will be dynamically added here -->
+                    </div>
+                </div>
+
+                <div class="Chat-forward-tab-content" id="forward-contacts-tab">
+                    <div class="Chat-forward-selection" id="forward-contacts-selection">
+                        <!-- Checkboxes for contacts will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-forward-btn">Cancel</button>
+            <button class="JO-button JO-primary-button" id="confirm-forward-btn">Forward</button>
+        </div>
+    </div>
+</div>
+
+<!-- Message Context Menu -->
+<div class="Chat-context-menu" id="message-context-menu">
+    <ul class="Chat-context-menu-list">
+        <li class="Chat-context-menu-item" id="context-reply">
+            <i class="fas fa-reply"></i> Reply
+        </li>
+        <li class="Chat-context-menu-item" id="context-forward">
+            <i class="fas fa-share"></i> Forward
+        </li>
+        <li class="Chat-context-menu-item" id="context-copy">
+            <i class="fas fa-copy"></i> Copy Text
+        </li>
+        <li class="Chat-context-menu-item" id="context-download" style="display: none;">
+            <i class="fas fa-download"></i> Download File
+        </li>
+        <li class="Chat-context-menu-item Chat-context-menu-item-delete" id="context-delete">
+            <i class="fas fa-trash-alt"></i> Delete
+        </li>
+    </ul>
+</div>
+
+<!-- Delete Message Confirmation Modal -->
+<div class="JO-modal" id="delete-message-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Delete Message</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <p>Are you sure you want to delete this message?</p>
+            <div class="Chat-delete-message-preview" id="delete-message-preview">
+                <!-- Message preview will be added here -->
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-delete-btn">Cancel</button>
+            <button class="JO-button JO-danger-button" id="confirm-delete-btn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Leave Group Confirmation Modal -->
+<div class="JO-modal" id="leave-group-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Leave Group</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <p>Are you sure you want to leave this group?</p>
+            <p class="JO-text-muted">You won't receive any new messages from this group after leaving.</p>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-leave-btn">Cancel</button>
+            <button class="JO-button JO-danger-button" id="confirm-leave-btn">Leave Group</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="Chat-image-modal" id="image-viewer-modal">
+    <div class="Chat-image-modal-content">
+        <button class="Chat-image-modal-close">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="Chat-image-modal-body">
+            <img id="modal-image" src="" alt="Image Preview">
+        </div>
+        <div class="Chat-image-modal-actions">
+            <button class="Chat-image-action-btn" id="download-image-btn">
+                <i class="fas fa-download"></i> Download
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Emoji Picker -->
+<div class="Chat-emoji-picker" id="emoji-picker">
+    <div class="Chat-emoji-categories">
+        <button class="Chat-emoji-category active" data-category="recent">
+            <i class="fas fa-clock"></i>
+        </button>
+        <button class="Chat-emoji-category" data-category="smileys">
+            <i class="fas fa-smile"></i>
+        </button>
+        <button class="Chat-emoji-category" data-category="gestures">
+            <i class="fas fa-hand-paper"></i>
+        </button>
+        <button class="Chat-emoji-category" data-category="objects">
+            <i class="fas fa-lightbulb"></i>
+        </button>
+        <button class="Chat-emoji-category" data-category="nature">
+            <i class="fas fa-leaf"></i>
+        </button>
+        <button class="Chat-emoji-category" data-category="symbols">
+            <i class="fas fa-heart"></i>
+        </button>
+    </div>
+    <div class="Chat-emoji-container" id="emoji-container">
+        <!-- Emojis will be dynamically added here -->
+        <div class="Chat-emoji-grid active" data-category="recent">
+            <span class="Chat-emoji">❤️</span>
+            <span class="Chat-emoji">👍</span>
+            <span class="Chat-emoji">😊</span>
+            <span class="Chat-emoji">😂</span>
+            <span class="Chat-emoji">👋</span>
+            <span class="Chat-emoji">😠</span>
+            <span class="Chat-emoji">👏</span>
+            <span class="Chat-emoji">🙏</span>
+            <span class="Chat-emoji">🔥</span>
+            <span class="Chat-emoji">✨</span>
+            <span class="Chat-emoji">🎉</span>
+            <span class="Chat-emoji">👌</span>
+        </div>
+
+        <div class="Chat-emoji-grid" data-category="smileys">
+            <span class="Chat-emoji">😀</span>
+            <span class="Chat-emoji">😃</span>
+            <span class="Chat-emoji">😄</span>
+            <span class="Chat-emoji">😁</span>
+            <span class="Chat-emoji">😆</span>
+            <span class="Chat-emoji">😅</span>
+            <span class="Chat-emoji">🤣</span>
+            <span class="Chat-emoji">😂</span>
+            <span class="Chat-emoji">🙂</span>
+            <span class="Chat-emoji">🙃</span>
+            <span class="Chat-emoji">😉</span>
+            <span class="Chat-emoji">😊</span>
+            <span class="Chat-emoji">😇</span>
+            <span class="Chat-emoji">😍</span>
+            <span class="Chat-emoji">🥰</span>
+            <span class="Chat-emoji">😘</span>
+            <span class="Chat-emoji">😗</span>
+            <span class="Chat-emoji">😚</span>
+            <span class="Chat-emoji">😙</span>
+            <span class="Chat-emoji">😋</span>
+            <span class="Chat-emoji">😛</span>
+            <span class="Chat-emoji">😜</span>
+            <span class="Chat-emoji">🤪</span>
+            <span class="Chat-emoji">😝</span>
+            <span class="Chat-emoji">🤑</span>
+            <span class="Chat-emoji">🤗</span>
+            <span class="Chat-emoji">🤭</span>
+            <span class="Chat-emoji">🤫</span>
+            <span class="Chat-emoji">🤔</span>
+            <span class="Chat-emoji">🤐</span>
+            <span class="Chat-emoji">🤨</span>
+            <span class="Chat-emoji">😐</span>
+            <span class="Chat-emoji">😑</span>
+            <span class="Chat-emoji">😶</span>
+            <span class="Chat-emoji">😏</span>
+            <span class="Chat-emoji">😒</span>
+        </div>
+
+        <div class="Chat-emoji-grid" data-category="gestures">
+            <span class="Chat-emoji">👍</span>
+            <span class="Chat-emoji">👎</span>
+            <span class="Chat-emoji">👌</span>
+            <span class="Chat-emoji">✌️</span>
+            <span class="Chat-emoji">🤞</span>
+            <span class="Chat-emoji">🤟</span>
+            <span class="Chat-emoji">🤘</span>
+            <span class="Chat-emoji">👏</span>
+            <span class="Chat-emoji">🙌</span>
+            <span class="Chat-emoji">👐</span>
+            <span class="Chat-emoji">🤲</span>
+            <span class="Chat-emoji">🤝</span>
+            <span class="Chat-emoji">🙏</span>
+            <span class="Chat-emoji">✋</span>
+            <span class="Chat-emoji">🤚</span>
+            <span class="Chat-emoji">👋</span>
+            <span class="Chat-emoji">👊</span>
+            <span class="Chat-emoji">✊</span>
+            <span class="Chat-emoji">🤛</span>
+            <span class="Chat-emoji">🤜</span>
+            <span class="Chat-emoji">👈</span>
+            <span class="Chat-emoji">👉</span>
+            <span class="Chat-emoji">👆</span>
+            <span class="Chat-emoji">👇</span>
+            <span class="Chat-emoji">🖐️</span>
+        </div>
+
+        <div class="Chat-emoji-grid" data-category="objects">
+            <span class="Chat-emoji">💼</span>
+            <span class="Chat-emoji">📁</span>
+            <span class="Chat-emoji">📂</span>
+            <span class="Chat-emoji">📝</span>
+            <span class="Chat-emoji">📅</span>
+            <span class="Chat-emoji">📆</span>
+            <span class="Chat-emoji">🗓️</span>
+            <span class="Chat-emoji">📊</span>
+            <span class="Chat-emoji">📈</span>
+            <span class="Chat-emoji">📉</span>
+            <span class="Chat-emoji">📋</span>
+            <span class="Chat-emoji">📌</span>
+            <span class="Chat-emoji">📍</span>
+            <span class="Chat-emoji">📎</span>
+            <span class="Chat-emoji">🔗</span>
+            <span class="Chat-emoji">📏</span>
+            <span class="Chat-emoji">📐</span>
+            <span class="Chat-emoji">✂️</span>
+            <span class="Chat-emoji">🔒</span>
+            <span class="Chat-emoji">🔓</span>
+            <span class="Chat-emoji">🔑</span>
+            <span class="Chat-emoji">🔨</span>
+            <span class="Chat-emoji">🔧</span>
+            <span class="Chat-emoji">💡</span>
+            <span class="Chat-emoji">🔦</span>
+            <span class="Chat-emoji">🔋</span>
+            <span class="Chat-emoji">📱</span>
+            <span class="Chat-emoji">💻</span>
+            <span class="Chat-emoji">⌨️</span>
+            <span class="Chat-emoji">🖥️</span>
+            <span class="Chat-emoji">🖨️</span>
+            <span class="Chat-emoji">📷</span>
+            <span class="Chat-emoji">📸</span>
+            <span class="Chat-emoji">📹</span>
+            <span class="Chat-emoji">🎥</span>
+            <span class="Chat-emoji">📽️</span>
+        </div>
+
+        <div class="Chat-emoji-grid" data-category="nature">
+            <span class="Chat-emoji">🌍</span>
+            <span class="Chat-emoji">🌎</span>
+            <span class="Chat-emoji">🌏</span>
+            <span class="Chat-emoji">🌱</span>
+            <span class="Chat-emoji">🌲</span>
+            <span class="Chat-emoji">🌳</span>
+            <span class="Chat-emoji">🌴</span>
+            <span class="Chat-emoji">🌵</span>
+            <span class="Chat-emoji">🌷</span>
+            <span class="Chat-emoji">🌸</span>
+            <span class="Chat-emoji">🌹</span>
+            <span class="Chat-emoji">🌺</span>
+            <span class="Chat-emoji">🌻</span>
+            <span class="Chat-emoji">🌼</span>
+            <span class="Chat-emoji">🌞</span>
+            <span class="Chat-emoji">🌝</span>
+            <span class="Chat-emoji">🌛</span>
+            <span class="Chat-emoji">🌜</span>
+            <span class="Chat-emoji">🌚</span>
+            <span class="Chat-emoji">⭐</span>
+            <span class="Chat-emoji">🌟</span>
+            <span class="Chat-emoji">✨</span>
+            <span class="Chat-emoji">⚡</span>
+            <span class="Chat-emoji">☄️</span>
+            <span class="Chat-emoji">💥</span>
+            <span class="Chat-emoji">🔥</span>
+            <span class="Chat-emoji">🌈</span>
+            <span class="Chat-emoji">☀️</span>
+            <span class="Chat-emoji">🌤️</span>
+            <span class="Chat-emoji">⛅</span>
+            <span class="Chat-emoji">🌥️</span>
+            <span class="Chat-emoji">☁️</span>
+            <span class="Chat-emoji">🌦️</span>
+            <span class="Chat-emoji">🌧️</span>
+            <span class="Chat-emoji">⛈️</span>
+            <span class="Chat-emoji">🌩️</span>
+        </div>
+
+        <div class="Chat-emoji-grid" data-category="symbols">
+            <span class="Chat-emoji">❤️</span>
+            <span class="Chat-emoji">🧡</span>
+            <span class="Chat-emoji">💛</span>
+            <span class="Chat-emoji">💚</span>
+            <span class="Chat-emoji">💙</span>
+            <span class="Chat-emoji">💜</span>
+            <span class="Chat-emoji">🖤</span>
+            <span class="Chat-emoji">🤍</span>
+            <span class="Chat-emoji">🤎</span>
+            <span class="Chat-emoji">💔</span>
+            <span class="Chat-emoji">❣️</span>
+            <span class="Chat-emoji">💕</span>
+            <span class="Chat-emoji">💞</span>
+            <span class="Chat-emoji">💓</span>
+            <span class="Chat-emoji">💗</span>
+            <span class="Chat-emoji">💖</span>
+            <span class="Chat-emoji">💘</span>
+            <span class="Chat-emoji">💝</span>
+            <span class="Chat-emoji">💟</span>
+            <span class="Chat-emoji">☮️</span>
+            <span class="Chat-emoji">✝️</span>
+            <span class="Chat-emoji">☪️</span>
+            <span class="Chat-emoji">🕉️</span>
+            <span class="Chat-emoji">☸️</span>
+            <span class="Chat-emoji">✡️</span>
+            <span class="Chat-emoji">🔯</span>
+            <span class="Chat-emoji">🕎</span>
+            <span class="Chat-emoji">☯️</span>
+            <span class="Chat-emoji">☢️</span>
+            <span class="Chat-emoji">☣️</span>
+            <span class="Chat-emoji">📛</span>
+            <span class="Chat-emoji">⚠️</span>
+            <span class="Chat-emoji">🚸</span>
+            <span class="Chat-emoji">⛔</span>
+            <span class="Chat-emoji">🚫</span>
+            <span class="Chat-emoji">🚳</span>
+        </div>
+    </div>
+</div>
+
+<!-- Message Reactions -->
+<div class="Chat-reactions-menu" id="reactions-menu">
+    <div class="Chat-reactions-container">
+        <span class="Chat-reaction-emoji" data-emoji="❤️">❤️</span>
+        <span class="Chat-reaction-emoji" data-emoji="👍">👍</span>
+        <span class="Chat-reaction-emoji" data-emoji="😠">😠</span>
+        <span class="Chat-reaction-emoji" data-emoji="😊">😊</span>
+        <span class="Chat-reaction-emoji" data-emoji="👏">👏</span>
+        <span class="Chat-reaction-emoji" data-emoji="🙏">🙏</span>
+    </div>
+</div>
+
+<!-- Chat Settings Modal -->
+<div class="JO-modal" id="chat-settings-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Chat Settings</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-form-group">
+                <label class="JO-switch-label">
+                    <span>Desktop Notifications</span>
+                    <div class="JO-switch">
+                        <input type="checkbox" id="notifications-toggle">
+                        <span class="JO-switch-slider"></span>
+                    </div>
+                </label>
+                <p class="JO-text-muted">Receive desktop notifications for all incoming messages across all chats</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-primary-button" id="save-settings-btn">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/messages/chat.js' %}"></script>
+
+{% endblock %}

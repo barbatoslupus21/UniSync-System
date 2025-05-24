@@ -4,7 +4,7 @@
 {% block title %}UniSync - Job Order{% endblock %}
 
 {% block extra_css %}
-
+<link rel="stylesheet" href="{% static 'css/jo-common.css' %}">
 <link rel="stylesheet" href="{% static 'css/jo-approver.css' %}">
 {% endblock %}
 
@@ -39,7 +39,7 @@
                 <p><span class="AD-stat-trend up"></span> this month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-approved AD-stats-card">
             <div class="JO-stats-icon">
                 <i class="fas fa-check-circle"></i>
@@ -50,7 +50,7 @@
                 <p><span class="AD-stat-trend up"></span> this month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-pending AD-stats-card">
             <div class="JO-stats-icon">
                 <i class="fas fa-times-circle"></i>
@@ -61,7 +61,7 @@
                 <p><span class="AD-stat-trend down"></span> this month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-approval AD-stats-card">
             <div class="JO-stats-icon">
                 <i class="fas fa-hourglass-half"></i>
@@ -79,7 +79,7 @@
         <!-- Approval Stage Overview -->
         <div class="JO-card AD-approval-stages JO-chart-container">
             <div class="JO-card-header">
-                <h2>Approval Process Overview</h2>
+                <h2>Job Orders by Category per Month</h2>
                 <div class="JO-card-actions">
                     <select id="chart-period-selector" class="JO-select">
                         <option value="3month">Last 3 Months</option>
@@ -98,7 +98,7 @@
             <div class="JO-card-header">
                 <h2>Action Required <span class="AD-tag">Priority</span></h2>
             </div>
-            
+
             <div class="AD-priority-list" id="priority-list">
                 {% if pending_approvals %}
                     {% for approval in pending_approvals %}
@@ -160,7 +160,7 @@
                         {% endif %}
                     {% endfor %}
                 {% else %}
-                    <div class="AD-no-requests">
+                    <div class="AD-no-requests" id="all-caught-up-message">
                         <div class="AD-empty-state">
                             <i class="fas fa-check-circle"></i>
                             <h3>All caught up!</h3>
@@ -178,23 +178,23 @@
             <h2>Request History</h2>
             <div class="JO-card-actions">
                 <div class="JO-search-container">
-                    <input type="text" class="JO-search-input" placeholder="Search by JO Number, requester, type...">
+                    <input type="text" class="JO-search-input" placeholder="Search by JO Number, requester, type..." value="{{ search_query }}">
                     <button class="JO-search-button">
                         <i class="fas fa-search"></i>
                     </button>
                 </div>
                 <div class="JO-filter-container">
                     <select class="JO-select JO-filter-select">
-                        <option value="all" selected>All Categories</option>
-                        <option value="green">Green</option>
-                        <option value="yellow">Yellow</option>
-                        <option value="white">White</option>
-                        <option value="orange">Orange</option>
+                        <option value="all" {% if filter_value == 'all' %}selected{% endif %}>All Categories</option>
+                        <option value="green" {% if filter_value == 'green' %}selected{% endif %}>Green</option>
+                        <option value="yellow" {% if filter_value == 'yellow' %}selected{% endif %}>Yellow</option>
+                        <option value="white" {% if filter_value == 'white' %}selected{% endif %}>White</option>
+                        <option value="orange" {% if filter_value == 'orange' %}selected{% endif %}>Orange</option>
                     </select>
                 </div>
             </div>
         </div>
-        
+
         <div class="JO-table-container">
             <table class="JO-table AD-requests-table">
                 <thead>
@@ -204,40 +204,72 @@
                         <th>Tools</th>
                         <th>Nature of Changes</th>
                         <th>Status</th>
-                        <th>Requested By</th>
+                        <th>Requestor</th>
                         <th>Requested At</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for approval in approval_history %}
-                        <tr {% if approval.is_overdue %}class="AD-overdue-row"{% elif approval.is_today %}class="AD-due-today-row"{% endif %}>
-                            <td data-label="JO Number">{{ approval.jo_number.jo_number }}</td>
-                            <td data-label="Category"><span class="JO-category-pill JO-category-{{ approval.jo_number.jo_color|lower }}">{{ approval.jo_number.jo_color }}</span></td>
-                            <td data-label="Tools">{{ approval.jo_number.jo_tools }}</td>
-                            <td data-label="Type">{{ approval.jo_number.jo_type }}</td>
-                            <td data-label="Status"><span class="JO-status JO-status-{{ approval.jo_number.status|lower }}">{{ approval.jo_number.status }}</span></td>
-                            <td data-label="Preparer">{{ approval.jo_number.prepared_by.name}}</td>
-                            <td data-label="Requested at">
-                                <span class="AD-due-date {% if request_at <= three_days_ago%}overdue{% endif %}">
-                                    {{ approval.request_at|date:"M d, Y" }}
-                                </span>
-                            </td>
-                            <td data-label="Actions">
-                                <div class="AD-table-actions">
-                                    <button class="JO-icon-button" title="View Details" data-id="{{ approval.jo_number.id }}" data-number="{{ approval.jo_number.jo_number }}">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
+                    {% if approval_history %}
+                        {% for approval in approval_history %}
+                            <tr {% if approval.is_overdue %}class="AD-overdue-row"{% elif approval.is_today %}class="AD-due-today-row"{% endif %}>
+                                <td data-label="JO Number">{{ approval.jo_number.jo_number }}</td>
+                                <td data-label="Category"><span class="JO-category-pill JO-category-{{ approval.jo_number.jo_color|lower }}">{{ approval.jo_number.jo_color }}</span></td>
+                                <td data-label="Tools">{{ approval.jo_number.jo_tools }}</td>
+                                <td data-label="Type">{{ approval.jo_number.jo_type }}</td>
+                                <td data-label="Status"><span class="JO-status JO-status-{{ approval.jo_number.status|lower }}">{{ approval.jo_number.status }}</span></td>
+                                <td data-label="Requestor">{{ approval.jo_number.requestor }}</td>
+                                <td data-label="Requested at">
+                                    <span class="AD-due-date {% if request_at <= three_days_ago%}overdue{% endif %}">
+                                        {{ approval.request_at|date:"M d, Y" }}
+                                    </span>
+                                </td>
+                                <td data-label="Actions">
+                                    <div class="AD-table-actions">
+                                        <button class="JO-icon-button" title="View Details" data-id="{{ approval.jo_number.id }}" data-number="{{ approval.jo_number.jo_number }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9">
+                                <div class="JO-no-results">
+                                    <div class="JO-no-results-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <p class="JO-no-results-message">No matching Job Order requests found</p>
+                                    <p class="JO-no-results-hint">Try adjusting your search criteria</p>
                                 </div>
                             </td>
                         </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="7" class="JO-empty-table">No approval history found.</td>
-                        </tr>
-                    {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
+
+            <!-- Pagination -->
+            <div class="JO-pagination">
+                <div class="JO-pagination-info">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <div class="JO-pagination-controls">
+                    <div class="JO-pagination-nav-container">
+                        <button class="JO-pagination-btn disabled">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+
+                        <div class="JO-pagination-pages">
+                            <!-- Page numbers will be inserted here by JavaScript -->
+                        </div>
+
+                        <button class="JO-pagination-btn disabled">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </main>
@@ -253,9 +285,9 @@
         </div>
         <div class="JO-modal-body" id="jo-details-content">
             <!-- Loading state is shown initially -->
-            <div class="JO-loading text-center p-5">
-                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                <p>Loading job order details...</p>
+            <div class="JO-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
+                <p style="font-size: 16px; color: #666;">Loading job order details...</p>
             </div>
         </div>
         <div class="JO-modal-footer">
@@ -279,7 +311,7 @@
                 <i class="fas fa-check-circle JO-confirmation-icon success"></i>
                 <p class="JO-confirmation-message">Are you sure you want to approve job order <strong id="approve-jo-number"></strong>?</p>
                 <p class="JO-confirmation-submessage">This will move the request to the next stage in the approval process.</p>
-                
+
                 <form id="approve-form" method="POST" action="{% if request.user.job_order_approver %}{% url "approve_job_order" %}{% else %}{% url "approve_checking" %}{% endif %}">
                     {% csrf_token %}
                     <input type="hidden" name="jo_id" id="approve-jo-id">
@@ -311,7 +343,7 @@
                 <i class="fas fa-exclamation-triangle JO-confirmation-icon danger"></i>
                 <p class="JO-confirmation-message">Are you sure you want to reject job order <strong id="reject-jo-number"></strong>?</p>
                 <p class="JO-confirmation-submessage">This will return the request to the requestor with your feedback.</p>
-                
+
                 <form id="reject-form" method="POST" action="{% if request.user.job_order_approver %}{% url "reject_job_order" %}{% else %}{% url "reject_checking" %}{% endif %}">
                     {% csrf_token %}
                     <input type="hidden" name="jo_id" id="reject-jo-id">

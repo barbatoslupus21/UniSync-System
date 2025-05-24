@@ -32,7 +32,7 @@
                 <h2 class="UM-stats-number">{{ users_count }}</h2>
             </div>
         </div>
-        
+
         <div class="UM-stats-card UM-admin">
             <div class="UM-stats-icon">
                 <i class="fas fa-user-shield"></i>
@@ -42,7 +42,7 @@
                 <h2 class="UM-stats-number">{{ admin_count }}</h2>
             </div>
         </div>
-        
+
         <div class="UM-stats-card UM-active">
             <div class="UM-stats-icon">
                 <i class="fas fa-user-check"></i>
@@ -52,7 +52,7 @@
                 <h2 class="UM-stats-number">{{ active_count }}</h2>
             </div>
         </div>
-        
+
         <div class="UM-stats-card UM-inactive">
             <div class="UM-stats-icon">
                 <i class="fas fa-user-clock"></i>
@@ -82,11 +82,13 @@
                         <option value="job_order">Job Order</option>
                         <option value="manhours">Manhours</option>
                         <option value="monitoring">Monitoring</option>
+                        <option value="dcf">DCF</option>
+                        <option value="ecis">ECIS</option>
                     </select>
                 </div>
             </div>
         </div>
-        
+
         <div class="UM-table-container">
             <table class="UM-table">
                 <thead>
@@ -118,17 +120,25 @@
                                 {% if user.is_admin %}
                                 <span class="UM-permission-pill UM-admin-pill">Admin</span>
                                 {% endif %}
-                                
+
                                 {% if user.job_order_user %}
                                 <span class="UM-permission-pill UM-job-order-pill">Job Order</span>
                                 {% endif %}
-                                
+
                                 {% if user.manhours_user %}
                                 <span class="UM-permission-pill UM-manhours-pill">Manhours</span>
                                 {% endif %}
-                                
+
                                 {% if user.monitoring_user %}
                                 <span class="UM-permission-pill UM-monitoring-pill">Monitoring</span>
+                                {% endif %}
+
+                                {% if user.dcf_user %}
+                                <span class="UM-permission-pill UM-dcf-pill">DCF</span>
+                                {% endif %}
+
+                                {% if user.ecis_user %}
+                                <span class="UM-permission-pill UM-ecis-pill">ECIS</span>
                                 {% endif %}
                             </div>
                         </td>
@@ -162,7 +172,7 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- Pagination -->
         <div class="UM-pagination">
             <div class="UM-pagination-info">
@@ -177,7 +187,7 @@
                     <i class="fas fa-angle-left"></i>
                 </a>
                 {% endif %}
-                
+
                 {% for i in users.paginator.page_range %}
                     {% if users.number == i %}
                     <span class="UM-pagination-page active">{{ i }}</span>
@@ -185,7 +195,7 @@
                     <a href="?page={{ i }}" class="UM-pagination-page">{{ i }}</a>
                     {% endif %}
                 {% endfor %}
-                
+
                 {% if users.has_next %}
                 <a href="?page={{ users.next_page_number }}" class="UM-pagination-btn">
                     <i class="fas fa-angle-right"></i>
@@ -235,7 +245,7 @@
                     </div>
                     <input type="hidden" id="selected-avatar" name="avatar" value="{{ avatars.0.filename }}">
                 </div>
-                
+
                 <!-- Basic Information -->
                 <div class="UM-form-section">
                     <h3>Basic Information</h3>
@@ -244,12 +254,12 @@
                             <label for="id-number">ID Number</label>
                             <input type="text" id="id-number" name="id_number" class="UM-input" required>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="name">Full Name</label>
                             <input type="text" id="name" name="name" class="UM-input" required>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="position">Position</label>
                             <select id="position" name="position" class="UM-select" required>
@@ -259,7 +269,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="line">Line</label>
                             <select id="line" name="line" class="UM-select" required>
@@ -269,12 +279,12 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="username">Username</label>
                             <input type="text" id="username" name="username" class="UM-input" required>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="password">Password</label>
                             <div class="UM-password-field">
@@ -284,7 +294,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div class="UM-form-group UM-checkbox-wrapper">
                             <label class="UM-checkbox-container">
                                 <input type="checkbox" id="is-admin" name="is_admin">
@@ -293,11 +303,11 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Permissions -->
                 <div class="UM-form-section">
                     <h3>Permissions</h3>
-                    
+
                     <!-- Job Order Permissions -->
                     <div class="UM-permission-category">
                         <div class="UM-permission-header">
@@ -306,29 +316,29 @@
                                 <span class="UM-checkbox-label UM-category-label">Job Order Module</span>
                             </label>
                         </div>
-                        
+
                         <div class="UM-subpermissions" id="job-order-roles">
                             <div class="UM-radio-group">
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="requestor">
                                     <span class="UM-radio-label">Requestor</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="approver">
                                     <span class="UM-radio-label">Approver</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="checker">
                                     <span class="UM-radio-label">Checker</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="maintenance">
                                     <span class="UM-radio-label">Maintenance</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="facilitator">
                                     <span class="UM-radio-label">Facilitator</span>
@@ -336,7 +346,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Manhours Permissions -->
                     <div class="UM-permission-category">
                         <div class="UM-permission-header">
@@ -345,14 +355,14 @@
                                 <span class="UM-checkbox-label UM-category-label">Manhours Module</span>
                             </label>
                         </div>
-                        
+
                         <div class="UM-subpermissions" id="manhours-roles">
                             <div class="UM-radio-group">
                                 <label class="UM-radio-container">
                                     <input type="radio" name="manhours_role" value="staff">
                                     <span class="UM-radio-label">Staff</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="manhours_role" value="supervisor">
                                     <span class="UM-radio-label">Supervisor</span>
@@ -360,7 +370,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Monitoring Permissions -->
                     <div class="UM-permission-category">
                         <div class="UM-permission-header">
@@ -369,29 +379,29 @@
                                 <span class="UM-checkbox-label UM-category-label">Monitoring Module</span>
                             </label>
                         </div>
-                        
+
                         <div class="UM-subpermissions" id="monitoring-roles">
                             <div class="UM-radio-group">
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="staff">
                                     <span class="UM-radio-label">Staff</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="supervisor">
                                     <span class="UM-radio-label">Supervisor</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="manager">
                                     <span class="UM-radio-label">Manager</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="qad">
                                     <span class="UM-radio-label">QAD</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="sales">
                                     <span class="UM-radio-label">Sales</span>
@@ -399,8 +409,62 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- DCF Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="dcf-user" name="dcf_user">
+                                <span class="UM-checkbox-label UM-category-label">DCF Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="dcf-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="dcf_role" value="requestor">
+                                    <span class="UM-radio-label">Requestor</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="dcf_role" value="approver">
+                                    <span class="UM-radio-label">Approver</span>
+                                </label>
+                            </div>
+                            <div class="UM-validation-message" id="dcf-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
+                                Please select either Requestor or Approver role
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ECIS Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="ecis-user" name="ecis_user">
+                                <span class="UM-checkbox-label UM-category-label">ECIS Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="ecis-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="ecis_role" value="requestor">
+                                    <span class="UM-radio-label">Requestor</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="ecis_role" value="facilitator">
+                                    <span class="UM-radio-label">Facilitator</span>
+                                </label>
+                            </div>
+                            <div class="UM-validation-message" id="ecis-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
+                                Please select either Requestor or Facilitator role
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
+
                 <!-- User Approvers Section -->
                 <div class="UM-form-section">
                     <h3>User Approvers</h3>
@@ -417,7 +481,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                
+
                                 <div class="UM-form-group">
                                     <label for="approver-role-0">Role</label>
                                     <select name="approver_role[]" id="approver-role-0" class="UM-select" required>
@@ -427,7 +491,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                
+
                                 <div class="UM-form-group approver-user-group">
                                     <label for="approver-user-0">Approver</label>
                                     <select name="approver_user[]" id="approver-user-0" class="UM-select" required>
@@ -437,7 +501,7 @@
                                         {% endfor %}
                                     </select>
                                 </div>
-                                
+
                                 <div class="UM-approver-actions">
                                     <button type="button" class="UM-icon-button UM-remove-approver-btn" disabled>
                                         <i class="fas fa-trash-alt"></i>
@@ -445,7 +509,7 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <button type="button" id="add-approver-btn" class="UM-button UM-secondary-button">
                             <i class="fas fa-plus"></i> Add Another Approver
                         </button>
@@ -496,7 +560,7 @@
                     </div>
                     <input type="hidden" id="edit-selected-avatar" name="avatar" value="{{ avatars.0.filename }}">
                 </div>
-                
+
                 <!-- Basic Information -->
                 <div class="UM-form-section">
                     <h3>Basic Information</h3>
@@ -505,12 +569,12 @@
                             <label for="edit-id-number">ID Number</label>
                             <input type="text" id="edit-id-number" name="id_number" class="UM-input" required>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="edit-name">Full Name</label>
                             <input type="text" id="edit-name" name="name" class="UM-input" required>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="edit-position">Position</label>
                             <select id="edit-position" name="position" class="UM-select" required>
@@ -520,7 +584,7 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="edit-line">Line</label>
                             <select id="edit-line" name="line" class="UM-select" required>
@@ -530,12 +594,12 @@
                                 {% endfor %}
                             </select>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="edit-username">Username</label>
                             <input type="text" id="edit-username" name="username" class="UM-input" required>
                         </div>
-                        
+
                         <div class="UM-form-group">
                             <label for="edit-password">Password (leave blank to keep current)</label>
                             <div class="UM-password-field">
@@ -545,7 +609,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div class="UM-form-group UM-checkbox-wrapper">
                             <label class="UM-checkbox-container">
                                 <input type="checkbox" id="edit-is-admin" name="is_admin">
@@ -554,11 +618,11 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Permissions -->
                 <div class="UM-form-section">
                     <h3>Permissions</h3>
-                    
+
                     <!-- Job Order Permissions -->
                     <div class="UM-permission-category">
                         <div class="UM-permission-header">
@@ -567,29 +631,29 @@
                                 <span class="UM-checkbox-label UM-category-label">Job Order Module</span>
                             </label>
                         </div>
-                        
+
                         <div class="UM-subpermissions" id="edit-job-order-roles">
                             <div class="UM-radio-group">
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="requestor">
                                     <span class="UM-radio-label">Requestor</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="approver">
                                     <span class="UM-radio-label">Approver</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="checker">
                                     <span class="UM-radio-label">Checker</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="maintenance">
                                     <span class="UM-radio-label">Maintenance</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="job_order_role" value="facilitator">
                                     <span class="UM-radio-label">Facilitator</span>
@@ -597,7 +661,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Manhours Permissions -->
                     <div class="UM-permission-category">
                         <div class="UM-permission-header">
@@ -606,14 +670,14 @@
                                 <span class="UM-checkbox-label UM-category-label">Manhours Module</span>
                             </label>
                         </div>
-                        
+
                         <div class="UM-subpermissions" id="edit-manhours-roles">
                             <div class="UM-radio-group">
                                 <label class="UM-radio-container">
                                     <input type="radio" name="manhours_role" value="staff">
                                     <span class="UM-radio-label">Staff</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="manhours_role" value="supervisor">
                                     <span class="UM-radio-label">Supervisor</span>
@@ -621,7 +685,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Monitoring Permissions -->
                     <div class="UM-permission-category">
                         <div class="UM-permission-header">
@@ -630,29 +694,29 @@
                                 <span class="UM-checkbox-label UM-category-label">Monitoring Module</span>
                             </label>
                         </div>
-                        
+
                         <div class="UM-subpermissions" id="edit-monitoring-roles">
                             <div class="UM-radio-group">
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="staff">
                                     <span class="UM-radio-label">Staff</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="supervisor">
                                     <span class="UM-radio-label">Supervisor</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="manager">
                                     <span class="UM-radio-label">Manager</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="qad">
                                     <span class="UM-radio-label">QAD</span>
                                 </label>
-                                
+
                                 <label class="UM-radio-container">
                                     <input type="radio" name="monitoring_role" value="sales">
                                     <span class="UM-radio-label">Sales</span>
@@ -660,8 +724,62 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- DCF Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-dcf-user" name="dcf_user">
+                                <span class="UM-checkbox-label UM-category-label">DCF Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-dcf-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="dcf_role" value="requestor">
+                                    <span class="UM-radio-label">Requestor</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="dcf_role" value="approver">
+                                    <span class="UM-radio-label">Approver</span>
+                                </label>
+                            </div>
+                            <div class="UM-validation-message" id="edit-dcf-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
+                                Please select either Requestor or Approver role
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ECIS Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-ecis-user" name="ecis_user">
+                                <span class="UM-checkbox-label UM-category-label">ECIS Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-ecis-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="ecis_role" value="requestor">
+                                    <span class="UM-radio-label">Requestor</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="ecis_role" value="facilitator">
+                                    <span class="UM-radio-label">Facilitator</span>
+                                </label>
+                            </div>
+                            <div class="UM-validation-message" id="edit-ecis-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
+                                Please select either Requestor or Facilitator role
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                
+
                 <!-- User Approvers Section -->
                 <div class="UM-form-section">
                     <h3>User Approvers</h3>
@@ -669,7 +787,7 @@
                         <div id="edit-approvers-list">
                             <!-- Approver rows will be added dynamically -->
                         </div>
-                        
+
                         <button type="button" id="edit-add-approver-btn" class="UM-button UM-secondary-button">
                             <i class="fas fa-plus"></i> Add Another Approver
                         </button>

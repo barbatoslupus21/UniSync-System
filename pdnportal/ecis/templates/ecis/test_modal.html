@@ -1,0 +1,132 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}ECIS Modal Test{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>ECIS Modal Test Page</h1>
+    <p>This page is for testing the ECIS details modal functionality.</p>
+    
+    <button id="test-modal-btn" class="btn btn-primary">Open Test Modal</button>
+    
+    <!-- ECIS Details Modal -->
+    <div class="ecis-modal" id="ecis-details-modal">
+        <div class="ecis-modal-content">
+            <div class="ecis-modal-header">
+                <h2>ECIS Details</h2>
+                <button class="ecis-modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="ecis-modal-body" id="ecis-details-content">
+                <!-- Loading state initially -->
+                <div class="ecis-loading-state">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i>
+                    <p>Loading ECIS details...</p>
+                </div>
+                
+                <!-- Content will be loaded via JavaScript -->
+            </div>
+            <div class="ecis-modal-footer">
+                <button class="ecis-button ecis-secondary-button ecis-close-details">Close</button>
+                <div id="ecis-action-buttons">
+                    <!-- Dynamic buttons will be added here based on ECIS status -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Function to open modal
+    function openModal(modal) {
+        if (modal) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+    
+    // Function to close modal
+    function closeModal(modal) {
+        if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Test button click handler
+    const testBtn = document.getElementById('test-modal-btn');
+    const modal = document.getElementById('ecis-details-modal');
+    
+    if (testBtn && modal) {
+        testBtn.addEventListener('click', function() {
+            openModal(modal);
+            
+            // Simulate loading data
+            setTimeout(function() {
+                const detailsContent = document.getElementById('ecis-details-content');
+                if (detailsContent) {
+                    detailsContent.innerHTML = `
+                        <div class="ecis-details-header">
+                            <div class="ecis-details-id">
+                                <h3 id="ecis-detail-number">TEST-123</h3>
+                                <span class="ecis-category-pill ecis-cat-A">A</span>
+                                <span class="ecis-status ecis-status-approved">Approved</span>
+                            </div>
+                            <div class="ecis-details-date">
+                                <p>Date Prepared: <span id="ecis-detail-date">Jan 1, 2023</span></p>
+                                <p>Last Updated: <span id="ecis-detail-updated">Jan 2, 2023</span></p>
+                            </div>
+                        </div>
+
+                        <div class="ecis-details-section">
+                            <h4>Basic Information</h4>
+                            <div class="ecis-details-grid">
+                                <div class="ecis-details-item">
+                                    <span class="ecis-details-label">Department</span>
+                                    <span class="ecis-details-value" id="ecis-detail-department">Test Department</span>
+                                </div>
+                                <div class="ecis-details-item">
+                                    <span class="ecis-details-label">Requested By</span>
+                                    <span class="ecis-details-value" id="ecis-detail-requester">Test User</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="ecis-details-section">
+                            <h4>Test Section</h4>
+                            <div class="ecis-details-item">
+                                <span class="ecis-details-label">Test Label</span>
+                                <span class="ecis-details-value">Test Value</span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    console.log('Test modal content updated');
+                } else {
+                    console.error('Details content element not found');
+                }
+            }, 1000);
+        });
+    }
+    
+    // Close button handlers
+    const closeButtons = document.querySelectorAll('.ecis-modal-close, .ecis-close-details');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const modal = this.closest('.ecis-modal');
+            closeModal(modal);
+        });
+    });
+    
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('ecis-modal') && e.target.classList.contains('active')) {
+            closeModal(e.target);
+        }
+    });
+});
+</script>
+{% endblock %}

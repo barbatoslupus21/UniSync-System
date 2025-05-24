@@ -1,0 +1,525 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - ECIS Registry{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/ecis/ecis.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title and action button -->
+    <div class="ecis-header">
+        <div class="ecis-title-section">
+            <h1 class="ecis-page-title">ECIS Registry</h1>
+            <p class="ecis-subtitle">Create, manage and track your engineering change requests</p>
+        </div>
+        <button id="new-ecis-btn" class="ecis-button ecis-primary-button">
+            <i class="fas fa-plus"></i> Request New ECIS
+        </button>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="ecis-stats-container">
+        <div class="ecis-stats-card ecis-total">
+            <div class="ecis-stats-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="ecis-stats-content">
+                <h3>Total Requests</h3>
+                <h2 class="ecis-stats-number">{{ total_count }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+
+        <div class="ecis-stats-card ecis-approved">
+            <div class="ecis-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="ecis-stats-content">
+                <h3>Approved</h3>
+                <h2 class="ecis-stats-number">{{ approved_count }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+
+        <div class="ecis-stats-card ecis-pending">
+            <div class="ecis-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="ecis-stats-content">
+                <h3>On Hold</h3>
+                <h2 class="ecis-stats-number">{{ onhold_count }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+
+        <div class="ecis-stats-card ecis-review">
+            <div class="ecis-stats-icon">
+                <i class="fas fa-sync"></i>
+            </div>
+            <div class="ecis-stats-content">
+                <h3>For Review</h3>
+                <h2 class="ecis-stats-number">{{ review_count }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main content grid -->
+    <div class="ecis-main-content-grid">
+        <!-- Chart section -->
+        <div class="ecis-card ecis-chart-container">
+            <div class="ecis-card-header">
+                <h2>Monthly ECIS Status Breakdown</h2>
+                <div class="ecis-card-actions">
+                    <select id="chart-period-selector" class="ecis-select">
+                        <option value="3month">Last 3 Months</option>
+                        <option value="6month" selected>Last 6 Months</option>
+                        <option value="1year">Last Year</option>
+                    </select>
+                </div>
+            </div>
+            <div class="ecis-chart-wrapper">
+                <canvas id="ecis-stats-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- ECIS Notifications -->
+        <div class="ecis-card ecis-notifications-card">
+            <div class="ecis-card-header">
+                <h2>ECIS Notifications</h2>
+                <div class="ecis-card-actions">
+                    <button class="ecis-button ecis-text-button ecis-refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="ecis-notifications-list">
+                {% if onhold_items or review_items or revision_items %}
+                    {% if onhold_items %}
+                        <div class="ecis-notification-section">
+                            <h3 class="ecis-notification-title">
+                                <i class="fas fa-pause-circle"></i> On Hold Items
+                            </h3>
+                            <div class="ecis-notification-items">
+                                {% for item in onhold_items %}
+                                <div class="ecis-notification-item ecis-onhold-item">
+                                    <div class="ecis-notification-content">
+                                        <div class="ecis-notification-header">
+                                            <span class="ecis-notification-number">{{ item.number }}</span>
+                                            <span class="ecis-status ecis-status-onhold">
+                                                <i class="fas fa-pause" style="margin-right: 5px;"></i>
+                                                On Hold
+                                            </span>
+                                        </div>
+                                        <p class="ecis-notification-message">
+                                            {{ item.facilitator_remarks|truncatechars:100 }}
+                                        </p>
+                                        <div class="ecis-notification-date">
+                                            <i class="far fa-calendar-alt"></i> {{ item.last_updated|date:"M d, Y" }}
+                                        </div>
+                                    </div>
+                                    <button class="ecis-button ecis-secondary-button ecis-view-notification" data-id="{{ item.id }}">
+                                        View
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if revision_items %}
+                        <div class="ecis-notification-section">
+                            <h3 class="ecis-notification-title">
+                                <i class="fas fa-edit"></i> Needs Revision Items
+                            </h3>
+                            <div class="ecis-notification-items">
+                                {% for item in revision_items %}
+                                <div class="ecis-notification-item ecis-revision-item">
+                                    <div class="ecis-notification-content">
+                                        <div class="ecis-notification-header">
+                                            <span class="ecis-notification-number">{{ item.number }}</span>
+                                            <span class="ecis-status ecis-status-needsrevision">
+                                                <i class="fas fa-edit" style="margin-right: 5px;"></i>
+                                                Needs Revision
+                                            </span>
+                                        </div>
+                                        <p class="ecis-notification-message">
+                                            {{ item.facilitator_remarks|truncatechars:100 }}
+                                        </p>
+                                        <div class="ecis-notification-date">
+                                            <i class="far fa-calendar-alt"></i> {{ item.last_updated|date:"M d, Y" }}
+                                        </div>
+                                    </div>
+                                    <button class="ecis-button ecis-secondary-button ecis-view-notification" data-id="{{ item.id }}">
+                                        View
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if review_items %}
+                        <div class="ecis-notification-section">
+                            <h3 class="ecis-notification-title">
+                                <i class="fas fa-sync"></i> For Review Items
+                            </h3>
+                            <div class="ecis-notification-items">
+                                {% for item in review_items %}
+                                <div class="ecis-notification-item ecis-review-item">
+                                    <div class="ecis-notification-content">
+                                        <div class="ecis-notification-header">
+                                            <span class="ecis-notification-number">{{ item.number }}</span>
+                                            <span class="ecis-status ecis-status-forreview">
+                                                <i class="fas fa-sync-alt" style="margin-right: 5px;"></i>
+                                                For Review
+                                            </span>
+                                        </div>
+                                        <p class="ecis-notification-message">
+                                            Submitted for review on {{ item.last_updated|date:"M d, Y" }}
+                                        </p>
+                                        <div class="ecis-notification-date">
+                                            <i class="far fa-clock"></i> Awaiting approval
+                                        </div>
+                                    </div>
+                                    <button class="ecis-button ecis-secondary-button ecis-view-notification" data-id="{{ item.id }}">
+                                        View
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="ecis-empty-notifications">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No pending notifications</p>
+                        <span>All your ECIS requests are up to date</span>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- My ECIS Requests Section -->
+    <div class="ecis-card ecis-my-requests" id="my-ecis-requests">
+        <div class="ecis-card-header">
+            <h2>My ECIS Requests</h2>
+            <div class="ecis-card-actions">
+                <div class="ecis-search-container">
+                    <input type="text" class="ecis-search-input" placeholder="Search by ECIS Number, department...">
+                    <button class="ecis-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="ecis-filter-container">
+                    <select class="ecis-select ecis-filter-select">
+                        <option value="all">All Statuses</option>
+                        <option value="approved">Approved</option>
+                        <option value="onhold">On Hold</option>
+                        <option value="review">For Review</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="ecis-table-container">
+            <table class="ecis-table">
+                <thead>
+                    <tr>
+                        <th>ECIS Number</th>
+                        <th>Category</th>
+                        <th>Department</th>
+                        <th>Prepared By</th>
+                        <th>Customer</th>
+                        <th>Implementation Date</th>
+                        <th>Status</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ecis in ecis_list %}
+                    <tr data-status="{{ ecis.status|lower }}" {% if ecis.status == 'On Hold' %}class="ecis-warning-row"{% endif %}>
+                        <td data-label="ECIS Number">{{ ecis.number }}</td>
+                        <td data-label="Category"><span class="ecis-category-pill ecis-cat-{{ ecis.category }}">{{ ecis.category }}</span></td>
+                        <td data-label="Department">{{ ecis.department }}</td>
+                        <td data-label="Prepared By">{{ ecis.requested_by }}</td>
+                        <td data-label="Customer">{{ ecis.customer }}</td>
+                        <td data-label="Implementation Date">{{ ecis.implementation_date|date:"M d, Y" }}</td>
+                        <td data-label="Status">
+                            <span class="ecis-status ecis-status-{{ ecis.status|lower|cut:" " }}">
+                                {% if ecis.status == "For Review" %}
+                                    <i class="fas fa-sync-alt" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "Needs Revision" %}
+                                    <i class="fas fa-edit" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "Approved" %}
+                                    <i class="fas fa-check" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "On Hold" %}
+                                    <i class="fas fa-pause" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "Canceled" %}
+                                    <i class="fas fa-times" style="margin-right: 5px;"></i>
+                                {% endif %}
+                                {{ ecis.status }}
+                            </span>
+                        </td>
+                        <td data-label="Last Updated">{{ ecis.last_updated|date:"M d, Y" }}</td>
+                        <td data-label="Actions">
+                            <button class="ecis-icon-button" title="View Details" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if ecis.status == "Approved" or ecis.status == "On Hold" or ecis.status == "Needs Revision" %}
+                            <button class="ecis-icon-button ecis-edit-btn" title="Edit Request" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="ecis-empty-table">No ECIS requests found. Click "Request New ECIS" to create one.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="ecis-pagination">
+            <div class="ecis-pagination-info">
+                Showing <span>{{ page_obj.start_index }}-{{ page_obj.end_index }}</span> of <span>{{ paginator.count }}</span> entries
+            </div>
+            <div class="ecis-pagination-pages">
+                <button class="ecis-pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}" id="prev-page">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="ecis-page-numbers">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1" class="ecis-pagination-page">1</a>
+                        {% if page_obj.previous_page_number != 1 %}
+                            {% if page_obj.previous_page_number != 2 %}
+                                <span class="ecis-pagination-ellipsis">...</span>
+                            {% endif %}
+                            <a href="?page={{ page_obj.previous_page_number }}" class="ecis-pagination-page">{{ page_obj.previous_page_number }}</a>
+                        {% endif %}
+                    {% endif %}
+
+                    <span class="ecis-pagination-page active">{{ page_obj.number }}</span>
+
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}" class="ecis-pagination-page">{{ page_obj.next_page_number }}</a>
+                        {% if page_obj.next_page_number != paginator.num_pages %}
+                            {% if page_obj.next_page_number != paginator.num_pages|add:"-1" %}
+                                <span class="ecis-pagination-ellipsis">...</span>
+                            {% endif %}
+                            <a href="?page={{ paginator.num_pages }}" class="ecis-pagination-page">{{ paginator.num_pages }}</a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                <button class="ecis-pagination-btn {% if not page_obj.has_next %}disabled{% endif %}" id="next-page">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- New ECIS Modal -->
+<div class="ecis-modal" id="new-ecis-modal">
+    <div class="ecis-modal-content">
+        <div class="ecis-modal-header">
+            <h2>Request New ECIS</h2>
+            <button class="ecis-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="ecis-form" method="POST" action="{% url 'ecis_create' %}" data-create-url="{% url 'ecis_create' %}" novalidate>
+            {% csrf_token %}
+            <div class="ecis-modal-body">
+                <div class="ecis-form-section">
+                    <h3>ECIS Category</h3>
+                    <div class="ecis-form-group ecis-category-options">
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="OR" required oninvalid="event.preventDefault();">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-OR">Customer / Complaint Countermeasure (OR)</span>
+                        </label>
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="YE">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-YE">Yokodoshi (YE)</span>
+                        </label>
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="PN">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-PN">Manpower Related (PN)</span>
+                        </label>
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="LG">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-LG">Productivity / Tooling Improvement (LG)</span>
+                        </label>
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="GR">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-GR">Customer Request (GR)</span>
+                        </label>
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="L">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-L">Material Related (L)</span>
+                        </label>
+                        <label class="ecis-checkbox-container">
+                            <input type="radio" name="category" value="GY">
+                            <span class="ecis-checkbox-label ecis-category-label ecis-cat-GY">Machine Related (GY)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="ecis-form-grid">
+                    <div class="ecis-form-group">
+                        <label for="department">Department</label>
+                        <input type="text" id="department" name="department" class="ecis-input" required oninvalid="event.preventDefault();">
+                    </div>
+                    <div class="ecis-form-group">
+                        <label for="requested-by">Requested By</label>
+                        <input type="text" id="requested-by" name="requested_by" class="ecis-input" required value="{{ request.user.name }}" oninvalid="event.preventDefault();">
+                    </div>
+                    <div class="ecis-form-group">
+                        <label for="customer">Customer</label>
+                        <input type="text" id="customer" name="customer" class="ecis-input">
+                    </div>
+                    <div class="ecis-form-group">
+                        <label for="line-supervisor">Line Supervisor</label>
+                        <input type="text" id="line-supervisor" name="line_supervisor" class="ecis-input">
+                    </div>
+                </div>
+
+                <div class="ecis-form-group">
+                    <label for="affected-parts">Affected Parts</label>
+                    <textarea id="affected-parts" name="affected_parts" class="ecis-textarea" rows="3" required oninvalid="event.preventDefault();"></textarea>
+                </div>
+
+                <div class="ecis-form-group">
+                    <label for="details-change">Details of Change</label>
+                    <textarea id="details-change" name="details_change" class="ecis-textarea" rows="4" required oninvalid="event.preventDefault();"></textarea>
+                </div>
+
+                <div class="ecis-form-group">
+                    <label for="implementation-date">Implementation Date</label>
+                    <input type="date" id="implementation-date" name="implementation_date" class="ecis-input" required oninvalid="event.preventDefault();">
+                </div>
+            </div>
+            <div class="ecis-modal-footer">
+                <button type="button" class="ecis-button ecis-secondary-button ecis-cancel-btn">Cancel</button>
+                <button type="button" class="ecis-button ecis-primary-button" id="ecis-submit-btn">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ECIS Details Modal -->
+<div class="ecis-modal" id="ecis-details-modal">
+    <div class="ecis-modal-content">
+        <div class="ecis-modal-header">
+            <h2>ECIS Details</h2>
+            <button class="ecis-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="ecis-modal-body" id="ecis-details-content">
+            <!-- Loading state initially -->
+            <div class="ecis-loading-state">
+                <i class="fas fa-spinner fa-spin fa-2x"></i>
+                <p>Loading ECIS details...</p>
+            </div>
+
+            <!-- Content will be loaded via AJAX -->
+        </div>
+        <div class="ecis-modal-footer">
+            <button class="ecis-button ecis-secondary-button ecis-close-details">Close</button>
+            <div id="ecis-action-buttons">
+                <!-- Dynamic buttons will be added here based on ECIS status -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal for ECIS Submission Success -->
+<div class="ecis-modal ecis-confirmation-modal" id="ecis-confirmation-modal">
+    <div class="ecis-modal-content">
+        <div class="ecis-modal-header">
+            <h2>ECIS Submitted Successfully</h2>
+            <button class="ecis-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="ecis-modal-body">
+            <div class="ecis-confirmation-container">
+                <div class="ecis-confirmation-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <p class="ecis-confirmation-message">
+                    Your ECIS request has been submitted.
+                </p>
+                <div class="ecis-ecis-number">
+                    <h3>ECIS Number:</h3>
+                    <span id="new-ecis-number"></span>
+                </div>
+                <p class="ecis-confirmation-submessage">
+                    You can view and track your ECIS request in the main dashboard.
+                </p>
+            </div>
+        </div>
+        <div class="ecis-modal-footer">
+            <button class="ecis-button ecis-primary-button ecis-confirm-ok">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Confirmation Modal -->
+<div class="ecis-modal ecis-confirmation-modal" id="confirm-cancel-modal">
+    <div class="ecis-modal-content">
+        <div class="ecis-modal-header">
+            <h2>Confirm Cancellation</h2>
+            <button class="ecis-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="ecis-modal-body">
+            <div class="ecis-confirmation-container">
+                <div class="ecis-confirmation-icon ecis-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <p class="ecis-confirmation-message">
+                    Are you sure you want to cancel ECIS request <strong id="cancel-ecis-number"></strong>?
+                </p>
+                <p class="ecis-confirmation-submessage">
+                    This action cannot be undone. The ECIS request will be permanently canceled.
+                </p>
+
+                <form id="cancel-form" method="POST">
+                    {% csrf_token %}
+                    <div class="ecis-form-group">
+                        <label for="cancel-remarks">Cancellation Reason (Optional)</label>
+                        <textarea id="cancel-remarks" name="remarks" rows="3" class="ecis-textarea" placeholder="Please provide a reason for cancellation..."></textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="ecis-modal-footer">
+            <button class="ecis-button ecis-secondary-button" id="cancel-confirmation">No, Keep It</button>
+            <button class="ecis-button ecis-danger-button" id="confirm-cancel-btn">Yes, Cancel Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/ecis/ecis-common.js' %}"></script>
+<script src="{% static 'js/ecis/ecis-requestor.js' %}"></script>
+<script src="{% static 'js/ecis/ecis-chart.js' %}"></script>
+<script src="{% static 'js/ecis/ecis-table-filters.js' %}"></script>
+{% endblock %}

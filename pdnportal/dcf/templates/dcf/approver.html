@@ -1,0 +1,458 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - DCF Approval{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dcf/dcf-requestor.css' %}">
+<link rel="stylesheet" href="{% static 'css/dcf/dcf-approver.css' %}">
+<link rel="stylesheet" href="{% static 'css/dcf/dcf-no-results.css' %}">
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<main class="main-content">
+    <!-- Header with page title -->
+    <div class="DCF-header">
+        <div class="DCF-title-section">
+            <h1 class="DCF-page-title">DCF Approval Management</h1>
+            <p class="DCF-subtitle">Review and approve document change requests</p>
+        </div>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="DCF-stats-container">
+        <div class="DCF-stats-card DCF-total">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Total Requests</h3>
+                <h2 class="DCF-stats-number">{{ total_dcfs }}</h2>
+                <p>All time</p>
+            </div>
+        </div>
+
+        <div class="DCF-stats-card DCF-process">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-spinner"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Pending Approval</h3>
+                <h2 class="DCF-stats-number">{{ pending_dcfs }}</h2>
+                <p>Awaiting review</p>
+            </div>
+        </div>
+
+        <div class="DCF-stats-card DCF-approved">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Approved</h3>
+                <h2 class="DCF-stats-number">{{ approved_dcfs }}</h2>
+                <p>Successfully completed</p>
+            </div>
+        </div>
+
+        <div class="DCF-stats-card DCF-rejected">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Rejected</h3>
+                <h2 class="DCF-stats-number">{{ rejected_dcfs }}</h2>
+                <p>Declined requests</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart and Recent Activity -->
+    <div class="DCF-main-content-grid">
+        <!-- Chart section -->
+        <div class="DCF-card DCF-chart-container">
+            <div class="DCF-card-header">
+                <h2>Approval Status Distribution</h2>
+                <div class="DCF-card-actions">
+                    <select id="chart-period-selector" class="DCF-select">
+                        <option value="this_week">This Week</option>
+                        <option value="this_month" selected>This Month</option>
+                        <option value="quarterly">Quarterly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="DCF-chart-wrapper">
+                <canvas id="dcf-approval-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Activity section -->
+        <div class="DCF-card DCF-recent-activity">
+            <div class="DCF-card-header">
+                <h2>Recent Activity</h2>
+                <div class="DCF-card-actions">
+                    <button class="DCF-button DCF-text-button DCF-refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="DCF-activity-list">
+                {% if all_activity %}
+                    {% for activity in all_activity %}
+                    {% if activity.dcf %}
+                    {% with days_until_effectivity=activity.dcf.effectivity_date|timeuntil:activity.dcf.date_filed|default:"0" %}
+                    <div class="DCF-activity-item {% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}DCF-urgent-row{% endif %}">
+                        <div class="DCF-activity-icon
+                            {% if activity.status == 'approved' %}DCF-icon-approved
+                            {% elif activity.status == 'rejected' %}DCF-icon-rejected
+                            {% elif activity.status == 'pending' %}DCF-icon-pending
+                            {% else %}DCF-icon-new{% endif %}">
+                            <i class="fas
+                                {% if activity.status == 'approved' %}fa-check-circle
+                                {% elif activity.status == 'rejected' %}fa-times-circle
+                                {% elif activity.status == 'pending' %}fa-clock
+                                {% else %}fa-edit{% endif %}"></i>
+                        </div>
+                        <div class="DCF-activity-content">
+                            <p class="DCF-activity-text">
+                                {% if activity.status == 'pending' %}
+                                <strong>{{ activity.dcf.requisitioner.name }}</strong>
+                                submitted
+                                {% else %}
+                                <strong>{{ activity.approver.name }}</strong>
+                                {{ activity.status }}
+                                {% endif %}
+                                <span class="DCF-activity-dcf" data-id="{{ activity.dcf.id }}">{{ activity.dcf.dcf_number }}</span>
+                                {% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}
+                                <span class="DCF-tooltip">
+                                    <i class="fas fa-exclamation-triangle DCF-warning-icon"></i>
+                                    <span class="DCF-tooltip-text">Warning: Effectivity date is more than 1 week from filing date!</span>
+                                </span>
+                                {% endif %}
+                            </p>
+                            <p class="DCF-activity-details">
+                                <span class="DCF-activity-doc-code">{{ activity.dcf.document_code }}</span> -
+                                <span class="DCF-activity-doc-title">{{ activity.dcf.document_title }}</span>
+                            </p>
+                            <p class="DCF-activity-effectivity">
+                                <i class="far fa-calendar-alt"></i> Effectivity: <span class="DCF-effectivity-date">{{ activity.dcf.effectivity_date|date:"M d, Y" }}</span>
+                            </p>
+                            <p class="DCF-activity-time">
+                                {% if activity.status == 'pending' %}
+                                {{ activity.date_acted|timesince }} ago - Awaiting approval
+                                {% else %}
+                                {{ activity.date_acted|timesince }} ago
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% endwith %}
+                    {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="DCF-empty-state">
+                        <div class="DCF-empty-icon">
+                            <i class="fas fa-history"></i>
+                        </div>
+                        <p class="DCF-empty-text">No recent activity found</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Approvals Section -->
+    <div class="DCF-card DCF-approval-requests">
+        <div class="DCF-card-header">
+            <h2>Pending Approval Requests</h2>
+            <div class="DCF-card-actions">
+                <div class="DCF-search-container">
+                    <input type="text" class="DCF-search-input" placeholder="Search by DCF Number, title, requisitioner...">
+                    <button class="DCF-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="DCF-filter-container">
+                    <select class="DCF-select DCF-filter-select">
+                        <option value="all" selected>All Requests</option>
+                        <option value="my-department">My Department</option>
+                        <option value="urgent">Urgent Requests</option>
+                        <option value="recent">Recently Filed</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="DCF-table-container">
+            <table class="DCF-table">
+                <thead>
+                    <tr>
+                        <th>DCF Number</th>
+                        <th>Requisitioner</th>
+                        <th>Document Title</th>
+                        <th>Document Code</th>
+                        <th>Nature</th>
+                        <th>Filed Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pending-approvals-body">
+                    {% if pending_approvals %}
+                        {% for dcf in pending_approvals %}
+                        {% with days_until_effectivity=dcf.effectivity_date|timeuntil:dcf.date_filed|default:"0" %}
+                        <tr class="{% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}DCF-urgent-row{% endif %}">
+                            <td data-label="DCF Number">
+                                {{ dcf.dcf_number }}
+                                {% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}
+                                <span class="DCF-tooltip">
+                                    <i class="fas fa-exclamation-triangle DCF-warning-icon"></i>
+                                    <span class="DCF-tooltip-text">Warning: Effectivity date is more than 1 week from filing date!</span>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Requisitioner">{{ dcf.requisitioner.name }}</td>
+                            <td data-label="Document Title">{{ dcf.document_title }}</td>
+                            <td data-label="Document Code">{{ dcf.document_code }}</td>
+                            <td data-label="Nature">{{ dcf.get_nature_display }}</td>
+                            <td data-label="Filed Date">{{ dcf.date_filed|date:"M d, Y" }}</td>
+                            <td data-label="Actions">
+                                <div class="DCF-action-buttons">
+                                    <button class="DCF-icon-button DCF-view-approval-btn" title="View & Approve" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endwith %}
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="DCF-empty-table">No pending approval requests found.</td>
+                        </tr>
+                    {% endif %}
+                    <!-- No results message - inside the table -->
+                    <tr id="pending-no-results-row" style="display: none;">
+                        <td colspan="7" class="DCF-empty-table">
+                            <div class="DCF-no-data-message">
+                                <i class="fas fa-search fa-2x"></i>
+                                <p>No matching DCF requests found</p>
+                                <span>Try adjusting your search criteria</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="DCF-pagination" id="pending-pagination">
+            <span class="DCF-pagination-info">
+                Showing {{ pending_approvals.start_index }}-{{ pending_approvals.end_index }} of {{ pending_approvals.paginator.count }} entries
+            </span>
+            <div class="DCF-pagination-pages">
+                {% if pending_approvals.has_previous %}
+                <button class="DCF-pagination-btn DCF-pagination-prev" data-page="{{ pending_approvals.previous_page_number }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                {% else %}
+                <button class="DCF-pagination-btn DCF-pagination-prev disabled">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                {% endif %}
+
+                <div class="DCF-pagination-numbers">
+                    {% for i in pending_approvals.paginator.page_range %}
+                        {% if pending_approvals.number == i %}
+                            <button class="DCF-pagination-page active">{{ i }}</button>
+                        {% elif i > pending_approvals.number|add:'-3' and i < pending_approvals.number|add:'3' %}
+                            <button class="DCF-pagination-page" data-page="{{ i }}">{{ i }}</button>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% if pending_approvals.has_next %}
+                <button class="DCF-pagination-btn DCF-pagination-next" data-page="{{ pending_approvals.next_page_number }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+                {% else %}
+                <button class="DCF-pagination-btn DCF-pagination-next disabled">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recently Processed Section -->
+    <div class="DCF-card DCF-processed-requests">
+        <div class="DCF-card-header">
+            <h2>Recently Processed Requests</h2>
+            <div class="DCF-card-actions">
+                <div class="DCF-search-container">
+                    <input type="text" class="DCF-search-input" placeholder="Search by DCF Number, requisitioner, title...">
+                    <button class="DCF-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="DCF-filter-container">
+                    <select id="processed-status-filter" class="DCF-select">
+                        <option value="all" selected>All Status</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="DCF-table-container">
+            <table class="DCF-table">
+                <thead>
+                    <tr>
+                        <th>DCF Number</th>
+                        <th>Requisitioner</th>
+                        <th>Document Title</th>
+                        <th>Status</th>
+                        <th>Processed Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="processed-approvals-body">
+                    {% if recent_approvals %}
+                        {% for approval in recent_approvals %}
+                        <tr>
+                            <td data-label="DCF Number">{{ approval.dcf.dcf_number }}</td>
+                            <td data-label="Requisitioner">{{ approval.dcf.requisitioner.name }}</td>
+                            <td data-label="Document Title">{{ approval.dcf.document_title }}</td>
+                            <td data-label="Status">
+                                <span class="DCF-status DCF-status-{{ approval.status }}">
+                                    {{ approval.get_status_display }}
+                                </span>
+                            </td>
+                            <td data-label="Processed Date">{{ approval.date_acted|date:"M d, Y" }}</td>
+                            <td data-label="Actions">
+                                <button class="DCF-icon-button" title="View Details" data-id="{{ approval.dcf.id }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="DCF-empty-table">No processed requests found.</td>
+                        </tr>
+                    {% endif %}
+                    <!-- No results message - inside the table -->
+                    <tr id="processed-no-results-row" style="display: none;">
+                        <td colspan="6" class="DCF-empty-table">
+                            <div class="DCF-no-data-message">
+                                <i class="fas fa-search fa-2x"></i>
+                                <p>No matching DCF requests found</p>
+                                <span>Try adjusting your search criteria</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- DCF Approval Modal -->
+<div class="DCF-modal" id="dcf-approval-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Review Document Change Form</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="DCF-modal-body" id="approval-details-content">
+            <div class="DCF-loading">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading DCF details...</p>
+            </div>
+        </div>
+        <div class="DCF-modal-footer">
+            <button class="DCF-button DCF-secondary-button close-approval-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Confirmation Modal -->
+<div class="DCF-modal DCF-confirmation-modal" id="approve-confirmation-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Confirm Approval</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="DCF-modal-body">
+            <div class="DCF-confirmation-content">
+                <div class="DCF-confirmation-icon DCF-approved-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <p class="DCF-confirmation-message">Are you sure you want to approve <strong id="approve-dcf-confirm"></strong>?</p>
+                <p class="DCF-confirmation-submessage">This action will move the document to the next approval stage.</p>
+
+                <form id="approve-form" method="POST" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="remarks" id="approve-remarks-hidden">
+                </form>
+            </div>
+        </div>
+        <div class="DCF-modal-footer">
+            <button class="DCF-button DCF-secondary-button" id="cancel-approve-btn">Cancel</button>
+            <button class="DCF-button DCF-approved-button" id="confirm-approve-btn">
+                <i class="fas fa-check-circle"></i> Confirm Approval
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Rejection Confirmation Modal -->
+<div class="DCF-modal DCF-confirmation-modal" id="reject-confirmation-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Confirm Rejection</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="DCF-modal-body">
+            <div class="DCF-confirmation-content">
+                <div class="DCF-confirmation-icon DCF-rejected-icon">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <p class="DCF-confirmation-message">Are you sure you want to reject <strong id="reject-dcf-confirm"></strong>?</p>
+                <p class="DCF-confirmation-submessage">The document will be sent back to the requisitioner with your feedback.</p>
+
+                <div class="DCF-form-group">
+                    <label for="rejection-remarks">Rejection Reason (Required)</label>
+                    <textarea id="rejection-remarks" class="DCF-textarea" rows="3" placeholder="Provide a reason for rejection..." required></textarea>
+                </div>
+
+                <form id="reject-form" method="POST" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="remarks" id="reject-remarks-hidden">
+                </form>
+            </div>
+        </div>
+        <div class="DCF-modal-footer">
+            <button class="DCF-button DCF-secondary-button" id="cancel-reject-btn">Cancel</button>
+            <button class="DCF-button DCF-danger-button" id="confirm-reject-btn">
+                <i class="fas fa-times-circle"></i> Confirm Rejection
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container for notifications -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/dcf/dcf-approver.js' %}"></script>
+<script src="{% static 'js/dcf/dcf-no-results.js' %}"></script>
+{% endblock %}

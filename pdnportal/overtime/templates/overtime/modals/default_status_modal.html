@@ -1,0 +1,41 @@
+<!-- Default Status Modal -->
+<div class="OT-modal" id="default-status-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Set Status</h2>
+            <button class="OT-modal-close" id="default-status-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <p class="OT-modal-description">Select a status to apply to employees:</p>
+
+            <div class="OT-status-options">
+                <label class="OT-radio-container">
+                    <input type="radio" name="default-status" value="OT" checked>
+                    <span class="OT-radio-label OT-status-ot">OT</span>
+                </label>
+                <label class="OT-radio-container">
+                    <input type="radio" name="default-status" value="NOT-OT">
+                    <span class="OT-radio-label OT-status-not-ot">Not OT</span>
+                </label>
+                <label class="OT-radio-container">
+                    <input type="radio" name="default-status" value="ABSENT">
+                    <span class="OT-radio-label OT-status-absent">Absent</span>
+                </label>
+                <label class="OT-radio-container">
+                    <input type="radio" name="default-status" value="LEAVE">
+                    <span class="OT-radio-label OT-status-leave">Leave</span>
+                </label>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="apply-to-all">
+                <i class="fas fa-users"></i> Apply to All
+            </button>
+            <button type="button" class="OT-button OT-primary-button" id="apply-to-selected">
+                <i class="fas fa-check-square"></i> Apply to Selected
+            </button>
+        </div>
+    </div>
+</div>

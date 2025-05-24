@@ -1,0 +1,247 @@
+<!-- Shuttle Allocator Tab Content -->
+<div class="OT-shuttle-container">
+    <!-- Shuttle Assignment Panel -->
+    <div class="OT-card OT-full-width">
+        <div class="OT-card-header">
+            <h2>Shuttle Service Allocation</h2>
+            <div class="OT-card-actions">
+                <button class="OT-button OT-text-button OT-refresh-btn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="OT-button OT-secondary-button" id="export-unassigned">
+                    <i class="fas fa-file-export"></i> Export Unassigned
+                </button>
+                <button class="OT-button OT-primary-button" id="import-shuttle-data">
+                    <i class="fas fa-upload"></i> Import Shuttle Data
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filter and Search -->
+        <div class="OT-filter-bar">
+            <div class="OT-filter-group">
+                <label for="shuttle-filter">Filter:</label>
+                <select id="shuttle-filter" class="OT-select">
+                    <option value="all">All Employees</option>
+                    <option value="unassigned" selected>Unassigned Only</option>
+                    <option value="assigned">Assigned Only</option>
+                </select>
+            </div>
+            
+            <div class="OT-search-container">
+                <input type="text" id="shuttle-search" class="OT-search-input" placeholder="Search by ID, name, department...">
+                <button class="OT-search-button">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="OT-table-container">
+            <table class="OT-table" id="shuttle-table">
+                <thead>
+                    <tr>
+                        <th>ID Number</th>
+                        <th>Employee Name</th>
+                        <th>Department</th>
+                        <th>Line</th>
+                        <th>Shuttle Service</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr class="{% if not employee.shuttle_service %}OT-highlight-row{% endif %}" data-id="{{ employee.id }}">
+                        <td data-label="ID Number">{{ employee.id_number }}</td>
+                        <td data-label="Employee Name">{{ employee.name }}</td>
+                        <td data-label="Department">{{ employee.department|default:"-" }}</td>
+                        <td data-label="Line">{{ employee.line|default:"-" }}</td>
+                        <td data-label="Shuttle Service" class="{% if not employee.shuttle_service %}OT-null-value{% endif %}">
+                            {{ employee.shuttle_service|default:"Not Assigned" }}
+                        </td>
+                        <td data-label="Actions">
+                            <button class="OT-button OT-icon-button OT-edit-shuttle" title="Edit Shuttle Assignment" data-id="{{ employee.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="OT-empty-table">No employee records found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div class="OT-pagination">
+            <div class="OT-pagination-info">
+                Showing <span id="showing-start">1</span> to <span id="showing-end">10</span> of <span id="total-records">{{ employees.count }}</span> entries
+            </div>
+            <div class="OT-pagination-pages">
+                <button class="OT-pagination-btn OT-prev-btn disabled">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="OT-page-numbers">
+                    <span class="OT-pagination-page active">1</span>
+                    <span class="OT-pagination-page">2</span>
+                    <span class="OT-pagination-page">3</span>
+                    <span class="OT-pagination-ellipsis">...</span>
+                    <span class="OT-pagination-page">10</span>
+                </div>
+                <button class="OT-pagination-btn OT-next-btn">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Shuttle Assignment Stats -->
+    <div class="OT-stats-grid">
+        <div class="OT-card OT-stats-card-shuttle">
+            <div class="OT-stats-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Total Employees</h3>
+                <h2 class="OT-stats-number" id="total-employees">{{ employees.count }}</h2>
+            </div>
+        </div>
+        
+        <div class="OT-card OT-stats-card-shuttle">
+            <div class="OT-stats-icon OT-icon-assigned">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Assigned Shuttle</h3>
+                <h2 class="OT-stats-number" id="assigned-count">{{ assigned_count }}</h2>
+            </div>
+        </div>
+        
+        <div class="OT-card OT-stats-card-shuttle">
+            <div class="OT-stats-icon OT-icon-unassigned">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Unassigned Shuttle</h3>
+                <h2 class="OT-stats-number" id="unassigned-count">{{ unassigned_count }}</h2>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Shuttle Service Distribution -->
+    <div class="OT-card OT-shuttle-distribution">
+        <div class="OT-card-header">
+            <h2>Shuttle Service Distribution</h2>
+        </div>
+        <div class="OT-chart-container">
+            <canvas id="shuttle-distribution-chart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Shuttle Modal -->
+<div class="OT-modal" id="edit-shuttle-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Edit Shuttle Assignment</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-employee-detail">
+                <p><strong>ID Number:</strong> <span id="edit-employee-id"></span></p>
+                <p><strong>Name:</strong> <span id="edit-employee-name"></span></p>
+                <p><strong>Department:</strong> <span id="edit-employee-dept"></span></p>
+                <p><strong>Line:</strong> <span id="edit-employee-line"></span></p>
+            </div>
+            
+            <div class="OT-form-group">
+                <label for="shuttle-service">Shuttle Service Assignment</label>
+                <select id="shuttle-service" class="OT-select">
+                    <option value="">-- Not Assigned --</option>
+                    <option value="Route 1">Route 1</option>
+                    <option value="Route 2">Route 2</option>
+                    <option value="Route 3">Route 3</option>
+                    <option value="Route 4">Route 4</option>
+                    <option value="Route 5">Route 5</option>
+                    <option value="Special">Special</option>
+                    <option value="None - Own Vehicle">None - Own Vehicle</option>
+                </select>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-shuttle-edit">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="save-shuttle">Save Assignment</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Shuttle Modal -->
+<div class="OT-modal" id="import-shuttle-modal">
+    <div class="OT-modal-content">
+        <div class="OT-modal-header">
+            <h2>Import Shuttle Data</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-import-info">
+                <div class="OT-import-icon">
+                    <i class="fas fa-file-excel"></i>
+                </div>
+                <div class="OT-import-text">
+                    <p>Upload an Excel file containing shuttle service assignments. The file should have the following columns:</p>
+                    <ul class="OT-import-requirements">
+                        <li><strong>ID Number</strong> (required)</li>
+                        <li><strong>Shuttle Service</strong> (required)</li>
+                    </ul>
+                    <p>All other columns will be ignored. Employee records will be matched by ID Number.</p>
+                </div>
+            </div>
+            
+            <form id="shuttle-import-form" class="OT-import-form">
+                <div class="OT-file-upload">
+                    <input type="file" id="shuttle-file" accept=".xlsx, .xls" required>
+                    <label for="shuttle-file">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>Choose Excel File</span>
+                    </label>
+                    <p class="OT-file-name">No file selected</p>
+                </div>
+                
+                <div class="OT-import-preview" id="shuttle-preview">
+                    <!-- Preview data will be inserted here -->
+                </div>
+            </form>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-import">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="process-import">Import Data</button>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="OT-modal OT-confirmation-modal" id="shuttle-confirm-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2 id="confirm-title">Confirm Assignment</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-confirmation-content">
+                <i class="fas fa-check-circle OT-confirmation-icon"></i>
+                <p id="confirm-message">Are you sure you want to save this shuttle assignment?</p>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-confirmation">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="confirm-action">Confirm</button>
+        </div>
+    </div>
+</div>

@@ -41,7 +41,7 @@
                 <p>This Month</p>
             </div>
         </div>
-        
+
         <div class="MH-stats-card MH-output">
             <div class="MH-stats-icon">
                 <i class="fas fa-boxes"></i>
@@ -52,7 +52,7 @@
                 <p>This Month</p>
             </div>
         </div>
-        
+
         <div class="MH-stats-card MH-efficiency">
             <div class="MH-stats-icon">
                 <i class="fas fa-chart-line"></i>
@@ -63,7 +63,7 @@
                 <p>This Month</p>
             </div>
         </div>
-        
+
         <div class="MH-stats-card MH-shifts">
             <div class="MH-stats-icon">
                 <i class="fas fa-users"></i>
@@ -100,7 +100,7 @@
             <div class="MH-card-header">
                 <h2>Machine Performance Metrics</h2>
                 <div class="MH-card-actions">
-                    <select id="chart-period-selector" class="JO-select">
+                    <select id="machine-period-selector" class="JO-select">
                         <option value="week">This Week</option>
                         <option value="month" selected>This Month</option>
                     </select>
@@ -130,7 +130,7 @@
                 </select>
             </div>
         </div>
-        
+
         <div class="MH-table-container">
             <table class="MH-table">
                 <thead>
@@ -147,7 +147,7 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="manhours-table-body">
                     {% for entry in logsheet_entries %}
                     <tr>
                         <td data-label="Date">{{ entry.date_completed|date:"M d, Y" }}</td>
@@ -177,8 +177,17 @@
                     {% endfor %}
                 </tbody>
             </table>
+
+            <!-- No results message (hidden by default) -->
+            <div id="manhours-no-results" class="MH-no-results" style="display: none;">
+                <div class="MH-no-results-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <div class="MH-no-results-message">No matching manhours entries found</div>
+                <div class="MH-no-results-suggestion">Try adjusting your search criteria</div>
+            </div>
         </div>
-        
+
         <!-- Pagination -->
         <div class="MH-pagination">
             <span class="MH-pagination-info">

@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 from .models import ManhoursLogsheet, Machine, Operators
 from django.core.paginator import Paginator
 from decimal import Decimal
-from django.db.models import Sum, Avg, Count, F
-from django.db.models.functions import TruncDay, TruncWeek, TruncMonth
+from django.db.models import Sum
+from django.db.models.functions import TruncDay, TruncWeek
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 
@@ -18,24 +18,58 @@ def manhours(request):
     today = datetime.now()
     month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     next_month = month_start.replace(month=month_start.month+1) if month_start.month < 12 else month_start.replace(year=month_start.year+1, month=1)
-    
-    monthly_logs = ManhoursLogsheet.objects.filter(user=request.user, date_completed__gte=month_start, date_completed__lt=next_month)
-    
+
+    # Check if user is a manhours supervisor
+    is_supervisor = request.user.manhours_supervisor
+
+    if is_supervisor:
+        # Get all users for which the current user is an approver in the Manhours module
+        from portalusers.models import UserApprovers
+        approved_users = UserApprovers.objects.filter(
+            approver=request.user,
+            module="Manhours"
+        ).values_list('user', flat=True)
+
+        # Include both the supervisor's own entries and entries from users they approve
+        monthly_logs = ManhoursLogsheet.objects.filter(
+            date_completed__gte=month_start,
+            date_completed__lt=next_month
+        ).filter(
+            user__in=list(approved_users) + [request.user.id]
+        )
+
+        all_records = ManhoursLogsheet.objects.filter(
+            user__in=list(approved_users) + [request.user.id]
+        ).order_by('-date_completed')
+    else:
+        # Regular user - only show their own entries
+        monthly_logs = ManhoursLogsheet.objects.filter(
+            user=request.user,
+            date_completed__gte=month_start,
+            date_completed__lt=next_month
+        )
+
+        all_records = ManhoursLogsheet.objects.filter(
+            user=request.user
+        ).order_by('-date_completed')
+
+    # Calculate statistics
     total_hours = monthly_logs.aggregate(total=Sum('manhours'))['total'] or 0
     total_output = monthly_logs.aggregate(total=Sum('output'))['total'] or 0
     total_setup = monthly_logs.aggregate(total=Sum('setup'))['total'] or 0
-    
-    active_operators = monthly_logs.values('operator').distinct().count()
-    
-    all_records = ManhoursLogsheet.objects.filter(user=request.user).order_by('-date_completed')
 
+    active_operators = monthly_logs.values('operator').distinct().count()
+
+    # Paginate the records
     paginator = Paginator(all_records, 10)
     page_number = request.GET.get('page')
     logsheet_entries = paginator.get_page(page_number)
-    
+
+    # Get all machines and operators
     machines = Machine.objects.all()
     operators = Operators.objects.all()
 
+    # Calculate percentages
     total_all = total_hours + total_setup
     if total_all > 0:
         manhours_percentage = round((total_hours / total_all) * 100, 2)
@@ -43,7 +77,7 @@ def manhours(request):
     else:
         manhours_percentage = 0
         setup_percentage = 0
-    
+
     context = {
         'total_hours': round(total_hours, 2),
         'total_output': total_output,
@@ -54,6 +88,7 @@ def manhours(request):
         'logsheet_entries': logsheet_entries,
         'machines': machines,
         'operators': operators,
+        'is_supervisor': is_supervisor,
     }
     return render(request, 'manhours/manhours.html', context)
 
@@ -69,17 +104,17 @@ def create_manhours(request):
             manhours = request.POST.get('manhours')
             output = request.POST.get('output')
             date_completed = request.POST.get('date_completed')
-            
+
             if not all([operator, shift, line, machine_id, setup, manhours, output, date_completed]):
                 messages.error(request, 'All fields are required')
                 return redirect('manhours')
-            
+
             machine = Machine.objects.get(id=machine_id)
             setup = int(setup)
             manhours = Decimal(manhours)
             output = Decimal(output)
             date_completed = datetime.fromisoformat(date_completed)
-            
+
             entry = ManhoursLogsheet(
                 user=request.user,
                 operator=operator,
@@ -92,10 +127,10 @@ def create_manhours(request):
                 date_completed=date_completed
             )
             entry.save()
-            
+
             messages.success(request, 'Manhours entry added successfully')
             return redirect('manhours')
-            
+
         except Exception as e:
             messages.error(request, f'Error creating entry: {str(e)}')
             return redirect('manhours')
@@ -106,71 +141,71 @@ def create_manhours(request):
 def update_manhours(request):
     if request.method == 'POST':
         entry_id = request.POST.get('entry_id')
-        
+
         if not entry_id:
             messages.error(request, "Missing entry ID")
             return redirect('manhours')
-            
+
         selected_manhours = get_object_or_404(ManhoursLogsheet, id=entry_id, user=request.user)
-        
+
         try:
             operator = request.POST.get('operator')
             shift = request.POST.get('shift')
             line = request.POST.get('line')
             machine_id = request.POST.get('machine')
-            
+
             try:
                 setup = int(request.POST.get('setup', '0'))
             except ValueError:
                 setup = 0
-                
+
             try:
                 manhours = Decimal(request.POST.get('manhours', '0'))
             except:
                 manhours = Decimal('0')
-                
+
             try:
                 output = Decimal(request.POST.get('output', '0'))
             except:
                 output = Decimal('0')
-            
+
             date_completed = request.POST.get('date_completed')
-            
+
             selected_manhours.operator = operator
             selected_manhours.shift = shift
             selected_manhours.line = line
-            
+
             machine = Machine.objects.get(id=machine_id)
             selected_manhours.machine = machine
-            
+
             selected_manhours.setup = setup
             selected_manhours.manhours = manhours
             selected_manhours.output = output
-            
+
             # Parse date properly
             try:
                 selected_manhours.date_completed = datetime.fromisoformat(date_completed)
             except ValueError:
                 selected_manhours.date_completed = datetime.strptime(date_completed, '%Y-%m-%d')
-                
+
             selected_manhours.save()
-            
+
             messages.success(request, "Manhours entry updated successfully")
-            
+
         except Machine.DoesNotExist:
             messages.error(request, "Selected machine does not exist")
         except ValueError as e:
             messages.error(request, f"Invalid input: {str(e)}")
         except Exception as e:
             messages.error(request, f"Error updating entry: {str(e)}")
-    
+
     return redirect('manhours')
 
 @login_required(login_url="user-login")
 def get_manhours_details(request, id):
     try:
         entry = ManhoursLogsheet.objects.get(id=id, user=request.user)
-        
+
         entry_data = {
             'id': id,
             'operator': entry.operator,
@@ -186,39 +221,39 @@ def get_manhours_details(request, id):
             'date_submitted': entry.date_submitted.isoformat(),
             'user_name': entry.user.name
         }
-        
+
         return JsonResponse({'status': 'success', 'entry': entry_data})
-    
+
     except ManhoursLogsheet.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Entry not found'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
-    
+
 @login_required(login_url="user-login")
 def get_chart_data(request):
     from django.utils import timezone
-    
+
     chart_type = request.GET.get('type', 'shiftOutput')
     period = request.GET.get('period', 'month')
-    
+
     today = timezone.now()
-    
+
     if period == 'week':
         start_of_week = today - timedelta(days=today.weekday())
         start_date = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
-        
+
         date_trunc = TruncDay('date_completed')
         date_format = '%a'
-    
+
     elif period == 'month':
         start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         last_day = calendar.monthrange(today.year, today.month)[1]
         end_date = today.replace(day=last_day, hour=23, minute=59, second=59)
-        
+
         date_trunc = TruncDay('date_completed')
         date_format = '%d'
-    
+
     else:
         quarter_month = 3 * ((today.month - 1) // 3) + 1
         start_date = today.replace(month=quarter_month, day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -232,51 +267,170 @@ def get_chart_data(request):
                 year = today.year
                 month = quarter_month + 2
             last_day = calendar.monthrange(year, month)[1]
-            end_date = today.replace(year=year, month=month, day=last_day, 
+            end_date = today.replace(year=year, month=month, day=last_day,
                                    hour=23, minute=59, second=59)
 
         date_trunc = TruncWeek('date_completed')
         date_format = 'Week %W'
-    
-    entries = ManhoursLogsheet.objects.filter(
-        user=request.user,
-        date_completed__gte=start_date,
-        date_completed__lte=end_date
-    )
-    
+
+    # Check if user is a manhours supervisor
+    is_supervisor = request.user.manhours_supervisor
+
+    if is_supervisor:
+        # Get all users for which the current user is an approver in the Manhours module
+        from portalusers.models import UserApprovers
+        approved_users = UserApprovers.objects.filter(
+            approver=request.user,
+            module="Manhours"
+        ).values_list('user', flat=True)
+
+        # Include both the supervisor's own entries and entries from users they approve
+        entries = ManhoursLogsheet.objects.filter(
+            date_completed__gte=start_date,
+            date_completed__lte=end_date
+        ).filter(
+            user__in=list(approved_users) + [request.user.id]
+        )
+    else:
+        # Regular user - only show their own entries
+        entries = ManhoursLogsheet.objects.filter(
+            user=request.user,
+            date_completed__gte=start_date,
+            date_completed__lte=end_date
+        )
+
     if chart_type == 'shiftOutput':
         data = entries.annotate(
             date_group=date_trunc
         ).values('date_group', 'shift').annotate(
             total_output=Sum('output')
         ).order_by('date_group', 'shift')
-        
+
         am_data = {}
         pm_data = {}
         all_dates = set()
-        
+
+        # Create date range information for the chart title/subtitle
+        if period == 'week':
+            week_start_str = start_date.strftime('%b %d')
+            week_end_str = end_date.strftime('%b %d, %Y')
+            period_range = f"Week of {week_start_str} - {week_end_str}"
+        elif period == 'month':
+            month_str = start_date.strftime('%B %Y')
+            period_range = month_str
+        else:
+            quarter_num = ((start_date.month - 1) // 3) + 1
+            quarter_str = f"Q{quarter_num} {start_date.year}"
+            period_range = quarter_str
+
         for item in data:
-            date_str = item['date_group'].strftime(date_format)
+            # Format the date string based on the period
+            if period == 'week':
+                date_str = item['date_group'].strftime('%a')
+            elif period == 'month':
+                date_str = item['date_group'].strftime('%d')
+            else:
+                # For quarterly data, use week numbers with start date
+                week_num = int(item['date_group'].strftime('%W'))
+                date_str = f"W{week_num}"
+
             all_dates.add(date_str)
-            
+
             if item['shift'] == 'AM':
                 am_data[date_str] = float(item['total_output'])
             elif item['shift'] == 'PM':
                 pm_data[date_str] = float(item['total_output'])
-        
+
+        # Create a mapping of date strings to full dates for display
+        date_to_full_date = {}
+        date_objects = {}  # Store actual date objects for sorting
+
+        for item in data:
+            if period == 'week':
+                # For weekly view, use day of week with day number
+                date_obj = item['date_group']
+                date_key = date_obj.strftime('%a')  # Mon, Tue, etc.
+                date_value = date_obj.strftime('%d')  # Day number: 01, 02, etc.
+                date_to_full_date[date_key] = date_value
+                date_objects[date_key] = date_obj
+            elif period == 'month':
+                # For monthly view, use day number
+                date_obj = item['date_group']
+                date_key = date_obj.strftime('%d')  # Day number: 01, 02, etc.
+                date_to_full_date[date_key] = date_key  # Same as key
+                date_objects[date_key] = date_obj
+            else:
+                # For quarterly view, use week number
+                date_obj = item['date_group']
+                week_num = int(date_obj.strftime('%W'))
+                date_key = f"W{week_num}"
+                date_value = date_obj.strftime('%d')  # Day number of week start
+                date_to_full_date[date_key] = date_value
+                date_objects[date_key] = date_obj
+
+        # Sort the dates appropriately
         if period == 'week':
             day_order = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
             sorted_dates = sorted(all_dates, key=lambda x: day_order.get(x, 7))
         elif period == 'month':
             sorted_dates = sorted(all_dates, key=lambda x: int(x))
         else:
-            sorted_dates = sorted(all_dates, key=lambda x: int(x.split(' ')[1]) if ' ' in x else 0)
-        
+            sorted_dates = sorted(all_dates, key=lambda x: int(x[1:]) if x.startswith('W') else 0)
+
+        # Create display labels with dates for tooltips
+        tooltip_labels = []
+        for date in sorted_dates:
+            if period == 'week':
+                date_obj = date_objects.get(date)
+                if date_obj:
+                    tooltip = f"{date} ({date_obj.strftime('%b %d')})"
+                else:
+                    tooltip = date
+                tooltip_labels.append(tooltip)
+            elif period == 'month':
+                date_obj = date_objects.get(date)
+                if date_obj:
+                    tooltip = f"{date} ({date_obj.strftime('%b %d')})"
+                else:
+                    tooltip = date
+                tooltip_labels.append(tooltip)
+            else:
+                date_obj = date_objects.get(date)
+                if date_obj:
+                    week_start = date_obj
+                    week_end = week_start + timedelta(days=6)
+                    tooltip = f"{date} ({week_start.strftime('%b %d')}-{week_end.strftime('%d')})"
+                else:
+                    tooltip = date
+                tooltip_labels.append(tooltip)
+
         am_output_data = [am_data.get(date, 0) for date in sorted_dates]
         pm_output_data = [pm_data.get(date, 0) for date in sorted_dates]
-        
+
+        # Create period range for chart title
+        if period == 'week':
+            week_start_str = start_date.strftime('%b %d')
+            week_end_str = end_date.strftime('%b %d, %Y')
+            period_range = f"Week of {week_start_str} - {week_end_str}"
+        elif period == 'month':
+            month_str = start_date.strftime('%B %Y')
+            period_range = month_str
+        else:
+            quarter_num = ((start_date.month - 1) // 3) + 1
+            quarter_str = f"Q{quarter_num} {start_date.year}"
+            period_range = quarter_str
+
+        # For x-axis labels, we want to show the day numbers like in the image
+        x_axis_labels = []
+        for date in sorted_dates:
+            day_number = date_to_full_date.get(date, '')
+            x_axis_labels.append(day_number)
+
         result = {
-            'labels': sorted_dates,
+            'labels': sorted_dates,      # Original labels (Mon, Tue, 01, 02, etc.)
+            'tooltips': tooltip_labels,  # Detailed labels for tooltips
+            'xAxisLabels': x_axis_labels, # Day numbers for x-axis display
+            'title': period_range,       # Add period range as title
             'datasets': [
                 {
                     'label': 'AM Shift',
@@ -304,12 +458,12 @@ def get_chart_data(request):
                 }
             ]
         }
-    
+
     elif chart_type == 'hoursByLine':
         data = entries.values('line').annotate(
             total_hours=Sum('manhours')
         ).order_by('line')
-        
+
         result = {
             'labels': [item['line'] for item in data],
             'datasets': [{
@@ -320,22 +474,22 @@ def get_chart_data(request):
                 'borderWidth': 1
             }]
         }
-    
+
     elif chart_type == 'outputByShift':
         data = entries.values('shift').annotate(
             total_output=Sum('output')
         ).order_by('shift')
-        
+
         colors = {
             'AM': 'rgba(51, 102, 255, 0.7)',
             'PM': 'rgba(241, 70, 104, 0.7)'
         }
-        
+
         border_colors = {
             'AM': 'rgba(51, 102, 255, 1)',
             'PM': 'rgba(241, 70, 104, 1)'
         }
-        
+
         result = {
             'labels': [f"{item['shift']} Shift" for item in data],
             'datasets': [{
@@ -345,7 +499,7 @@ def get_chart_data(request):
                 'borderWidth': 1
             }]
         }
-    
+
     else:
         data = entries.annotate(
             date_group=date_trunc
@@ -353,7 +507,7 @@ def get_chart_data(request):
             total_hours=Sum('manhours'),
             total_output=Sum('output')
         ).order_by('date_group')
-        
+
         result = {
             'labels': [item['date_group'].strftime(date_format) for item in data],
             'datasets': [
@@ -373,7 +527,7 @@ def get_chart_data(request):
                 }
             ]
         }
-    
+
     return JsonResponse(result)
 
 @login_required(login_url="user-login")
@@ -384,21 +538,45 @@ def get_machine_performance(request):
     if period == 'week':
         start_of_week = today - timedelta(days=today.weekday())
         start_date = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_date = today.astimezone().replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
-    else: 
+        end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
+    else:
         start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         last_day = calendar.monthrange(today.year, today.month)[1]
-        end_date = today.astimezone().replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
+        end_date = today.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
 
-    data = ManhoursLogsheet.objects.filter(
-        user=request.user,
-        date_completed__gte=start_date,
-        date_completed__lte=end_date
-    ).values(
-        'machine__machine_name'
-    ).annotate(
-        total_output=Sum('output')
-    ).order_by('-total_output')
+    # Check if user is a manhours supervisor
+    is_supervisor = request.user.manhours_supervisor
+
+    if is_supervisor:
+        # Get all users for which the current user is an approver in the Manhours module
+        from portalusers.models import UserApprovers
+        approved_users = UserApprovers.objects.filter(
+            approver=request.user,
+            module="Manhours"
+        ).values_list('user', flat=True)
+
+        # Include both the supervisor's own entries and entries from users they approve
+        data = ManhoursLogsheet.objects.filter(
+            date_completed__gte=start_date,
+            date_completed__lte=end_date
+        ).filter(
+            user__in=list(approved_users) + [request.user.id]
+        ).values(
+            'machine__machine_name'
+        ).annotate(
+            total_output=Sum('output')
+        ).order_by('-total_output')
+    else:
+        # Regular user - only show their own entries
+        data = ManhoursLogsheet.objects.filter(
+            user=request.user,
+            date_completed__gte=start_date,
+            date_completed__lte=end_date
+        ).values(
+            'machine__machine_name'
+        ).annotate(
+            total_output=Sum('output')
+        ).order_by('-total_output')
 
     machine_names = []
     output_values = []
@@ -415,14 +593,14 @@ def get_machine_performance(request):
         {'bg': 'rgba(255, 159, 64, 0.7)', 'border': 'rgba(255, 159, 64, 1)'},
         {'bg': 'rgba(201, 203, 207, 0.7)', 'border': 'rgba(201, 203, 207, 1)'}
     ]
-    
+
     for i, item in enumerate(data):
         machine_names.append(item['machine__machine_name'])
         output_values.append(float(item['total_output']) if item['total_output'] else 0)
         color_index = i % len(colors)
         bg_colors.append(colors[color_index]['bg'])
         border_colors.append(colors[color_index]['border'])
-    
+
     result = {
         'labels': machine_names,
         'datasets': [{
@@ -433,7 +611,7 @@ def get_machine_performance(request):
             'borderWidth': 1
         }]
     }
-    
+
     return JsonResponse(result)
 
 @login_required(login_url="user-login")
@@ -473,8 +651,8 @@ def export_reports(request):
                 cell.border = thin_border
 
             for row_data in rows:
-                row = sheet.append(row_data)
-                for col, val in enumerate(row_data, start=1):
+                sheet.append(row_data)
+                for col in range(1, len(row_data) + 1):
                     cell = sheet.cell(row=sheet.max_row, column=col)
                     cell.border = thin_border
 

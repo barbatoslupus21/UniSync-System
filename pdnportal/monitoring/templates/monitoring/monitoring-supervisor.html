@@ -6,6 +6,7 @@
 {% block extra_css %}
 
 <link rel="stylesheet" href="{% static 'css/monitoring/monitoring-supervisor.css' %}">
+<link rel="stylesheet" href="{% static 'css/monitoring/import-modals.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -33,7 +34,7 @@
                 <p>Active monitoring groups</p>
             </div>
         </div>
-        
+
         <div class="PM-stats-card PM-lines">
             <div class="PM-stats-icon">
                 <i class="fas fa-industry"></i>
@@ -44,7 +45,7 @@
                 <p>Under active monitoring</p>
             </div>
         </div>
-        
+
         <div class="PM-stats-card PM-efficiency">
             <div class="PM-stats-icon">
                 <i class="fas fa-chart-line"></i>
@@ -55,7 +56,7 @@
                 <p>Units produced</p>
             </div>
         </div>
-        
+
         <div class="PM-stats-card PM-alerts">
             <div class="PM-stats-icon">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -98,9 +99,9 @@
                     </select>
                 </div>
             </div>
-            <div class="PM-activity-list">
+            <div class="PM-activity-list" id="activity-list">
                 {% for activity in recent_activities %}
-                <div class="PM-activity-item">
+                <div class="PM-activity-item" data-shift="{{ activity.shift }}">
                     <div class="PM-activity-icon {% if activity.activity_type == 'success' %}success{% elif activity.activity_type == 'warning' %}warning{% elif activity.activity_type == 'error' %}error{% else %}info{% endif %}">
                         <i class="fas {% if activity.activity_type == 'success' %}fa-check-circle{% elif activity.activity_type == 'warning' %}fa-clock{% elif activity.activity_type == 'error' %}fa-exclamation-circle{% else %}fa-box{% endif %}"></i>
                     </div>
@@ -111,16 +112,23 @@
                     </div>
                 </div>
                 {% empty %}
-                <div class="PM-activity-item">
-                    <div class="PM-activity-icon info">
-                        <i class="fas fa-info-circle"></i>
+                <div class="PM-empty-state">
+                    <div class="PM-empty-icon">
+                        <i class="fas fa-clipboard-list"></i>
                     </div>
-                    <div class="PM-activity-content">
-                        <h4>No Recent Activities</h4>
-                        <p>Activity logs will appear here as monitoring events occur</p>
-                    </div>
+                    <h3>No Recent Activities</h3>
+                    <p>Activity logs will appear here as monitoring events occur</p>
                 </div>
                 {% endfor %}
+
+                <!-- Empty state for filtered results - will be shown via JS -->
+                <div id="filtered-activities-empty-state" class="PM-empty-state" style="display: none;">
+                    <div class="PM-empty-icon">
+                        <i class="fas fa-filter"></i>
+                    </div>
+                    <h3>No Matching Activities</h3>
+                    <p>No activities match your current filter selection</p>
+                </div>
             </div>
         </div>
     </div>
@@ -146,8 +154,8 @@
                 </div>
             </div>
         </div>
-        
-        <div class="PM-groups-container">
+
+        <div class="PM-groups-container" id="PM-groups-container">
             <!-- Group cards -->
             {% for group in monitoring_groups %}
             <div class="PM-group-card" data-id="{{ group.id }}" data-status="{{ group.status }}">
@@ -184,14 +192,25 @@
             </div>
             {% empty %}
             <div class="PM-empty-state">
-                <i class="fas fa-layer-group"></i>
-                <h3>No Monitoring Groups</h3>
-                <p>Create a new monitoring group to start tracking production output</p>
+                <div class="PM-empty-icon">
+                    <i class="fas fa-users-cog"></i>
+                </div>
+                <h3>No Monitoring Groups Found</h3>
+                <p>No monitoring groups have been created yet.</p>
                 <button id="empty-create-btn" class="PM-button PM-primary-button">
-                    Create Monitoring Group
+                    <i class="fas fa-plus"></i> Create Monitoring Group
                 </button>
             </div>
             {% endfor %}
+
+            <!-- Empty state for filtered results - will be shown via JS -->
+            <div id="filtered-groups-empty-state" class="PM-empty-state" style="display: none;">
+                <div class="PM-empty-icon">
+                    <i class="fas fa-search"></i>
+                </div>
+                <h3>No Matching Groups Found</h3>
+                <p>No monitoring groups match your search criteria. Try adjusting your filters.</p>
+            </div>
         </div>
     </div>
 </main>
@@ -218,7 +237,7 @@
                     {{ form.status }}
                     <div class="PM-validation-message">{{ form.status.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label>Production Lines <span class="PM-required">*</span></label>
                     <div class="PM-lines-container">
@@ -236,7 +255,7 @@
                                 {% endfor %}
                             </div>
                         </div>
-                        
+
                         <div class="PM-actions-column">
                             <button type="button" id="add-lines" class="PM-action-button">
                                 <i class="fas fa-chevron-right"></i>
@@ -245,7 +264,7 @@
                                 <i class="fas fa-chevron-left"></i>
                             </button>
                         </div>
-                        
+
                         <div id="selected-lines" class="PM-selected-lines">
                             <h4>Selected Lines</h4>
                             <div class="PM-lines-list">
@@ -258,7 +277,7 @@
                     </div>
                     <div class="PM-validation-message">{{ form.lines.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label>Assign Supervisors</label>
                     <div class="PM-supervisors-checkbox-container">
@@ -271,7 +290,7 @@
                     </div>
                     <div class="PM-validation-message">{{ form.supervisors.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label for="id_description">Description</label>
                     {{ form.description }}
@@ -304,13 +323,13 @@
                     {{ edit_form.title }}
                     <div class="PM-validation-message">{{ edit_form.title.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label for="id_edit_status">Status <span class="PM-required">*</span></label>
                     {{ edit_form.status }}
                     <div class="PM-validation-message">{{ edit_form.status.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label>Production Lines <span class="PM-required">*</span></label>
                     <div class="PM-lines-container">
@@ -323,7 +342,7 @@
                                 <!-- Available lines will be populated dynamically -->
                             </div>
                         </div>
-                        
+
                         <div class="PM-actions-column">
                             <button type="button" id="edit-add-lines" class="PM-action-button">
                                 <i class="fas fa-chevron-right"></i>
@@ -332,7 +351,7 @@
                                 <i class="fas fa-chevron-left"></i>
                             </button>
                         </div>
-                        
+
                         <div id="edit-selected-lines" class="PM-selected-lines">
                             <h4>Selected Lines</h4>
                             <div class="PM-lines-list">
@@ -345,7 +364,7 @@
                     </div>
                     <div class="PM-validation-message">{{ edit_form.lines.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label>Assign Supervisors</label>
                     <div class="PM-supervisors-checkbox-container">
@@ -358,7 +377,7 @@
                     </div>
                     <div class="PM-validation-message">{{ edit_form.supervisors.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label for="id_edit_description">Description</label>
                     {{ edit_form.description }}
@@ -402,18 +421,18 @@
                         <div class="PM-metric-label">Today's Output</div>
                     </div>
                 </div>
-                
+
                 <div class="PM-detail-tabs">
                     <button class="PM-tab-button active" data-tab="performance">Performance</button>
                     <button class="PM-tab-button" data-tab="products">Products</button>
                     <button class="PM-tab-button" data-tab="schedule">Production Schedule</button>
                 </div>
-                
+
                 <div class="PM-tab-content active" id="performance-tab">
                     <div class="PM-detail-chart-container">
                         <div class="PM-chart-controls">
                             <h4>Daily Output</h4>
-                            <div class="PM-chart-filters">
+                            <div class="PM-chart-filters-row">
                                 <div class="PM-filter-group">
                                     <label for="chart-date-filter">Date:</label>
                                     <input type="date" id="chart-date-filter" class="PM-chart-filter" value="{{ today_date }}">
@@ -437,22 +456,76 @@
                         </div>
                         <div class="PM-detail-chart">
                             <canvas id="detail-performance-chart"></canvas>
+                            <div id="chart-error-message" class="PM-chart-error" style="display: none;">
+                                <div class="PM-empty-icon">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <h3>Error Loading Data</h3>
+                                <p>There was a problem loading the chart data. Please try again.</p>
+                            </div>
+                            <div id="chart-empty-message" class="PM-chart-empty" style="display: none;">
+                                <div class="PM-empty-icon">
+                                    <i class="fas fa-chart-bar"></i>
+                                </div>
+                                <h3>No Data Available</h3>
+                                <p>There is no production data for the selected filters.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="PM-tab-content" id="products-tab">
-                    <div class="PM-product-list">
-                        <div class="PM-product-header">
-                            <div class="PM-product-col">Product Name</div>
-                            <div class="PM-product-col">Description</div>
-                            <div class="PM-product-col">Line</div>
-                            <div class="PM-product-col">Qty Per Box</div>
-                            <div class="PM-product-col">Qty Per Hour</div>
-                            <div class="PM-product-col" style="text-align: center" >Actions</div>
+                    <div class="PM-table-controls">
+                        <div class="PM-filter-search-row" style="justify-content: flex-start; margin-bottom: 15px;">
+                            <div style="position: relative; max-width: 300px;">
+                                <input type="text" id="product-search" style="width: 100%; padding: 8px 35px 8px 12px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Search products...">
+                                <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #666; cursor: pointer;">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
                         </div>
-                        <!-- Product items will be populated dynamically -->
                     </div>
+
+                    <div class="JO-table-container" style="min-height: 300px; overflow-y: auto; border: 1px solid #e4e7ed; border-radius: 8px;">
+                        <table class="JO-table" id="products-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa; border-bottom: 2px solid #e4e7ed;">
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Product Name</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Description</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Line</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Qty Per Box</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Qty Per Hour</th>
+                                    <th style="padding: 12px 15px; text-align: center; font-weight: 600;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-table-body">
+                                <!-- Products will be populated dynamically via JavaScript -->
+                                <tr id="products-empty-row">
+                                    <td colspan="6" style="text-align: center; padding: 2rem 1rem; height: 250px;">
+                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
+                                            <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background-color: #f5f5f5; margin-bottom: 1rem;">
+                                                <i class="fas fa-box-open" style="font-size: 24px; color: #757575;"></i>
+                                            </div>
+                                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.2rem; font-weight: 500;">No Products Found</h3>
+                                            <p style="margin: 0.5rem 0 0.5rem; color: #666; font-size: 0.95rem;">No products have been added to this group yet.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr id="products-search-empty-row" style="display: none;">
+                                    <td colspan="6" style="text-align: center; padding: 2rem 1rem; height: 250px;">
+                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
+                                            <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background-color: #f5f5f5; margin-bottom: 1rem;">
+                                                <i class="fas fa-search" style="font-size: 24px; color: #757575;"></i>
+                                            </div>
+                                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.2rem; font-weight: 500;">No matching products found</h3>
+                                            <p style="margin: 0.5rem 0 0.5rem; color: #666; font-size: 0.95rem;">Try adjusting your search criteria</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
                     <div class="PM-add-product">
                         <button class="PM-button PM-primary-button" id="add-product-btn">
                             <i class="fas fa-plus"></i> Add Product
@@ -462,47 +535,82 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="PM-tab-content" id="schedule-tab">
-                    <div class="PM-schedule-filters">
-                        <div class="PM-form-group">
-                            <label for="schedule-date">Date:</label>
-                            <input type="date" id="schedule-date" value="{{ today_date }}">
-                        </div>
-                        <div class="PM-form-group">
-                            <label for="schedule-shift">Shift:</label>
-                            <select id="schedule-shift">
-                                <option value="all">All Shifts</option>
-                                <option value="AM">AM Shift</option>
-                                <option value="PM">PM Shift</option>
-                            </select>
-                        </div>
-                        <div class="PM-form-group">
-                            <label for="schedule-status">Status:</label>
-                            <select id="schedule-status">
-                                <option value="all">All Status</option>
-                                <option value="Planned">Planned</option>
-                                <option value="Change Load">Change Load</option>
-                                <option value="Backlog">Backlog</option>
-                            </select>
+                    <div class="PM-table-controls">
+                        <div class="PM-filter-search-row" style="justify-content: flex-start; margin-bottom: 15px;">
+                            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end; margin-right: 20px;">
+                                <div style="position: relative; min-width: 300px;">
+                                    <input type="text" id="schedule-search" style="width: 100%; padding: 8px 35px 8px 12px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Search schedules...">
+                                    <button style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #666; cursor: pointer;">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <div style="min-width: 150px;">
+                                    <input type="date" id="schedule-date" value="{{ today_date }}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Filter by date">
+                                </div>
+                                <div style="min-width: 150px;">
+                                    <select id="schedule-shift" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="all">All Shifts</option>
+                                        <option value="AM">AM Shift</option>
+                                        <option value="PM">PM Shift</option>
+                                    </select>
+                                </div>
+                                <div style="min-width: 150px;">
+                                    <select id="schedule-status" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                                        <option value="all">All Status</option>
+                                        <option value="Planned">Planned</option>
+                                        <option value="Change Load">Change Load</option>
+                                        <option value="Backlog">Backlog</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    
-                    <div class="PM-schedule-list">
-                        <div class="PM-schedule-header">
-                            <div class="PM-schedule-col">Date Planned</div>
-                            <div class="PM-schedule-col">Product</div>
-                            <div class="PM-schedule-col">Line</div>
-                            <div class="PM-schedule-col">Shift</div>
-                            <div class="PM-schedule-col">Planned Qty</div>
-                            <div class="PM-schedule-col">Produced</div>
-                            <div class="PM-schedule-col">Balance</div>
-                            <div class="PM-schedule-col">Status</div>
-                            <div class="PM-schedule-col">Actions</div>
-                        </div>
-                        <!-- Schedule items will be populated dynamically -->
+
+                    <div class="JO-table-container" style="min-height: 300px; overflow-y: auto; border: 1px solid #e4e7ed; border-radius: 8px;">
+                        <table class="JO-table" id="schedule-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background-color: #f8f9fa; border-bottom: 2px solid #e4e7ed;">
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Date Planned</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Product</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Line</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Shift</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Planned Qty</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Produced</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Balance</th>
+                                    <th style="padding: 12px 15px; text-align: left; font-weight: 600;">Status</th>
+                                    <th style="padding: 12px 15px; text-align: center; font-weight: 600;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="schedule-table-body">
+                                <!-- Schedule items will be populated dynamically via JavaScript -->
+                                <tr id="schedule-empty-row">
+                                    <td colspan="9" style="text-align: center; padding: 2rem 1rem; height: 250px;">
+                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
+                                            <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background-color: #f5f5f5; margin-bottom: 1rem;">
+                                                <i class="fas fa-calendar-alt" style="font-size: 24px; color: #757575;"></i>
+                                            </div>
+                                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.2rem; font-weight: 500;">No Production Schedule</h3>
+                                            <p style="margin: 0.5rem 0 0.5rem; color: #666; font-size: 0.95rem;">No production schedule has been added to this group yet.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr id="schedule-filtered-empty-row" style="display: none;">
+                                    <td colspan="9" style="text-align: center; padding: 2rem 1rem; height: 250px;">
+                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px;">
+                                            <div style="display: flex; align-items: center; justify-content: center; width: 60px; height: 60px; border-radius: 50%; background-color: #f5f5f5; margin-bottom: 1rem;">
+                                                <i class="fas fa-search" style="font-size: 24px; color: #757575;"></i>
+                                            </div>
+                                            <h3 style="margin: 0.5rem 0; color: #333; font-size: 1.2rem; font-weight: 500;">No matching schedule entries found</h3>
+                                            <p style="margin: 0.5rem 0 0.5rem; color: #666; font-size: 0.95rem;">Try adjusting your search criteria</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    
+
                     <div class="PM-add-schedule">
                         <button class="PM-button PM-primary-button" id="add-schedule-btn">
                             <i class="fas fa-plus"></i> Add Schedule
@@ -512,14 +620,14 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="PM-detail-supervisors">
                     <h4>Assigned Supervisors</h4>
                     <div class="PM-supervisors-list" id="detail-supervisors-list">
                         <!-- Supervisors will be populated dynamically -->
                     </div>
                 </div>
-                
+
                 <div class="PM-detail-description">
                     <h4>Description</h4>
                     <p id="detail-description"></p>
@@ -562,27 +670,27 @@
                     {{ product_form.description }}
                     <div class="PM-validation-message">{{ product_form.description.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label for="id_line">Production Line <span class="PM-required">*</span></label>
                     {{ product_form.line }}
                     <div class="PM-validation-message">{{ product_form.line.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-row">
                     <div class="PM-form-group">
                         <label for="id_qty_per_box">Quantity Per Box <span class="PM-required">*</span></label>
                         {{ product_form.qty_per_box }}
                         <div class="PM-validation-message">{{ product_form.qty_per_box.errors }}</div>
                     </div>
-                    
+
                     <div class="PM-form-group">
                         <label for="id_qty_per_hour">Quantity Per Hour <span class="PM-required">*</span></label>
                         {{ product_form.qty_per_hour }}
                         <div class="PM-validation-message">{{ product_form.qty_per_hour.errors }}</div>
                     </div>
                 </div>
-                
+
             </div>
             <div class="PM-modal-footer">
                 <button type="button" class="PM-button PM-secondary-button" id="cancel-product">Cancel</button>
@@ -635,33 +743,61 @@
             {% csrf_token %}
             <div class="PM-modal-body">
                 <input type="hidden" id="import-product-group-id" name="monitoring_id">
-                <div class="PM-form-group">
-                    <label for="product-file">Upload Excel File <span class="PM-required">*</span></label>
-                    <div class="PM-file-upload">
-                        <input type="file" id="product-file" name="product_file" accept=".xlsx, .xls" required>
-                        <label for="product-file" class="PM-file-label">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Choose File</span>
-                        </label>
-                        <div class="PM-file-name">No file chosen</div>
+
+                <div class="PM-import-container">
+                    <div class="PM-import-section">
+                        <div class="PM-import-icon">
+                            <i class="fas fa-file-excel"></i>
+                        </div>
+                        <div class="PM-form-group">
+                            <label for="product-file">Upload Excel File <span class="PM-required">*</span></label>
+                            <div class="PM-file-upload">
+                                <input type="file" id="product-file" name="product_file" accept=".xlsx, .xls" required>
+                                <label for="product-file" class="PM-file-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose File</span>
+                                </label>
+                                <div class="PM-file-name">No file chosen</div>
+                            </div>
+                            <div class="PM-validation-message"></div>
+                        </div>
+
+                        <div class="PM-template-download">
+                            <a href="{% url 'export_product_template' %}" class="PM-button PM-secondary-button">
+                                <i class="fas fa-download"></i> Download Template
+                            </a>
+                        </div>
                     </div>
-                    <div class="PM-validation-message"></div>
-                </div>
-                
-                <div class="PM-import-instructions">
-                    <h3>Instructions</h3>
-                    <p>Please use the template below to ensure your data is correctly formatted. Your Excel file should contain the following columns:</p>
-                    <ul>
-                        <li><strong>product_name</strong>: Name of the product</li>
-                        <li><strong>line_id</strong>: ID of the production line</li>
-                        <li><strong>qty_per_box</strong>: Quantity per box</li>
-                        <li><strong>qty_per_hour</strong>: Quantity per hour</li>
-                        <li><strong>description</strong>: Product description (optional)</li>
-                    </ul>
-                    <div class="PM-template-download">
-                        <a href="{% url 'export_product_template' %}" class="PM-button PM-secondary-button">
-                            <i class="fas fa-download"></i> Download Template
-                        </a>
+
+                    <div class="PM-import-divider"></div>
+
+                    <div class="PM-import-section">
+                        <div class="PM-import-instructions">
+                            <h3><i class="fas fa-info-circle"></i> Instructions</h3>
+                            <p>Your Excel file should contain the following columns:</p>
+                            <div class="PM-import-columns">
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">product_name</span>
+                                    <span class="PM-column-desc">Name of the product</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">line_id</span>
+                                    <span class="PM-column-desc">ID of the production line</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">qty_per_box</span>
+                                    <span class="PM-column-desc">Quantity per box</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">qty_per_hour</span>
+                                    <span class="PM-column-desc">Quantity per hour</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">description</span>
+                                    <span class="PM-column-desc">Product description (optional)</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -691,27 +827,27 @@
                     {{ schedule_form.product_number }}
                     <div class="PM-validation-message">{{ schedule_form.product_number.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-row">
                     <div class="PM-form-group">
                         <label for="id_date_planned">Date Planned <span class="PM-required">*</span></label>
                         {{ schedule_form.date_planned }}
                         <div class="PM-validation-message">{{ schedule_form.date_planned.errors }}</div>
                     </div>
-                    
+
                     <div class="PM-form-group">
                         <label for="id_shift">Shift <span class="PM-required">*</span></label>
                         {{ schedule_form.shift }}
                         <div class="PM-validation-message">{{ schedule_form.shift.errors }}</div>
                     </div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label for="id_planned_qty">Planned Quantity <span class="PM-required">*</span></label>
                     {{ schedule_form.planned_qty }}
                     <div class="PM-validation-message">{{ schedule_form.planned_qty.errors }}</div>
                 </div>
-                
+
                 <div class="PM-form-group">
                     <label for="id_status">Status <span class="PM-required">*</span></label>
                     <select name="status" id="id_status" class="PM-select" data-is-sales="{% if request.user.monitoring_sales %}true{% else %}false{% endif %}">
@@ -744,33 +880,61 @@
             {% csrf_token %}
             <div class="PM-modal-body">
                 <input type="hidden" id="import-schedule-group-id" name="monitoring_id">
-                <div class="PM-form-group">
-                    <label for="schedule-file">Upload Excel File <span class="PM-required">*</span></label>
-                    <div class="PM-file-upload">
-                        <input type="file" id="schedule-file" name="schedule_file" accept=".xlsx, .xls" required>
-                        <label for="schedule-file" class="PM-file-label">
-                            <i class="fas fa-cloud-upload-alt"></i>
-                            <span>Choose File</span>
-                        </label>
-                        <div class="PM-file-name">No file chosen</div>
+
+                <div class="PM-import-container">
+                    <div class="PM-import-section">
+                        <div class="PM-import-icon">
+                            <i class="fas fa-file-excel"></i>
+                        </div>
+                        <div class="PM-form-group">
+                            <label for="schedule-file">Upload Excel File <span class="PM-required">*</span></label>
+                            <div class="PM-file-upload">
+                                <input type="file" id="schedule-file" name="schedule_file" accept=".xlsx, .xls" required>
+                                <label for="schedule-file" class="PM-file-label">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Choose File</span>
+                                </label>
+                                <div class="PM-file-name">No file chosen</div>
+                            </div>
+                            <div class="PM-validation-message"></div>
+                        </div>
+
+                        <div class="PM-template-download">
+                            <a href="{% url 'export_schedule_template' %}" class="PM-button PM-secondary-button" id="schedule-template-download">
+                                <i class="fas fa-download"></i> Download Template
+                            </a>
+                        </div>
                     </div>
-                    <div class="PM-validation-message"></div>
-                </div>
-                
-                <div class="PM-import-instructions">
-                    <h3>Instructions</h3>
-                    <p>Please use the template below to ensure your data is correctly formatted. Your Excel file should contain the following columns:</p>
-                    <ul>
-                        <li><strong>product_id</strong>: ID of the product from the system</li>
-                        <li><strong>date_planned</strong>: Date in YYYY-MM-DD format</li>
-                        <li><strong>shift</strong>: Shift (AM or PM)</li>
-                        <li><strong>planned_qty</strong>: Planned quantity</li>
-                        <li><strong>status</strong>: Status (Planned, Change Load, or Backlog)</li>
-                    </ul>
-                    <div class="PM-template-download">
-                        <a href="{% url 'export_schedule_template' %}" class="PM-button PM-secondary-button">
-                            <i class="fas fa-download"></i> Download Template
-                        </a>
+
+                    <div class="PM-import-divider"></div>
+
+                    <div class="PM-import-section">
+                        <div class="PM-import-instructions">
+                            <h3><i class="fas fa-info-circle"></i> Instructions</h3>
+                            <p>Your Excel file should contain the following columns:</p>
+                            <div class="PM-import-columns">
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">product_name</span>
+                                    <span class="PM-column-desc">Name of the product</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">date_planned</span>
+                                    <span class="PM-column-desc">Date in YYYY-MM-DD format</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">shift</span>
+                                    <span class="PM-column-desc">Shift (AM or PM)</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">planned_qty</span>
+                                    <span class="PM-column-desc">Planned quantity</span>
+                                </div>
+                                <div class="PM-import-column">
+                                    <span class="PM-column-name">status</span>
+                                    <span class="PM-column-desc">Status (Planned, Change Load, or Backlog)</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

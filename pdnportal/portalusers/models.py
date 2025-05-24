@@ -39,6 +39,24 @@ class Users(AbstractUser):
     monitoring_qad = models.BooleanField(default=False)
     monitoring_sales = models.BooleanField(default=False)
 
+    # DCF Permission
+    dcf_user = models.BooleanField(default=False)
+    dcf_requestor = models.BooleanField(default=False)
+    dcf_approver = models.BooleanField(default=False)
+
+    # ECIS Permission
+    ecis_user = models.BooleanField(default=False)
+    ecis_facilitator = models.BooleanField(default=False)
+    ecis_requestor = models.BooleanField(default=False)
+
+    # Overtime Permission
+    overtime_user = models.BooleanField(default=False)
+    overtime_requestor = models.BooleanField(default=False)
+    overtime_supervisor = models.BooleanField(default=False)
+    overtime_importer = models.BooleanField(default=False)
+    overtime_allocator = models.BooleanField(default=False)
+    overtime_facilitator = models.BooleanField(default=False)
+
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
 

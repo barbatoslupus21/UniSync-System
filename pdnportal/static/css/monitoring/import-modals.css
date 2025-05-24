@@ -1,0 +1,162 @@
+/* Import Modals Styling */
+.PM-import-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 10px 0;
+}
+
+.PM-import-section {
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.PM-import-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 15px;
+    border-radius: 50%;
+    background-color: #e3f2fd;
+    color: #1976d2;
+}
+
+.PM-import-icon i {
+    font-size: 24px;
+}
+
+.PM-import-divider {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 10px 0;
+}
+
+.PM-import-instructions h3 {
+    color: #333;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.PM-import-instructions h3 i {
+    color: #1976d2;
+}
+
+.PM-import-instructions p {
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.PM-import-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.PM-import-column {
+    background-color: #fff;
+    border-radius: 6px;
+    padding: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border-left: 3px solid #1976d2;
+    display: flex;
+    flex-direction: column;
+}
+
+.PM-column-name {
+    font-weight: 600;
+    color: #1976d2;
+    margin-bottom: 5px;
+    font-family: monospace;
+    font-size: 0.95rem;
+}
+
+.PM-column-desc {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.PM-file-upload {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.PM-file-upload input[type="file"] {
+    display: none;
+}
+
+.PM-file-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 15px;
+    background-color: #1976d2;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    font-weight: 500;
+}
+
+.PM-file-label:hover {
+    background-color: #1565c0;
+}
+
+.PM-file-name {
+    padding: 8px 12px;
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.PM-template-download {
+    display: flex;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+/* Loading state for submit buttons */
+.PM-button.loading {
+    position: relative;
+    color: transparent;
+}
+
+.PM-button.loading i {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 1rem;
+}
+
+@media (min-width: 768px) {
+    .PM-import-container {
+        flex-direction: row;
+    }
+    
+    .PM-import-section:first-child {
+        flex: 1;
+    }
+    
+    .PM-import-section:last-child {
+        flex: 2;
+    }
+    
+    .PM-import-divider {
+        width: 1px;
+        height: auto;
+        margin: 0 15px;
+    }
+}

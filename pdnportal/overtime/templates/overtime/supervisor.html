@@ -1,0 +1,218 @@
+<!-- Supervisor Tab Content -->
+<div class="OT-supervisor-container">
+    <!-- OT Analytics Dashboard -->
+    <div class="OT-card OT-analytics-overview">
+        <div class="OT-card-header">
+            <h2>Overtime Analytics</h2>
+            <div class="OT-card-actions">
+                <div class="OT-time-selector">
+                    <button class="OT-button OT-text-button OT-time-option active" data-period="3M">3 Months</button>
+                    <button class="OT-button OT-text-button OT-time-option" data-period="6M">6 Months</button>
+                    <button class="OT-button OT-text-button OT-time-option" data-period="QTR">Quarterly</button>
+                </div>
+                <button class="OT-button OT-secondary-button" id="export-analytics">
+                    <i class="fas fa-file-export"></i> Export Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Summary Stats -->
+        <div class="OT-analytics-stats">
+            <div class="OT-analytics-stat-item">
+                <div class="OT-stat-icon OT-icon-ot">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div class="OT-stat-content">
+                    <h3>OT</h3>
+                    <h2 class="OT-stat-number" id="ot-count">{{ ot_count }}</h2>
+                    <p><span class="OT-trend-up"><i class="fas fa-arrow-up"></i> 8%</span> vs previous</p>
+                </div>
+            </div>
+            
+            <div class="OT-analytics-stat-item">
+                <div class="OT-stat-icon OT-icon-not-ot">
+                    <i class="fas fa-user-times"></i>
+                </div>
+                <div class="OT-stat-content">
+                    <h3>Not OT</h3>
+                    <h2 class="OT-stat-number" id="not-ot-count">{{ not_ot_count }}</h2>
+                    <p><span class="OT-trend-down"><i class="fas fa-arrow-down"></i> 3%</span> vs previous</p>
+                </div>
+            </div>
+            
+            <div class="OT-analytics-stat-item">
+                <div class="OT-stat-icon OT-icon-absent">
+                    <i class="fas fa-user-slash"></i>
+                </div>
+                <div class="OT-stat-content">
+                    <h3>Absent</h3>
+                    <h2 class="OT-stat-number" id="absent-count">{{ absent_count }}</h2>
+                    <p><span class="OT-trend-neutral"><i class="fas fa-equals"></i> 0%</span> vs previous</p>
+                </div>
+            </div>
+            
+            <div class="OT-analytics-stat-item">
+                <div class="OT-stat-icon OT-icon-leave">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div class="OT-stat-content">
+                    <h3>Leave</h3>
+                    <h2 class="OT-stat-number" id="leave-count">{{ leave_count }}</h2>
+                    <p><span class="OT-trend-down"><i class="fas fa-arrow-down"></i> 5%</span> vs previous</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Chart -->
+        <div class="OT-chart-container OT-main-chart">
+            <h3>Overtime Trend by Status</h3>
+            <canvas id="overtime-trend-chart"></canvas>
+        </div>
+    </div>
+    
+    <!-- Requestor-specific Analysis -->
+    <div class="OT-requestor-analysis">
+        <div class="OT-card OT-requestor-selector">
+            <div class="OT-card-header">
+                <h2>Requestor Analysis</h2>
+            </div>
+            <div class="OT-requestor-list">
+                {% for requestor in requestors %}
+                <div class="OT-requestor-item {% if forloop.first %}active{% endif %}" data-id="{{ requestor.id }}">
+                    <div class="OT-requestor-info">
+                        <div class="OT-requestor-avatar">
+                            {% if requestor.avatar %}
+                            <img src="{{ requestor.avatar.url }}" alt="{{ requestor.name }}">
+                            {% else %}
+                            <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <div class="OT-requestor-details">
+                            <h4>{{ requestor.name }}</h4>
+                            <p>{{ requestor.line }}</p>
+                        </div>
+                    </div>
+                    <div class="OT-requestor-metrics">
+                        <div class="OT-metric">
+                            <span class="OT-metric-label">OT:</span>
+                            <span class="OT-metric-value">{{ requestor.ot_count }}</span>
+                        </div>
+                        <div class="OT-metric">
+                            <span class="OT-metric-label">Not OT:</span>
+                            <span class="OT-metric-value">{{ requestor.not_ot_count }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="OT-empty-requestors">
+                    <i class="fas fa-users-slash"></i>
+                    <p>No requestors found under your supervision.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="OT-card OT-requestor-details">
+            <div class="OT-card-header">
+                <h2 id="selected-requestor-name">{{ requestors.0.name }}</h2>
+                <div class="OT-card-actions">
+                    <button class="OT-button OT-secondary-button" id="export-requestor-data">
+                        <i class="fas fa-file-export"></i> Export Data
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Requestor Stats -->
+            <div class="OT-requestor-stats">
+                <div class="OT-analytics-stat-item OT-small">
+                    <div class="OT-stat-icon OT-icon-total">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <div class="OT-stat-content">
+                        <h3>Total Requests</h3>
+                        <h2 class="OT-stat-number" id="requestor-total">{{ requestors.0.total_requests }}</h2>
+                    </div>
+                </div>
+                
+                <div class="OT-analytics-stat-item OT-small">
+                    <div class="OT-stat-icon OT-icon-shifted">
+                        <i class="fas fa-exchange-alt"></i>
+                    </div>
+                    <div class="OT-stat-content">
+                        <h3>Shifted OT</h3>
+                        <h2 class="OT-stat-number" id="requestor-shifted">{{ requestors.0.shifted_count }}</h2>
+                    </div>
+                </div>
+                
+                <div class="OT-analytics-stat-item OT-small">
+                    <div class="OT-stat-icon OT-icon-daily">
+                        <i class="fas fa-calendar-day"></i>
+                    </div>
+                    <div class="OT-stat-content">
+                        <h3>Daily OT</h3>
+                        <h2 class="OT-stat-number" id="requestor-daily">{{ requestors.0.daily_count }}</h2>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Requestor Charts -->
+            <div class="OT-chart-container OT-requestor-chart">
+                <h3>Status Distribution</h3>
+                <canvas id="requestor-status-chart"></canvas>
+            </div>
+            
+            <!-- Recent Filings -->
+            <div class="OT-recent-filings">
+                <h3>Recent Filings</h3>
+                <div class="OT-filings-list">
+                    {% for filing in requestors.0.recent_filings %}
+                    <div class="OT-filing-item">
+                        <div class="OT-filing-header">
+                            <div class="OT-filing-type">
+                                <span class="OT-type-badge OT-type-{{ filing.type|lower }}">{{ filing.type }}</span>
+                                <span class="OT-filing-date">{{ filing.date|date:"M d, Y" }}</span>
+                            </div>
+                            <span class="OT-filing-id">{{ filing.id }}</span>
+                        </div>
+                        <div class="OT-filing-details">
+                            <p><strong>Employees:</strong> {{ filing.employee_count }}</p>
+                            <p><strong>OT Count:</strong> {{ filing.ot_count }}</p>
+                            <p><strong>Not OT Count:</strong> {{ filing.not_ot_count }}</p>
+                        </div>
+                        <button class="OT-button OT-text-button OT-view-filing" data-id="{{ filing.id }}">
+                            <i class="fas fa-eye"></i> View Details
+                        </button>
+                    </div>
+                    {% empty %}
+                    <div class="OT-empty-filings">
+                        <i class="fas fa-calendar-times"></i>
+                        <p>No recent filings found for this requestor.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filing Details Modal -->
+<div class="OT-modal" id="filing-details-modal">
+    <div class="OT-modal-content OT-large-modal">
+        <div class="OT-modal-header">
+            <h2>Filing Details</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body" id="filing-details-content">
+            <!-- Loading state is shown initially -->
+            <div class="OT-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading filing details...</p>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="close-filing-details">Close</button>
+        </div>
+    </div>
+</div>

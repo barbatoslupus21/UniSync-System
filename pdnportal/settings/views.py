@@ -19,7 +19,7 @@ def user_management(request):
     admin_count = users_list.filter(is_admin=True).count()
     active_count = users_list.filter(is_active=True).count()
     inactive_count = users_list.filter(is_active=False).count()
-    
+
     lines = Line.objects.all().order_by('line_name')
 
     approvers = Users.objects.filter(position__in=['Supervisor', 'Manager'], is_active=True).all()
@@ -27,7 +27,7 @@ def user_management(request):
     paginator = Paginator(users_list, 10)
     page = request.GET.get('page', 1)
     users = paginator.get_page(page)
-    
+
     context = {
         'users': users,
         'users_count': users_count,
@@ -39,7 +39,7 @@ def user_management(request):
         'position_choices': Users.POSITION,
         'module_choices': UserApprovers.MODULES,
         'role_choices': UserApprovers.ROLES,
-    }  
+    }
     return render(request, 'settings/account-register.html', context)
 
 @login_required(login_url="user-login")
@@ -79,7 +79,7 @@ def create_user(request):
             # Job Order permissions
             job_order_user = request.POST.get('job_order_user') == 'on'
             user.job_order_user = job_order_user
-            
+
             if job_order_user:
                 job_order_role = request.POST.get('job_order_role')
                 if job_order_role == 'requestor':
@@ -92,22 +92,22 @@ def create_user(request):
                     user.job_order_maintenance = True
                 elif job_order_role == 'facilitator':
                     user.job_order_facilitator = True
-            
+
             # Manhours permissions
             manhours_user = request.POST.get('manhours_user') == 'on'
             user.manhours_user = manhours_user
-            
+
             if manhours_user:
                 manhours_role = request.POST.get('manhours_role')
                 if manhours_role == 'staff':
                     user.manhours_staff = True
                 elif manhours_role == 'supervisor':
                     user.manhours_supervisor = True
-            
+
             # Monitoring permissions
             monitoring_user = request.POST.get('monitoring_user') == 'on'
             user.monitoring_user = monitoring_user
-            
+
             if monitoring_user:
                 monitoring_role = request.POST.get('monitoring_role')
                 if monitoring_role == 'staff':
@@ -120,14 +120,36 @@ def create_user(request):
                     user.monitoring_qad = True
                 elif monitoring_role == 'sales':
                     user.monitoring_sales = True
-            
+
+            # DCF permissions
+            dcf_user = request.POST.get('dcf_user') == 'on'
+            user.dcf_user = dcf_user
+
+            if dcf_user:
+                dcf_role = request.POST.get('dcf_role')
+                if dcf_role == 'requestor':
+                    user.dcf_requestor = True
+                elif dcf_role == 'approver':
+                    user.dcf_approver = True
+
+            # ECIS permissions
+            ecis_user = request.POST.get('ecis_user') == 'on'
+            user.ecis_user = ecis_user
+
+            if ecis_user:
+                ecis_role = request.POST.get('ecis_role')
+                if ecis_role == 'requestor':
+                    user.ecis_requestor = True
+                elif ecis_role == 'facilitator':
+                    user.ecis_facilitator = True
+
             user.set_password(password)
             user.save()
-            
+
             approver_modules = request.POST.getlist('approver_module[]')
             approver_roles = request.POST.getlist('approver_role[]')
             approver_users = request.POST.getlist('approver_user[]')
-            
+
             for i in range(len(approver_modules)):
                 if i < len(approver_roles) and i < len(approver_users) and approver_modules[i] and approver_roles[i] and approver_users[i]:
                     UserApprovers.objects.create(
@@ -136,10 +158,10 @@ def create_user(request):
                         approver_role=approver_roles[i],
                         approver_id=approver_users[i]
                     )
-            
+
             messages.success(request, 'User created successfully')
             return redirect('account_settings')
-            
+
         except Exception as e:
             messages.error(request, f'Error creating user: {str(e)}')
             return redirect('account_settings')
@@ -150,25 +172,30 @@ def create_user(request):
 @user_passes_test(is_admin)
 def edit_user(request, user_id):
     user = get_object_or_404(Users, id=user_id)
-    
+
     if request.method == 'POST':
         try:
             user.id_number = request.POST.get('id_number')
             user.name = request.POST.get('name')
             user.position = request.POST.get('position')
-            
+
             new_username = request.POST.get('username')
             if new_username != user.username and Users.objects.filter(username=new_username).exists():
                 messages.error(request, 'Username already exists')
                 return redirect('account_settings')
-            
+
             user.username = new_username
             user.line_id = request.POST.get('line')
             user.is_admin = request.POST.get('is_admin') == 'on'
 
             avatar_filename = request.POST.get('avatar')
             if avatar_filename:
-                user.avatar = avatar_filename
+                # Make sure we have the correct path format
+                if not avatar_filename.startswith('profile/'):
+                    avatar_path = f'profile/{avatar_filename}'
+                else:
+                    avatar_path = avatar_filename
+                user.avatar = avatar_path
 
             password = request.POST.get('password')
             if password:
@@ -180,21 +207,31 @@ def edit_user(request, user_id):
             user.job_order_checker = False
             user.job_order_maintenance = False
             user.job_order_facilitator = False
-            
+
             user.manhours_user = False
             user.manhours_staff = False
             user.manhours_supervisor = False
-            
+
             user.monitoring_user = False
             user.monitoring_staff = False
             user.monitoring_supervisor = False
             user.monitoring_manager = False
             user.monitoring_qad = False
             user.monitoring_sales = False
-            
+
+            # Reset DCF permissions
+            user.dcf_user = False
+            user.dcf_requestor = False
+            user.dcf_approver = False
+
+            # Reset ECIS permissions
+            user.ecis_user = False
+            user.ecis_requestor = False
+            user.ecis_facilitator = False
+
             job_order_user = request.POST.get('job_order_user') == 'on'
             user.job_order_user = job_order_user
-            
+
             if job_order_user:
                 job_order_role = request.POST.get('job_order_role')
                 if job_order_role == 'requestor':
@@ -210,17 +247,17 @@ def edit_user(request, user_id):
 
             manhours_user = request.POST.get('manhours_user') == 'on'
             user.manhours_user = manhours_user
-            
+
             if manhours_user:
                 manhours_role = request.POST.get('manhours_role')
                 if manhours_role == 'staff':
                     user.manhours_staff = True
                 elif manhours_role == 'supervisor':
                     user.manhours_supervisor = True
-            
+
             monitoring_user = request.POST.get('monitoring_user') == 'on'
             user.monitoring_user = monitoring_user
-            
+
             if monitoring_user:
                 monitoring_role = request.POST.get('monitoring_role')
                 if monitoring_role == 'staff':
@@ -233,9 +270,31 @@ def edit_user(request, user_id):
                     user.monitoring_qad = True
                 elif monitoring_role == 'sales':
                     user.monitoring_sales = True
-            
+
+            # DCF permissions
+            dcf_user = request.POST.get('dcf_user') == 'on'
+            user.dcf_user = dcf_user
+
+            if dcf_user:
+                dcf_role = request.POST.get('dcf_role')
+                if dcf_role == 'requestor':
+                    user.dcf_requestor = True
+                elif dcf_role == 'approver':
+                    user.dcf_approver = True
+
+            # ECIS permissions
+            ecis_user = request.POST.get('ecis_user') == 'on'
+            user.ecis_user = ecis_user
+
+            if ecis_user:
+                ecis_role = request.POST.get('ecis_role')
+                if ecis_role == 'requestor':
+                    user.ecis_requestor = True
+                elif ecis_role == 'facilitator':
+                    user.ecis_facilitator = True
+
             user.save()
-        
+
             UserApprovers.objects.filter(user=user).delete()
 
             approver_modules = request.POST.getlist('approver_module[]')
@@ -250,14 +309,14 @@ def edit_user(request, user_id):
                         approver_role=approver_roles[i],
                         approver_id=approver_users[i]
                     )
-            
+
             messages.success(request, 'User updated successfully')
             return redirect('account_settings')
-            
+
         except Exception as e:
             messages.error(request, f'Error updating user: {str(e)}')
             return redirect('account_settings')
-    
+
     return redirect('account_settings')
 
 @login_required(login_url="user-login")
@@ -265,10 +324,10 @@ def edit_user(request, user_id):
 def get_user_data(request, user_id):
     try:
         user = get_object_or_404(Users, id=user_id)
-        
+
         approvers = UserApprovers.objects.filter(user=user)
         approvers_data = []
-        
+
         for approver in approvers:
             approvers_data.append({
                 'id': approver.id,
@@ -277,7 +336,7 @@ def get_user_data(request, user_id):
                 'approver_id': approver.approver.id,
                 'approver_name': f"{approver.approver.name} ({approver.approver.position})"
             })
-        
+
         # Determine job order role
         job_order_role = None
         if user.job_order_requestor:
@@ -290,14 +349,14 @@ def get_user_data(request, user_id):
             job_order_role = 'maintenance'
         elif user.job_order_facilitator:
             job_order_role = 'facilitator'
-        
+
         # Determine manhours role
         manhours_role = None
         if user.manhours_staff:
             manhours_role = 'staff'
         elif user.manhours_supervisor:
             manhours_role = 'supervisor'
-        
+
         # Determine monitoring role
         monitoring_role = None
         if user.monitoring_staff:
@@ -310,7 +369,21 @@ def get_user_data(request, user_id):
             monitoring_role = 'qad'
         elif user.monitoring_sales:
             monitoring_role = 'sales'
-        
+
+        # Determine DCF role
+        dcf_role = None
+        if user.dcf_requestor:
+            dcf_role = 'requestor'
+        elif user.dcf_approver:
+            dcf_role = 'approver'
+
+        # Determine ECIS role
+        ecis_role = None
+        if user.ecis_requestor:
+            ecis_role = 'requestor'
+        elif user.ecis_facilitator:
+            ecis_role = 'facilitator'
+
         user_data = {
             'id': user.id,
             'id_number': user.id_number,
@@ -327,14 +400,22 @@ def get_user_data(request, user_id):
             'manhours_role': manhours_role,
             'monitoring_user': user.monitoring_user,
             'monitoring_role': monitoring_role,
+            'dcf_user': user.dcf_user,
+            'dcf_role': dcf_role,
+            'dcf_requestor': user.dcf_requestor,
+            'dcf_approver': user.dcf_approver,
+            'ecis_user': user.ecis_user,
+            'ecis_role': ecis_role,
+            'ecis_requestor': user.ecis_requestor,
+            'ecis_facilitator': user.ecis_facilitator,
             'approvers': approvers_data
         }
-        
+
         return JsonResponse({
             'status': 'success',
             'user': user_data
         })
-        
+
     except Exception as e:
         return JsonResponse({
             'status': 'error',
@@ -347,20 +428,20 @@ def delete_user(request, user_id):
     if request.method == 'POST':
         try:
             user = get_object_or_404(Users, id=user_id)
-            
+
             if request.user.id == user.id:
                 messages.error(request, 'You cannot delete your own account')
                 return redirect('account_settings')
-            
+
             username = user.username
             user.delete()
-            
+
             messages.success(request, f'User {username} has been deleted')
             return redirect('account_settings')
-            
+
         except Exception as e:
             messages.error(request, f'Error deleting user: {str(e)}')
-    
+
     return redirect('account_settings')
 
 @login_required(login_url="user-login")
@@ -373,18 +454,18 @@ def toggle_user_status(request, user_id):
             if request.user.id == user.id and user.is_active:
                 messages.error(request, 'You cannot deactivate your own account')
                 return redirect('account_settings')
-            
+
             user.is_active = not user.is_active
             user.save()
-            
+
             status = 'activated' if user.is_active else 'deactivated'
             messages.success(request, f'User has been {status}')
-            
+
             return redirect('account_settings')
-            
+
         except Exception as e:
             messages.error(request, f'Error toggling user status: {str(e)}')
-    
+
     return redirect('account_settings')
 
 @require_http_methods(["GET"])

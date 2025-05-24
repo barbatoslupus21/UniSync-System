@@ -5,9 +5,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-3oti(#notk7n_)c&kid2p&@d$9pb!znyy22#jaryu3)@hiq8y5'
 
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = True
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'channels',
     'portalusers.apps.PortalusersConfig',
     'overview.apps.OverviewConfig',
     'joborder.apps.JoborderConfig',
@@ -25,10 +26,15 @@ INSTALLED_APPS = [
     'naganuma.apps.NaganumaConfig',
     'monitoring.apps.MonitoringConfig',
     'settings.apps.SettingsConfig',
+    'chat.apps.ChatConfig',
+    'dcf.apps.DcfConfig',
+    'ecis.apps.EcisConfig',
+    'overtime.apps.OvertimeConfig',
     'materialrequest.apps.MaterialrequestConfig'
 ]
 
 AUTH_USER_MODEL ='portalusers.users'
+ASGI_APPLICATION = 'pdnportal.asgi.application'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -38,8 +44,15 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'chat.middleware.UserOnlineStatusMiddleware',
+    'pdnportal.db_middleware.DatabaseConnectionMiddleware',  # Add our custom middleware
 ]
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 ROOT_URLCONF = 'pdnportal.urls'
 
@@ -73,17 +86,20 @@ WSGI_APPLICATION = 'pdnportal.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DJANGO_DB_NAME', 'UniSync'),
-        'USER': os.getenv('DJANGO_DB_USER', 'misadmin'),
-        'PASSWORD': os.getenv('DJANGO_DB_PASSWORD', 'FADLOCKED960052'),
-        'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),
-        'PORT': '3306',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
         'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        }
+            # Enable Write-Ahead Logging mode for better concurrency
+            'timeout': 20,  # Timeout in seconds
+            'isolation_level': None,  # Use autocommit mode
+            'check_same_thread': False,  # Allow multiple threads to use the same connection
+        },
+        'ATOMIC_REQUESTS': True,  # Wrap each request in a transaction
     }
 }
+
+# Database routers
+DATABASE_ROUTERS = ['pdnportal.db_router.RetryingRouter']
 
 
 
@@ -116,8 +132,13 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # Changed from 'static' to 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 MEDIA_URL = '/media/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 MEDIA_ROOT = BASE_DIR / 'static/images'
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

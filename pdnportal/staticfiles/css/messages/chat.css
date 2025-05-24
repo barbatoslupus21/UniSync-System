@@ -1,0 +1,2636 @@
+/*
+ * UniSync - Chat Module Styles
+ * Extends the base JO- styles from job-order.css
+ */
+
+ :root {
+    /* Chat specific colors */
+    --chat-primary: var(--jo-primary);
+    --chat-primary-light: var(--jo-primary-light);
+    --chat-primary-dark: var(--jo-primary-dark);
+    --chat-bg: #ffffff; /* White background for chat area */
+    --chat-border: var(--jo-border);
+    --chat-text: var(--jo-text);
+    --chat-text-light: var(--jo-text-light);
+    --chat-sent-bg: #3366ff; /* Blue background for sender messages */
+    --chat-received-bg: #f0f0f0; /* Light gray background for receiver messages */
+    --chat-date-bg: rgba(0, 0, 0, 0.04);
+    --chat-typing-color: var(--jo-primary);
+    --chat-read-indicator: var(--jo-primary);
+    --chat-online: #4caf50;
+    --chat-reaction-bg: rgba(0, 0, 0, 0.04);
+    --chat-mention-bg: rgba(51, 102, 255, 0.1);
+}
+
+/* ==========================================================================
+   Chat Container Layout
+   ========================================================================== */
+
+.Chat-container {
+    display: flex !important; /* Force flex display */
+    flex-direction: row !important; /* Force row direction */
+    height: calc(100vh - 180px);
+    background-color: var(--chat-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--jo-shadow);
+    animation: none !important; /* Disable animation to prevent flickering */
+    position: relative; /* Ensure proper positioning context */
+    min-height: 500px; /* Ensure minimum height */
+    will-change: contents; /* Use GPU acceleration */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden; /* Prevent flickering */
+    backface-visibility: hidden;
+    -webkit-perspective: 1000; /* Prevent flickering */
+    perspective: 1000;
+    -webkit-font-smoothing: antialiased; /* Prevent text flickering */
+    -moz-osx-font-smoothing: grayscale;
+    transition: all 0.3s ease; /* Smooth transition for all properties */
+}
+
+/* Special class for when a chat is active */
+.Chat-container.chat-active {
+    display: flex !important;
+    flex-direction: row !important;
+}
+
+/* Ensure the sidebar is always visible in chat-active mode */
+.Chat-container.chat-active .Chat-sidebar {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 320px !important;
+    min-width: 320px !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+/* Prevent the mobile-hidden class from hiding the sidebar on desktop */
+@media (min-width: 769px) {
+    .Chat-sidebar.mobile-hidden {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}
+
+/* ==========================================================================
+   Chat Sidebar Styles
+   ========================================================================== */
+
+.Chat-sidebar {
+    width: 320px;
+    min-width: 320px; /* Prevent shrinking */
+    background-color: white;
+    border-right: 1px solid var(--chat-border);
+    display: flex !important; /* Force display */
+    flex-direction: column;
+    position: relative; /* Ensure proper positioning */
+    z-index: 2; /* Ensure it's above other elements */
+    height: 100%; /* Take full height */
+    overflow-y: auto; /* Allow scrolling if needed */
+    visibility: visible !important; /* Force visibility */
+    opacity: 1 !important; /* Force opacity */
+    transform: none !important; /* Prevent transformations */
+    /* Remove transitions to prevent flickering */
+    transition: none !important;
+    /* Prevent content shifting */
+    will-change: transform; /* Use GPU acceleration */
+    backface-visibility: hidden; /* Prevent flickering in some browsers */
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0) scale(1.0, 1.0);
+    transform: translateZ(0) scale(1.0, 1.0);
+}
+
+.Chat-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+.Chat-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--chat-border);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+
+.Chat-search-container:focus-within {
+    border-color: var(--chat-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.1);
+}
+
+.Chat-search-input {
+    flex: 1;
+    border: none;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    outline: none;
+}
+
+.Chat-search-button {
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    transition: color 0.2s ease;
+}
+
+.Chat-search-button:hover {
+    color: var(--chat-primary);
+}
+
+.Chat-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+.Chat-tab {
+    flex: 1;
+    padding: 12px 8px;
+    text-align: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    font-size: 0.9rem;
+    font-weight: 500;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.Chat-tab:hover {
+    color: var(--chat-primary);
+}
+
+.Chat-tab.active {
+    color: var(--chat-primary);
+}
+
+.Chat-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: var(--chat-primary);
+    animation: slideIn 0.3s ease;
+}
+
+.Chat-tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.Chat-tab-content.active {
+    display: block;
+}
+
+.Chat-modal-tabs {
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+.Chat-modal-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-modal-tab-content.active {
+    display: block;
+}
+
+.Chat-contacts-actions {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+/* ==========================================================================
+   Chat List Items
+   ========================================================================== */
+
+.Chat-list {
+    overflow-y: auto;
+    position: relative;
+    min-height: 100px; /* Ensure there's space for items */
+    opacity: 1;
+    /* Ensure the chat list has a proper position context */
+    width: 100%;
+    height: 100%; /* Take full height of container */
+    display: block; /* Ensure it's displayed as a block */
+    /* Prevent content shifting */
+    will-change: transform; /* Use GPU acceleration */
+    backface-visibility: hidden; /* Prevent flickering in some browsers */
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    /* Add smooth transition for non-layout properties only */
+    transition: background-color 0.3s ease;
+}
+
+/* Anti-flicker styles for chat list */
+.Chat-tab-content {
+    position: relative; /* Create positioning context */
+}
+
+/* Style for the list that's being prepared off-screen */
+.Chat-list-preparing {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none; /* Don't capture clicks while invisible */
+    z-index: -1; /* Keep it behind the current list */
+}
+
+/* Prevent transitions during updates - extremely aggressive approach */
+.no-transition,
+.no-transition * {
+    transition: none !important;
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-transform: translateZ(0) !important; /* Force hardware acceleration */
+    transform: translateZ(0) !important;
+    -webkit-backface-visibility: hidden !important; /* Prevent flickering */
+    backface-visibility: hidden !important;
+    -webkit-perspective: 1000 !important; /* Prevent flickering */
+    perspective: 1000 !important;
+    -webkit-font-smoothing: antialiased !important; /* Prevent text flickering */
+    -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* New class for smooth component updates */
+.smooth-update {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    will-change: opacity, transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+/* Class for components being updated */
+.updating {
+    opacity: 0.8;
+    pointer-events: none; /* Prevent interaction during update */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    will-change: opacity, transform;
+}
+
+/* Class for components that have been updated */
+.updated {
+    animation: flash-update 0.5s ease;
+}
+
+/* Specific component transitions */
+.Chat-header.updating {
+    opacity: 0.7;
+}
+
+.Chat-header.updated {
+    animation: header-update 0.5s ease;
+}
+
+.Chat-messages {
+    /* Add smooth transitions to prevent flickering */
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    will-change: opacity, transform, contents;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.Chat-messages.updating {
+    opacity: 0.6;
+    transition: opacity 0.3s ease;
+}
+
+/* Prevent flickering when messages are refreshed */
+.Chat-messages.smooth-update {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    will-change: opacity, transform, contents;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+}
+
+.Chat-info-sidebar.updating {
+    opacity: 0.7;
+}
+
+/* Smooth transitions for chat components */
+.Chat-header,
+.Chat-messages,
+.Chat-info-sidebar,
+.Chat-list,
+.Chat-list-item,
+.Chat-message-container,
+.Chat-message-group,
+.Chat-date-separator,
+.Chat-system-message {
+    transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease;
+}
+
+/* Animation for updated components */
+@keyframes flash-update {
+    0% { background-color: rgba(51, 102, 255, 0.1); }
+    100% { background-color: transparent; }
+}
+
+@keyframes header-update {
+    0% { background-color: rgba(51, 102, 255, 0.05); }
+    100% { background-color: transparent; }
+}
+
+/* Prevent flickering during chat list updates */
+.Chat-list-preparing {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -1 !important;
+}
+
+/* Class to disable transitions temporarily to prevent flickering */
+.Chat-list.no-transition,
+.Chat-list.no-transition * {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Prevent flickering of list items */
+.Chat-list-item {
+    transform: translateZ(0); /* Force GPU acceleration */
+    backface-visibility: hidden; /* Prevent flickering */
+    -webkit-backface-visibility: hidden;
+}
+
+.Chat-list-item {
+    display: flex;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--chat-border);
+    cursor: pointer;
+    transition: none !important; /* Remove ALL transitions to prevent flickering */
+    opacity: 1 !important;
+    position: relative; /* Ensure proper positioning */
+    background-color: white; /* Ensure it has a background */
+    will-change: background-color, transform; /* Use GPU acceleration */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden; /* Prevent flickering */
+    backface-visibility: hidden;
+    -webkit-perspective: 1000; /* Prevent flickering */
+    perspective: 1000;
+    -webkit-font-smoothing: antialiased; /* Prevent text flickering */
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.Chat-list-item:hover {
+    background-color: var(--chat-bg);
+}
+
+.Chat-list-item.Chat-active {
+    background-color: var(--chat-primary-light) !important;
+    /* Use !important to ensure this style is always applied */
+    /* This prevents flickering when the active state changes */
+}
+
+.Chat-list-item.Chat-unread {
+    background-color: rgba(51, 102, 255, 0.05);
+}
+
+.Chat-avatar-container {
+    position: relative;
+    margin-right: 12px;
+}
+
+.Chat-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.Chat-group-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.Chat-status-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ccc;
+    /* Removed border */
+}
+
+.Chat-status-indicator.Chat-online {
+    background-color: var(--chat-online);
+}
+
+.Chat-list-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.Chat-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.Chat-contact-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.Chat-time {
+    font-size: 0.75rem;
+    color: var(--chat-text-light);
+    white-space: nowrap;
+}
+
+.Chat-list-body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.Chat-last-message {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--chat-text-light);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.Chat-unread-badge {
+    background-color: var(--chat-primary);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: bold;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    box-shadow: 0 2px 4px rgba(51, 102, 255, 0.3);
+    animation: pulse 2s infinite;
+}
+
+/* Animation for badge highlight when new messages arrive */
+.Chat-badge-highlight {
+    animation: highlight-pulse 0.6s ease-in-out;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes highlight-pulse {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(51, 102, 255, 0.3);
+    }
+    50% {
+        transform: scale(1.3);
+        box-shadow: 0 0 10px rgba(51, 102, 255, 0.8);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 0 2px 4px rgba(51, 102, 255, 0.3);
+    }
+}
+
+.Chat-contact-title {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--chat-text-light);
+}
+
+.Chat-contact-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.Chat-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--chat-text-light);
+    transition: all 0.2s ease;
+}
+
+.Chat-icon-button:hover {
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+    transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   Chat Main Area
+   ========================================================================== */
+
+.Chat-main {
+    flex: 1;
+    display: flex;
+    position: relative;
+    background-color: white;
+    overflow-y: auto;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    width: 100%; /* Take full width by default */
+    transition: width 0.3s ease !important; /* Smooth transition for width changes */
+    will-change: contents, width; /* Use GPU acceleration */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden; /* Prevent flickering */
+    backface-visibility: hidden;
+    -webkit-perspective: 1000; /* Prevent flickering */
+    perspective: 1000;
+    -webkit-font-smoothing: antialiased; /* Prevent text flickering */
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* When info panel is active, no need to adjust width anymore */
+.Chat-main.info-active {
+    /* Width is automatically adjusted by flexbox */
+    flex: 1;
+}
+
+.Chat-empty-main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--chat-bg);
+}
+
+.Chat-empty-main-content {
+    text-align: center;
+    padding: 20px;
+    animation: fadeIn 0.5s ease;
+}
+
+.Chat-empty-main-content i {
+    font-size: 4rem;
+    color: #ccc;
+    margin-bottom: 16px;
+}
+
+.Chat-empty-main-content h2 {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+    color: var(--chat-text);
+}
+
+.Chat-empty-main-content p {
+    color: var(--chat-text-light);
+}
+
+.Chat-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.Chat-empty-state i {
+    font-size: 3rem;
+    color: #ccc;
+    margin-bottom: 16px;
+}
+
+.Chat-empty-state p {
+    color: var(--chat-text-light);
+    margin-bottom: 16px;
+}
+
+/* Empty messages state */
+.Chat-empty-messages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 40px 20px;
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+}
+
+.Chat-empty-messages-icon {
+    font-size: 5rem;
+    color: var(--chat-primary-light);
+    margin-bottom: 24px;
+    background-color: rgba(51, 102, 255, 0.1);
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(51, 102, 255, 0.15);
+}
+
+.Chat-empty-messages h3 {
+    font-size: 1.5rem;
+    color: var(--chat-text);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.Chat-empty-messages p {
+    color: var(--chat-text-light);
+    font-size: 1rem;
+    max-width: 300px;
+    line-height: 1.5;
+}
+
+.Chat-active-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* Ensure it takes full height */
+    position: relative; /* For absolute positioning of children if needed */
+    overflow-y: auto; /* Allow vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    width: 100%; /* Take full width by default */
+    transition: width 0.3s ease; /* Smooth transition when info sidebar opens */
+}
+
+.Chat-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--chat-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: white;
+}
+
+.Chat-header-user {
+    display: flex;
+    align-items: center;
+}
+
+.Chat-back-button {
+    display: none;
+    margin-right: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.Chat-back-button:hover {
+    background-color: var(--chat-bg);
+}
+
+.Chat-header-avatar-container {
+    position: relative;
+    margin-right: 12px;
+}
+
+.Chat-header-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--chat-primary-light);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--chat-primary);
+    font-size: 1.2rem;
+}
+
+.Chat-header-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.Chat-header-status-indicator {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ccc;
+    /* Removed border */
+}
+
+.Chat-header-status-indicator.Chat-online {
+    background-color: var(--chat-online);
+}
+
+.Chat-header-info {
+    flex: 1;
+}
+
+.Chat-header-name {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 2px;
+}
+
+.Chat-header-status {
+    font-size: 0.8rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+.Chat-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.Chat-header-button {
+    background: none;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--chat-text);
+    transition: all 0.2s ease;
+}
+
+.Chat-header-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--chat-primary);
+}
+
+/* Mark as read button */
+#mark-as-read-btn {
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+}
+
+#mark-as-read-btn:hover {
+    background-color: var(--chat-primary);
+    color: white;
+}
+
+/* ==========================================================================
+   Messages Area
+   ========================================================================== */
+
+.Chat-messages {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto; /* Keep vertical scrolling */
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+    background-color: var(--chat-bg);
+    /* Remove fixed height and max-height to let it fill available space */
+    /* The flex: 1 will make it take all available space and scroll as needed */
+    position: relative; /* For absolute positioning of new message indicator */
+    transition: none !important; /* Remove transition to prevent flickering */
+    will-change: contents; /* Use GPU acceleration */
+    -webkit-transform: translateZ(0); /* Force hardware acceleration */
+    transform: translateZ(0);
+    -webkit-backface-visibility: hidden; /* Prevent flickering */
+    backface-visibility: hidden;
+    -webkit-perspective: 1000; /* Prevent flickering */
+    perspective: 1000;
+    -webkit-font-smoothing: antialiased; /* Prevent text flickering */
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* New message indicator */
+.Chat-new-messages-indicator {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--chat-primary);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.Chat-new-messages-indicator:hover {
+    background-color: var(--chat-primary-dark);
+    transform: translateX(-50%) translateY(-2px);
+}
+
+.Chat-new-messages-indicator i {
+    font-size: 0.8rem;
+}
+
+/* Disable transitions temporarily */
+.Chat-messages.no-transition * {
+    transition: none !important;
+    animation: none !important;
+}
+
+.Chat-date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 16px 0;
+    position: relative;
+}
+
+.Chat-date-separator::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: var(--chat-border);
+    z-index: 1;
+}
+
+.Chat-date-separator span {
+    padding: 4px 12px;
+    background-color: var(--chat-date-bg);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--chat-text-light);
+    position: relative;
+    z-index: 2;
+}
+
+.Chat-message-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 16px;
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-message-container {
+    display: flex;
+    margin-bottom: 2px;
+    position: relative;
+}
+
+.Chat-message-container.Chat-sent {
+    justify-content: flex-end;
+}
+
+.Chat-message-container.Chat-received {
+    justify-content: flex-start;
+}
+
+.Chat-message-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 8px;
+    align-self: flex-end;
+}
+
+.Chat-message-content {
+    max-width: 65%;
+    position: relative;
+}
+
+.Chat-message {
+    padding: 10px 12px;
+    border-radius: 12px;
+    position: relative;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    word-break: break-word;
+    /* 3D effect for chat bubbles */
+    transform-style: preserve-3d;
+    perspective: 500px;
+    transition: transform 0.2s ease;
+}
+
+/* Emoji-only messages */
+.Chat-emoji-message {
+    font-size: 2.5rem;
+    line-height: 1.2;
+    padding: 8px 0;
+    background: transparent !important;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    align-items: center;
+}
+
+/* For messages with 1-3 emojis, make them larger */
+.Chat-emoji-message.emoji-1 {
+    font-size: 3.5rem;
+}
+
+.Chat-emoji-message.emoji-2 {
+    font-size: 3rem;
+}
+
+.Chat-emoji-message.emoji-3 {
+    font-size: 2.5rem;
+}
+
+.Chat-sent .Chat-message {
+    background-color: var(--chat-sent-bg);
+    color: white; /* White text for better contrast on blue background */
+    border-bottom-right-radius: 4px;
+    /* 3D effect for sent messages */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2),
+                inset 0 1px 1px rgba(255, 255, 255, 0.3),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+    transform: translateZ(1px);
+}
+
+.Chat-sent .Chat-message:hover {
+    transform: translateZ(3px) rotateY(-2deg);
+}
+
+.Chat-received .Chat-message {
+    background-color: var(--chat-received-bg);
+    border-bottom-left-radius: 4px;
+    /* 3D effect for received messages */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1),
+                inset 0 1px 1px rgba(255, 255, 255, 0.7),
+                inset 0 -1px 1px rgba(0, 0, 0, 0.05);
+    transform: translateZ(1px);
+}
+
+.Chat-received .Chat-message:hover {
+    transform: translateZ(3px) rotateY(2deg);
+}
+
+.Chat-message-sender {
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--chat-primary);
+}
+
+/* Message date display for non-today messages */
+.Chat-message-date {
+    font-size: 0.75rem;
+    color: var(--chat-text-light);
+    margin-bottom: 4px;
+    padding-left: 8px;
+    font-weight: 500;
+}
+
+/* Message info at the bottom of the bubble */
+.Chat-message-info {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    font-size: 0.7rem;
+    color: var(--chat-text-light);
+    margin-top: 4px;
+    padding-right: 8px;
+}
+
+.Chat-message-time {
+    margin-right: 4px;
+}
+
+.Chat-message-status {
+    display: flex;
+    align-items: center;
+}
+
+.Chat-message-status i {
+    font-size: 0.8rem;
+    margin-left: 2px;
+}
+
+.Chat-message-status.Chat-read {
+    color: var(--chat-read-indicator);
+}
+
+/* Ensure the check marks are clearly visible */
+.Chat-message-status i.fa-check {
+    opacity: 0.8;
+}
+
+.Chat-message-status i.fa-check-double {
+    opacity: 1;
+}
+
+/* Deleted message styling */
+.Chat-deleted-message {
+    font-style: italic;
+    color: #3366ff !important;
+    opacity: 0.8;
+    background-color: transparent !important;
+    border: solid 1px #3366ff !important;
+    box-shadow: none !important;
+    font-size: 0.8rem;
+}
+
+.Chat-deleted-message i {
+    margin-right: 5px;
+}
+
+.Chat-message-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.Chat-reaction {
+    display: flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 12px;
+    background-color: var(--chat-reaction-bg);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.Chat-reaction:hover {
+    transform: scale(1.05);
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.Chat-reaction.Chat-user-reacted {
+    background-color: var(--chat-primary-light);
+}
+
+.Chat-reaction-count {
+    margin-left: 4px;
+    font-size: 0.75rem;
+}
+
+.Chat-file-message {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Apply the same background colors as regular messages */
+.Chat-sent .Chat-file-message {
+    background-color: var(--chat-sent-bg);
+    color: white; /* White text for better contrast on blue background */
+    border-bottom-right-radius: 4px;
+}
+
+.Chat-received .Chat-file-message {
+    background-color: var(--chat-received-bg);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.Chat-file-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+    font-size: 1.2rem;
+    border-radius: 8px;
+    margin-right: 8px;
+    transition: transform 0.2s ease;
+}
+
+/* File icon colors based on file type */
+.Chat-file-icon .fa-file-image {
+    color: #4CAF50; /* Green for images */
+}
+
+.Chat-file-icon .fa-file-pdf {
+    color: #F44336; /* Red for PDFs */
+}
+
+.Chat-file-icon .fa-file-word {
+    color: #2196F3; /* Blue for Word docs */
+}
+
+.Chat-file-icon .fa-file-excel {
+    color: #4CAF50; /* Green for Excel */
+}
+
+.Chat-file-icon .fa-file-powerpoint {
+    color: #FF9800; /* Orange for PowerPoint */
+}
+
+.Chat-file-icon .fa-file-audio {
+    color: #9C27B0; /* Purple for audio */
+}
+
+.Chat-file-icon .fa-file-video {
+    color: #E91E63; /* Pink for video */
+}
+
+.Chat-file-icon .fa-file-archive {
+    color: #795548; /* Brown for archives */
+}
+
+.Chat-file-icon .fa-file-code {
+    color: #607D8B; /* Blue-gray for code */
+}
+
+.Chat-file-icon .fa-file-alt {
+    color: #9E9E9E; /* Gray for text */
+}
+
+/* Override colors for sent messages to ensure visibility */
+.Chat-sent .Chat-file-icon {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.Chat-sent .Chat-file-icon i {
+    color: white !important; /* White icons for better contrast on blue background */
+}
+
+.Chat-file-info {
+    flex: 1;
+    padding: 8px 8px 8px 0;
+}
+
+.Chat-file-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin: 0 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.Chat-sent .Chat-file-name {
+    color: white; /* White text for better contrast on blue background */
+}
+
+.Chat-file-size {
+    font-size: 0.75rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+.Chat-sent .Chat-file-size {
+    color: rgba(255, 255, 255, 0.8); /* Light white text for better contrast on blue background */
+}
+
+.Chat-image-message {
+    padding: 10px 12px;
+    border-radius: 12px;
+    overflow: hidden;
+    max-width: 300px;
+    position: relative;
+}
+
+/* Apply the same background colors as regular messages */
+.Chat-sent .Chat-image-message {
+    background-color: var(--chat-sent-bg);
+    color: white; /* White text for better contrast on blue background */
+    border-bottom-right-radius: 4px;
+}
+
+.Chat-received .Chat-image-message {
+    background-color: var(--chat-received-bg);
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.Chat-image-message img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.Chat-image-message img:hover {
+    transform: scale(1.02);
+}
+
+/* Image Viewer Modal */
+.Chat-image-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    justify-content: center;
+    align-items: center;
+}
+
+.Chat-image-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.Chat-image-modal-content {
+    position: relative;
+    max-width: 90%;
+    max-height: 90%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.Chat-image-modal-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 1001;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s ease;
+}
+
+.Chat-image-modal-close:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.Chat-image-modal-body {
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.Chat-image-modal-body img {
+    max-width: 100%;
+    max-height: 80vh;
+    object-fit: contain;
+}
+
+.Chat-image-modal-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.Chat-image-action-btn {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.Chat-image-action-btn i {
+    margin-right: 8px;
+}
+
+.Chat-image-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.Chat-message-reply {
+    margin-bottom: 4px;
+    padding: 8px 12px;
+    border-radius: 8px 8px 8px 8px;
+    background-color: rgba(0, 0, 0, 0.05); /* Light gray background that works with the original theme */
+    font-size: 0.85rem;
+    color: var(--chat-text); /* Use the original text color */
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border-left: 3px solid var(--chat-primary); /* Keep the original left border */
+}
+
+.Chat-message-reply-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: var(--chat-text);
+}
+
+.Chat-message-reply-timestamp {
+    font-size: 0.75rem;
+    color: var(--chat-text-light);
+}
+
+.Chat-message-reply-content {
+    font-size: 0.85rem;
+    color: var(--chat-text);
+}
+
+.Chat-message-reply:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* Adjust message style when there's a reply to connect them visually */
+.Chat-message-reply + .Chat-message,
+.Chat-message-reply + .Chat-file-message,
+.Chat-message-reply + .Chat-image-message {
+    margin-top: 4px; /* Small gap between reply and message */
+}
+
+.Chat-message-forward-info {
+    font-size: 0.75rem;
+    color: var(--chat-text-light);
+    margin-bottom: 4px;
+    font-style: italic;
+}
+
+.Chat-typing-indicator {
+    display: flex;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--chat-text-light);
+    margin-top: 4px;
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-typing-dots {
+    display: flex;
+    margin-left: 6px;
+}
+
+/* System message styling */
+.Chat-system-message {
+    display: flex;
+    justify-content: center;
+    margin: 12px 0;
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-system-message-content {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--chat-text);
+    padding: 6px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem; /* Adjusted font size as requested */
+    text-align: center;
+    max-width: 80%;
+}
+
+.Chat-typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--chat-typing-color);
+    margin-right: 3px;
+    opacity: 0.6;
+}
+
+.Chat-typing-dot:nth-child(1) {
+    animation: typing 1s infinite 0s;
+}
+
+.Chat-typing-dot:nth-child(2) {
+    animation: typing 1s infinite 0.2s;
+}
+
+.Chat-typing-dot:nth-child(3) {
+    animation: typing 1s infinite 0.4s;
+}
+
+/* ==========================================================================
+   Search Panel
+   ========================================================================== */
+
+.Chat-search-panel {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--chat-border);
+    background-color: white;
+    display: none;
+    animation: slideDown 0.3s ease;
+}
+
+.Chat-search-close {
+    background: none;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    transition: color 0.2s ease;
+}
+
+.Chat-search-close:hover {
+    color: var(--chat-primary);
+}
+
+.Chat-search-filters {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.Chat-filter-options {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.Chat-filter-option {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.Chat-filter-option input {
+    margin-right: 4px;
+}
+
+.Chat-filter-label {
+    font-size: 0.85rem;
+    color: var(--chat-text);
+}
+
+.Chat-date-filter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.Chat-date-label {
+    font-size: 0.85rem;
+    color: var(--chat-text);
+}
+
+.Chat-date-input {
+    padding: 4px 8px;
+    border: 1px solid var(--chat-border);
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   Upload Progress
+   ========================================================================== */
+
+.Chat-upload-progress {
+    padding: 12px 16px;
+    background-color: white;
+    border-top: 1px solid var(--chat-border);
+    display: none;
+    animation: slideUp 0.3s ease;
+}
+
+.Chat-upload-info {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.Chat-upload-info i {
+    font-size: 1.2rem;
+    margin-right: 12px;
+    color: var(--chat-primary);
+}
+
+.Chat-upload-details {
+    flex: 1;
+}
+
+.Chat-upload-filename {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0 0 2px;
+}
+
+.Chat-upload-status {
+    font-size: 0.8rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+/* File pill in upload container */
+#file-pill-container {
+    display: flex;
+    align-items: center;
+    background-color: var(--chat-primary-light);
+    border-radius: 16px;
+    padding: 8px 12px;
+    margin-top: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-file-pill-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    color: var(--chat-primary);
+    font-size: 1.1rem;
+}
+
+.Chat-file-pill-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--chat-primary);
+}
+
+.Chat-file-pill-remove {
+    background: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--chat-primary);
+    margin-left: 8px;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.Chat-file-pill-remove:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #f44336;
+}
+
+.Chat-upload-cancel {
+    background: none;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    transition: all 0.2s ease;
+}
+
+.Chat-upload-cancel:hover {
+    background-color: #f0f0f0;
+    color: #f44336;
+}
+
+.Chat-progress-bar-container {
+    height: 6px;
+    background-color: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.Chat-progress-bar {
+    height: 100%;
+    background-color: var(--chat-primary);
+    width: 0%;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+/* ==========================================================================
+   Chat Input Area
+   ========================================================================== */
+
+.Chat-input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--chat-border);
+    background-color: white;
+    position: sticky;
+    bottom: 0;
+    z-index: 10; /* Ensure it stays on top */
+    flex-shrink: 0; /* Prevent this area from shrinking */
+}
+
+.Chat-input-container {
+    display: flex;
+    align-items: center; /* Changed from flex-end to center for better alignment */
+    background-color: var(--chat-bg);
+    border-radius: 24px;
+    padding: 4px 8px 4px 16px;
+    transition: box-shadow 0.3s ease;
+    min-height: 48px; /* Set a minimum height to ensure consistent single row */
+    max-height: 48px; /* Set a maximum height to ensure it stays as a single row */
+}
+
+.Chat-input-container:focus-within {
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.Chat-input-button {
+    background: none;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    transition: all 0.2s ease;
+}
+
+.Chat-input-button:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--chat-primary);
+}
+
+.Chat-input-wrapper {
+    flex: 1;
+    margin: 0 8px;
+}
+
+.Chat-message-input {
+    width: 100%;
+    border: none;
+    background: none;
+    resize: none;
+    padding: 8px 0;
+    height: 32px; /* Fixed height for single row */
+    min-height: 32px; /* Ensure minimum height */
+    max-height: 32px; /* Prevent expanding to multiple rows */
+    font-size: 0.95rem;
+    font-family: inherit;
+    outline: none;
+    overflow: hidden; /* Hide overflow text */
+    white-space: nowrap; /* Keep text in a single line */
+    text-overflow: ellipsis; /* Add ellipsis for overflow text */
+}
+
+/* Uploaded file indicator in input area */
+.Chat-uploaded-file {
+    display: flex;
+    align-items: center;
+    background-color: var(--chat-primary-light);
+    border-radius: 16px;
+    padding: 4px 10px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    color: var(--chat-primary);
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-uploaded-file i {
+    margin-right: 6px;
+}
+
+.Chat-uploaded-file span {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+}
+
+.Chat-remove-file {
+    background: none;
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--chat-primary);
+    margin-left: 6px;
+    padding: 0;
+    transition: all 0.2s ease;
+}
+
+.Chat-remove-file:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    color: #f44336;
+}
+
+.Chat-send-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--chat-primary);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.Chat-send-button:hover {
+    background-color: var(--chat-primary-dark);
+    transform: scale(1.05);
+}
+
+.Chat-send-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ==========================================================================
+   Chat Info Sidebar
+   ========================================================================== */
+
+.Chat-info-sidebar {
+    width: 0; /* Start with zero width */
+    height: 100%;
+    background-color: white;
+    border-left: 1px solid var(--chat-border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: width 0.3s ease, box-shadow 0.3s ease; /* Transition width instead of transform */
+    box-shadow: none;
+    flex-shrink: 0; /* Prevent shrinking */
+}
+
+.Chat-info-sidebar.active {
+    width: 320px; /* Expand to full width when active */
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+}
+
+.Chat-info-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--chat-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.Chat-info-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.Chat-close-info {
+    background: none;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    transition: all 0.2s ease;
+}
+
+.Chat-close-info:hover {
+    background-color: var(--chat-bg);
+    color: var(--chat-primary);
+}
+
+.Chat-info-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    min-width: 320px; /* Ensure content has minimum width */
+    opacity: 0; /* Start with zero opacity */
+    transition: opacity 0.3s ease; /* Smooth transition for opacity */
+}
+
+.Chat-info-sidebar.active .Chat-info-content {
+    opacity: 1; /* Show content when sidebar is active */
+}
+
+.Chat-info-section {
+    margin-bottom: 24px;
+}
+
+.Chat-info-section h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--chat-text);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+.Chat-members-list {
+    margin-bottom: 12px;
+}
+
+.Chat-member-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+.Chat-member-item:last-child {
+    border-bottom: none;
+}
+
+.Chat-member-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.Chat-member-info {
+    flex: 1;
+}
+
+.Chat-member-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0 0 2px;
+}
+
+.Chat-member-role {
+    font-size: 0.8rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+.Chat-member-badge {
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+}
+
+.Chat-files-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.Chat-file-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 8px;
+    background-color: var(--chat-bg);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.Chat-file-item:hover {
+    background-color: var(--chat-primary-light);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.Chat-files-list .Chat-file-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    color: var(--chat-primary);
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
+}
+
+/* Apply the same file icon colors to the shared files section */
+.Chat-files-list .Chat-file-icon .fa-file-image {
+    color: #4CAF50; /* Green for images */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-pdf {
+    color: #F44336; /* Red for PDFs */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-word {
+    color: #2196F3; /* Blue for Word docs */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-excel {
+    color: #4CAF50; /* Green for Excel */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-powerpoint {
+    color: #FF9800; /* Orange for PowerPoint */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-audio {
+    color: #9C27B0; /* Purple for audio */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-video {
+    color: #E91E63; /* Pink for video */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-archive {
+    color: #795548; /* Brown for archives */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-code {
+    color: #607D8B; /* Blue-gray for code */
+}
+
+.Chat-files-list .Chat-file-icon .fa-file-alt {
+    color: #9E9E9E; /* Gray for text */
+}
+
+/* Add hover effect */
+.Chat-file-item:hover .Chat-file-icon {
+    transform: scale(1.1);
+}
+
+.Chat-file-info {
+    flex: 1;
+    overflow: hidden;
+}
+
+.Chat-file-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.Chat-file-size {
+    font-size: 0.8rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+.Chat-leave-btn {
+    color: #f44336;
+}
+
+.Chat-leave-btn:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+}
+
+/* ==========================================================================
+   Member Selection
+   ========================================================================== */
+
+.Chat-members-selection,
+.Chat-forward-selection {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--chat-border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.Chat-member-option,
+.Chat-forward-option {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    margin-bottom: 8px;
+}
+
+.Chat-member-option:last-child,
+.Chat-forward-option:last-child {
+    margin-bottom: 0;
+}
+
+.Chat-member-option:hover,
+.Chat-forward-option:hover {
+    background-color: var(--chat-bg);
+}
+
+.Chat-member-checkbox,
+.Chat-forward-checkbox {
+    margin-right: 12px;
+}
+
+.Chat-member-option-avatar,
+.Chat-forward-option-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.Chat-member-option-info,
+.Chat-forward-option-info {
+    flex: 1;
+}
+
+.Chat-member-option-name,
+.Chat-forward-option-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin: 0 0 2px;
+}
+
+.Chat-member-option-details,
+.Chat-forward-option-details {
+    font-size: 0.8rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+.Chat-forward-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.Chat-forward-tab-content {
+    display: none;
+}
+
+.Chat-forward-tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.Chat-forward-message-preview {
+    background-color: var(--chat-bg);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+    color: var(--chat-text);
+}
+
+/* ==========================================================================
+   Emoji Picker & Reactions
+   ========================================================================== */
+
+.Chat-emoji-picker {
+    position: absolute;
+    bottom: 70px;
+    right: 16px;
+    width: 320px;
+    height: 350px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+    display: none;
+    flex-direction: column;
+    z-index: 100;
+    animation: scaleIn 0.2s ease;
+}
+
+.Chat-emoji-categories {
+    display: flex;
+    padding: 4px;
+    border-bottom: 1px solid var(--chat-border);
+}
+
+.Chat-emoji-category {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 8px 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--chat-text-light);
+    transition: all 0.2s ease;
+    border-radius: 4px;
+}
+
+.Chat-emoji-category:hover {
+    background-color: var(--chat-bg);
+    color: var(--chat-primary);
+}
+
+.Chat-emoji-category.active {
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+}
+
+.Chat-emoji-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.Chat-emoji-grid {
+    display: none;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+}
+
+.Chat-emoji-grid.active {
+    display: grid;
+}
+
+.Chat-emoji {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.Chat-emoji:hover {
+    background-color: var(--chat-bg);
+    transform: scale(1.2);
+}
+
+.Chat-reactions-menu {
+    position: absolute;
+    background-color: white;
+    border-radius: 24px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    display: none;
+    z-index: 100;
+    animation: scaleIn 0.2s ease;
+}
+
+.Chat-reactions-container {
+    display: flex;
+    padding: 8px;
+}
+
+.Chat-reaction-emoji {
+    font-size: 1.2rem;
+    padding: 6px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+}
+
+.Chat-reaction-emoji:hover {
+    background-color: var(--chat-primary-light);
+    transform: scale(1.1);
+}
+
+/* ==========================================================================
+   Context Menu
+   ========================================================================== */
+
+.Chat-context-menu {
+    position: absolute;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+    width: 180px;
+    display: none;
+    z-index: 1000;
+    animation: scaleIn 0.2s ease;
+}
+
+.Chat-context-menu-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.Chat-context-menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+    font-size: 0.85rem;
+}
+
+.Chat-context-menu-item:hover {
+    background-color: var(--chat-primary-light);
+    color: var(--chat-primary);
+}
+
+.Chat-context-menu-item i {
+    width: 20px;
+    text-align: center;
+}
+
+.Chat-context-menu-item-delete {
+    color: #f44336;
+}
+
+.Chat-context-menu-item-delete:hover {
+    background-color: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+}
+
+/* ==========================================================================
+   Search Results
+   ========================================================================== */
+
+.Chat-search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 16px;
+}
+
+.Chat-search-result {
+    padding: 12px;
+    border-radius: 8px;
+    background-color: var(--chat-bg);
+    margin-bottom: 8px;
+    display: flex;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.Chat-search-result:hover {
+    background-color: var(--chat-primary-light);
+    transform: translateY(-2px);
+}
+
+.Chat-search-result-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.Chat-search-result-info {
+    flex: 1;
+}
+
+.Chat-search-result-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin: 0 0 4px;
+}
+
+.Chat-search-result-details {
+    font-size: 0.85rem;
+    color: var(--chat-text-light);
+    margin: 0;
+}
+
+.Chat-search-add-btn {
+    background-color: var(--chat-primary);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.Chat-search-add-btn:hover {
+    background-color: var(--chat-primary-dark);
+}
+
+/* ==========================================================================
+   New Message Indicator
+   ========================================================================== */
+
+.Chat-new-message-indicator {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background-color: var(--chat-primary);
+    color: white;
+    border-radius: 24px;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    z-index: 10;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+}
+
+.Chat-new-message-indicator.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.Chat-new-message-indicator:hover {
+    background-color: var(--chat-primary-dark);
+    transform: translateY(-2px);
+}
+
+.Chat-new-message-indicator i {
+    font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: scaleX(0);
+    }
+    to {
+        transform: scaleX(1);
+    }
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes typing {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-4px);
+    }
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+/* Force sidebar to be visible on desktop */
+@media (min-width: 769px) {
+    .Chat-sidebar {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 320px !important;
+        min-width: 320px !important;
+        position: relative !important;
+        z-index: 10 !important;
+        transform: none !important;
+    }
+
+    /* Prevent any class from hiding the sidebar */
+    .Chat-sidebar.mobile-hidden {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+
+    /* Force container to use flex layout */
+    .Chat-container {
+        display: flex !important;
+        flex-direction: row !important;
+    }
+}
+
+@media (max-width: 1024px) {
+    .Chat-container {
+        height: calc(100vh - 140px);
+    }
+
+    .Chat-sidebar {
+        width: 280px;
+    }
+}
+
+@media (max-width: 768px) {
+    .Chat-container {
+        flex-direction: column;
+        height: calc(100vh - 120px);
+    }
+
+    .Chat-sidebar {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--chat-border);
+        flex: none;
+        height: 70px;
+        overflow: hidden;
+        transition: height 0.3s ease;
+    }
+
+    .Chat-sidebar.expanded {
+        height: 320px;
+    }
+
+    .Chat-sidebar-toggle {
+        display: block;
+        padding: 8px;
+        text-align: center;
+        background-color: var(--chat-bg);
+        color: var(--chat-text-light);
+        cursor: pointer;
+    }
+
+    .Chat-empty-main,
+    .Chat-active-area {
+        border-top: 1px solid var(--chat-border);
+    }
+
+    .Chat-back-button {
+        display: flex;
+    }
+
+    .Chat-message-content {
+        max-width: 80%;
+    }
+
+    .Chat-info-sidebar {
+        width: 100%;
+    }
+
+    .Chat-emoji-picker {
+        width: 300px;
+        height: 300px;
+    }
+
+    .Chat-emoji-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .Chat-container {
+        height: calc(100vh - 100px);
+    }
+
+    .JO-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .JO-header .JO-button {
+        margin-top: 12px;
+        align-self: flex-start;
+    }
+
+    .Chat-active-area {
+        display: none;
+    }
+
+    .Chat-active-area.mobile-visible {
+        display: flex;
+    }
+
+    /* Only apply mobile-hidden on mobile devices */
+    .Chat-sidebar.mobile-hidden {
+        display: none !important;
+    }
+
+    .Chat-message-content {
+        max-width: 85%;
+    }
+
+    .Chat-search-filters {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .Chat-date-filter {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .Chat-date-input {
+        width: 100%;
+    }
+
+    .Chat-emoji-picker {
+        width: 280px;
+        height: 280px;
+        bottom: 60px;
+    }
+
+    .Chat-emoji-grid {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 4px;
+    }
+
+    .Chat-emoji {
+        font-size: 1.3rem;
+        padding: 4px;
+    }
+}
+

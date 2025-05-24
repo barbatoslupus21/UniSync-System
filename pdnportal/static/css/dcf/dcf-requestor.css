@@ -1,0 +1,1386 @@
+:root {
+    /* Main colors */
+    --dcf-primary: #3366ff;
+    --dcf-primary-light: #e0e8ff;
+    --dcf-primary-dark: #2952cc;
+    --dcf-text: #333333;
+    --dcf-text-light: #666666;
+    --dcf-bg-color: #f8f9fa;
+    --dcf-card-bg: #ffffff;
+    --dcf-border: #e6e6e6;
+
+    /* Status colors */
+    --dcf-on-process: #ffc107;
+    --dcf-on-process-light: #fff8e1;
+    --dcf-on-process-rgb: 255, 193, 7;
+    --dcf-approved: #4caf50;
+    --dcf-approved-light: #e8f5e9;
+    --dcf-approved-rgb: 76, 175, 80;
+    --dcf-rejected: #f44336;
+    --dcf-rejected-light: #ffebee;
+    --dcf-rejected-rgb: 244, 67, 54;
+
+    /* Shadows and effects */
+    --dcf-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --dcf-shadow-hover: 0 5px 15px rgba(0, 0, 0, 0.15);
+    --dcf-transition: all 0.3s ease;
+}
+
+/* ==========================================================================
+   General Layout & Typography
+   ========================================================================== */
+
+.DCF-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    animation: DCF-slide-down 0.5s ease-out;
+}
+
+.DCF-title-section {
+    flex: 1;
+}
+
+.DCF-page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--dcf-text);
+    margin: 0;
+}
+
+.DCF-subtitle {
+    font-size: 1rem;
+    color: var(--dcf-text-light);
+    margin: 5px 0 0;
+}
+
+/* ==========================================================================
+   Cards & Containers
+   ========================================================================== */
+
+.DCF-card {
+    background: var(--dcf-card-bg);
+    border-radius: 12px;
+    box-shadow: var(--dcf-shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: var(--dcf-transition);
+    animation: DCF-fade-in 0.5s ease-out;
+}
+
+.DCF-card-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--dcf-border);
+    position: sticky;
+    top: 0;
+    background: var(--dcf-card-bg);
+    z-index: 10;
+}
+
+.DCF-card-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dcf-text);
+    display: flex;
+    align-items: center;
+}
+
+/* Auto-refresh indicator has been removed */
+
+.DCF-card-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* ==========================================================================
+   Stats Cards
+   ========================================================================== */
+
+.DCF-stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.DCF-stats-card {
+    background-color: var(--dcf-card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--dcf-shadow);
+    transition: var(--dcf-transition);
+    position: relative;
+    overflow: hidden;
+    transform: translateY(20px);
+    opacity: 0;
+    animation: DCF-stats-appear 0.6s ease forwards;
+}
+
+/* Hover effect removed from stats cards */
+
+.DCF-stats-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.DCF-stats-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.DCF-stats-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.DCF-stats-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.DCF-stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    margin-right: 16px;
+    transition: var(--dcf-transition);
+}
+
+.DCF-total .DCF-stats-icon {
+    color: var(--dcf-primary);
+    background-color: var(--dcf-primary-light);
+}
+
+.DCF-process .DCF-stats-icon {
+    color: var(--dcf-on-process);
+    background-color: var(--dcf-on-process-light);
+}
+
+.DCF-approved .DCF-stats-icon {
+    color: var(--dcf-approved);
+    background-color: var(--dcf-approved-light);
+}
+
+.DCF-rejected .DCF-stats-icon {
+    color: var(--dcf-rejected);
+    background-color: var(--dcf-rejected-light);
+}
+
+.DCF-stats-content {
+    flex: 1;
+}
+
+.DCF-stats-content h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--dcf-text-light);
+    margin: 0 0 5px;
+}
+
+.DCF-stats-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--dcf-text);
+    margin: 0 0 5px;
+}
+
+/* Hover scale effect removed from stats number */
+
+.DCF-stats-content p {
+    font-size: 0.8rem;
+    color: var(--dcf-text-light);
+    margin: 0;
+}
+
+/* ==========================================================================
+   Main Content Grid
+   ========================================================================== */
+
+.DCF-main-content-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* Chart Container */
+.DCF-chart-container {
+    min-height: 400px;
+    max-height: 400px;
+    overflow: hidden;
+}
+
+.DCF-chart-wrapper {
+    padding: 20px;
+    height: 85%;
+    animation: DCF-chart-appear 0.8s ease-out forwards;
+    opacity: 0;
+}
+
+#dcf-status-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+@keyframes DCF-chart-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Recent DCFs Section */
+.DCF-recent-dcfs {
+    min-height: 400px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.DCF-recent-list {
+    padding: 0;
+}
+
+.DCF-recent-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--dcf-border);
+    transition: var(--dcf-transition);
+    animation: DCF-fade-in 0.5s ease-out;
+}
+
+.DCF-recent-item:last-child {
+    border-bottom: none;
+}
+
+/* Hover effect removed from recent items */
+
+.DCF-recent-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.DCF-recent-id {
+    font-weight: 600;
+    color: var(--dcf-text);
+}
+
+.DCF-recent-details {
+    margin-bottom: 12px;
+}
+
+.DCF-recent-details p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--dcf-text-light);
+}
+
+.DCF-document-title {
+    font-weight: 500;
+    color: var(--dcf-text);
+}
+
+.DCF-document-code {
+    font-size: 0.85rem;
+    color: var(--dcf-text-light);
+}
+
+.DCF-recent-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.DCF-date {
+    font-size: 0.8rem;
+    color: var(--dcf-text-light);
+}
+
+/* All DCFs Table */
+.DCF-table-container {
+    padding: 0 20px;
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+.DCF-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.DCF-table th {
+    text-align: left;
+    padding: 12px 15px;
+    background-color: var(--dcf-bg-color);
+    color: var(--dcf-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--dcf-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    transition: none;
+}
+
+.DCF-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--dcf-border);
+    color: var(--dcf-text);
+    transition: var(--dcf-transition);
+}
+
+.DCF-table tbody tr {
+    transition: var(--dcf-transition);
+    opacity: 0;
+    transform: translateY(10px);
+    animation: DCF-row-appear 0.5s ease forwards;
+}
+
+.DCF-table tbody tr:hover {
+    background-color: var(--dcf-bg-color);
+}
+
+@keyframes DCF-row-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.DCF-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.DCF-table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+.DCF-table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+.DCF-table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+.DCF-table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+.DCF-table tbody tr:nth-child(6) { animation-delay: 0.6s; }
+
+.DCF-action-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* Pagination */
+.DCF-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--dcf-border);
+}
+
+.DCF-pagination-info {
+    font-size: 0.9rem;
+    color: var(--dcf-text-light);
+}
+
+.DCF-pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.DCF-pagination-numbers {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.DCF-pagination-page {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--dcf-border);
+    background-color: var(--dcf-card-bg);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--dcf-transition);
+}
+
+.DCF-pagination-page:hover {
+    background-color: var(--dcf-primary-light);
+    border-color: var(--dcf-primary);
+    color: var(--dcf-primary);
+}
+
+.DCF-pagination-page.active {
+    background-color: var(--dcf-primary);
+    border-color: var(--dcf-primary);
+    color: white;
+}
+
+.DCF-pagination-ellipsis {
+    margin: 0 5px;
+}
+
+.DCF-pagination-btn {
+    background-color: var(--dcf-card-bg);
+    border: 1px solid var(--dcf-border);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    transition: var(--dcf-transition);
+}
+
+.DCF-pagination-btn:hover:not(.disabled) {
+    background-color: var(--dcf-primary-light);
+    border-color: var(--dcf-primary);
+    color: var(--dcf-primary);
+}
+
+.DCF-pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Status Styles
+   ========================================================================== */
+
+.DCF-status {
+    display: inline-flex;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Status variations with improved color contrast */
+.DCF-status-on_process {
+    background-color: var(--dcf-on-process-light);
+    color: var(--dcf-on-process);
+}
+
+.DCF-status-approved {
+    background-color: var(--dcf-approved-light);
+    color: var(--dcf-approved);
+}
+
+.DCF-status-rejected {
+    background-color: var(--dcf-rejected-light);
+    color: var(--dcf-rejected);
+}
+
+/* ==========================================================================
+   Buttons & Form Elements
+   ========================================================================== */
+
+.DCF-input, .DCF-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--dcf-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--dcf-transition);
+    font-family: 'Poppins', sans-serif;
+}
+
+.DCF-input:focus, .DCF-textarea:focus {
+    border-color: var(--dcf-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.DCF-textarea {
+    resize: vertical;
+}
+
+.DCF-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--dcf-transition);
+    border: none;
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+}
+
+.DCF-primary-button {
+    background-color: var(--dcf-primary);
+    color: white;
+}
+
+.DCF-primary-button:hover {
+    background-color: var(--dcf-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.DCF-secondary-button {
+    background-color: var(--dcf-bg-color);
+    color: var(--dcf-text);
+    border: 1px solid var(--dcf-border);
+}
+
+.DCF-secondary-button:hover {
+    background-color: var(--dcf-border);
+}
+
+.DCF-danger-button {
+    background-color: var(--dcf-rejected);
+    color: white;
+}
+
+.DCF-danger-button:hover {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(244, 67, 54, 0.3);
+}
+
+.DCF-text-button {
+    background: none;
+    color: var(--dcf-text);
+    padding: 5px 10px;
+}
+
+.DCF-text-button:hover {
+    background-color: var(--dcf-bg-color);
+}
+
+.DCF-view-details-btn {
+    font-size: 0.8rem;
+    padding: 5px 10px;
+}
+
+.DCF-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--dcf-text-light);
+    cursor: pointer;
+    transition: var(--dcf-transition);
+}
+
+.DCF-icon-button:hover {
+    background-color: var(--dcf-primary-light);
+    color: var(--dcf-primary);
+    transform: scale(1.1);
+}
+
+.DCF-icon-button.DCF-edit-btn:hover {
+    background-color: var(--dcf-primary-light);
+    color: var(--dcf-primary);
+}
+
+.DCF-icon-button.DCF-delete-btn:hover {
+    background-color: var(--dcf-rejected-light);
+    color: var(--dcf-rejected);
+}
+
+.DCF-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--dcf-border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: var(--dcf-transition);
+}
+
+.DCF-search-container:focus-within {
+    border-color: var(--dcf-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.DCF-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    width: 250px;
+}
+
+.DCF-search-button {
+    background: none;
+    border: none;
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--dcf-text-light);
+}
+
+.DCF-select {
+    border: 1px solid var(--dcf-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    background-color: white;
+    cursor: pointer;
+    transition: var(--dcf-transition);
+    font-family: 'Poppins', sans-serif;
+}
+
+.DCF-select:focus {
+    border-color: var(--dcf-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.DCF-filter-container {
+    display: flex;
+    align-items: center;
+}
+
+/* Form Layout */
+.DCF-form-group {
+    margin-bottom: 16px;
+}
+
+.DCF-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.DCF-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--dcf-text);
+    font-size: 0.9rem;
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.DCF-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.DCF-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.DCF-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+/* Specific styling for details modal */
+#dcf-details-modal .DCF-modal-content {
+    max-width: 800px;
+    width: 95%;
+    height: auto;
+    min-height: 300px;
+    max-height: 85vh;
+}
+
+.DCF-modal.active .DCF-modal-content {
+    transform: translateY(0);
+    animation: DCF-modal-appear 0.3s ease-out;
+}
+
+.DCF-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--dcf-border);
+}
+
+.DCF-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--dcf-text);
+}
+
+.DCF-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--dcf-transition);
+}
+
+.DCF-modal-close:hover {
+    background-color: var(--dcf-bg-color);
+    color: var(--dcf-primary);
+}
+
+.DCF-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    max-height: 70vh;
+}
+
+/* Specific styling for details modal body */
+#dcf-details-content {
+    padding: 20px 30px;
+}
+
+/* Ensure content in details modal is visible */
+#dcf-details-content * {
+    max-width: 100%;
+}
+
+.DCF-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--dcf-border);
+}
+
+/* Confirmation Modal */
+.DCF-confirmation-modal .DCF-modal-content {
+    max-width: 450px;
+}
+
+.DCF-confirmation-content {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.DCF-confirmation-icon {
+    font-size: 3.5rem;
+    color: var(--dcf-rejected);
+    margin-bottom: 20px;
+}
+
+.DCF-confirmation-message {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.DCF-confirmation-submessage {
+    color: var(--dcf-text-light);
+    margin-bottom: 0;
+}
+
+/* ==========================================================================
+   DCF Details Modal Styles
+   ========================================================================== */
+
+.DCF-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+}
+
+.DCF-details-id {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.DCF-details-id h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.DCF-details-date {
+    font-size: 0.9rem;
+    color: var(--dcf-text-light);
+}
+
+.DCF-details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.DCF-details-section {
+    margin-bottom: 5px;
+}
+
+.DCF-details-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 15px;
+    color: var(--dcf-text);
+    border-bottom: 1px solid var(--dcf-border);
+    padding-bottom: 8px;
+}
+
+.DCF-details-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 10px;
+}
+
+.DCF-details-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.DCF-details-label {
+    font-size: 0.85rem;
+    color: var(--dcf-text-light);
+    margin-bottom: 4px;
+}
+
+.DCF-details-value {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--dcf-text);
+}
+
+.DCF-details-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--dcf-text);
+}
+
+.DCF-full-width {
+    grid-column: span 2;
+}
+
+/* Approval Timeline */
+.DCF-approval-timeline {
+    position: relative;
+    margin-left: 8px;
+    padding-top: 10px;
+}
+
+.DCF-approval-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 10px;
+    width: 2px;
+    background-color: var(--dcf-border);
+}
+
+.DCF-timeline-item {
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 25px;
+}
+
+.DCF-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.DCF-timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--dcf-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    z-index: 2;
+}
+
+.DCF-timeline-item.DCF-timeline-complete .DCF-timeline-icon {
+    background-color: var(--dcf-approved);
+}
+
+.DCF-timeline-item.DCF-timeline-rejected .DCF-timeline-icon {
+    background-color: var(--dcf-rejected);
+}
+
+.DCF-timeline-item.DCF-timeline-active .DCF-timeline-icon {
+    background-color: var(--dcf-on-process);
+    animation: DCF-pulse 1.5s infinite;
+}
+
+.DCF-timeline-content h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 5px;
+    color: var(--dcf-text);
+}
+
+.DCF-timeline-content p {
+    font-size: 0.85rem;
+    color: var(--dcf-text-light);
+    margin: 0;
+}
+
+.DCF-timeline-remarks {
+    background-color: var(--dcf-bg-color);
+    border-radius: 8px;
+    padding: 10px 15px;
+    position: relative;
+    margin-top: 10px;
+    font-style: italic;
+    color: var(--dcf-text);
+    font-size: 0.9rem;
+}
+
+.DCF-timeline-remarks:before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--dcf-bg-color);
+}
+
+/* ==========================================================================
+   DCF Details and Timeline
+   ========================================================================== */
+
+.DCF-details-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.DCF-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--dcf-border);
+}
+
+.DCF-details-id {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.DCF-details-id h3 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.DCF-details-date {
+    color: var(--dcf-text-light);
+    font-size: 0.9rem;
+}
+
+.DCF-details-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.DCF-details-section h4 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--dcf-text);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--dcf-border-light);
+}
+
+.DCF-details-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 10px;
+}
+
+.DCF-details-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.DCF-details-item.DCF-full-width {
+    flex: 0 0 100%;
+}
+
+.DCF-details-label {
+    font-weight: 500;
+    color: var(--dcf-text-light);
+    font-size: 0.9rem;
+}
+
+.DCF-details-value {
+    font-size: 1rem;
+    color: var(--dcf-text);
+}
+
+.DCF-details-text {
+    background-color: #f9f9f9;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+/* Approval Timeline */
+.DCF-approval-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-top: 15px;
+    position: relative;
+}
+
+.DCF-approval-timeline::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: 1px;
+    background-color: #e0e0e0;
+    z-index: 0;
+}
+
+.DCF-timeline-item {
+    display: flex;
+    gap: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.DCF-timeline-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 0.8rem;
+}
+
+.DCF-timeline-content {
+    flex: 1;
+    padding-top: 4px;
+}
+
+.DCF-timeline-content h5 {
+    margin: 0 0 3px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--dcf-text);
+}
+
+.DCF-timeline-content p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--dcf-text-light);
+}
+
+.DCF-timeline-remarks {
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+/* Timeline item states */
+.DCF-timeline-complete .DCF-timeline-icon {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.DCF-timeline-rejected .DCF-timeline-icon {
+    background-color: #F44336;
+    color: white;
+}
+
+.DCF-timeline-active .DCF-timeline-icon {
+    background-color: #FFC107;
+    color: white;
+}
+
+/* ==========================================================================
+   Loading Animation
+   ========================================================================== */
+
+.DCF-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--dcf-text-light);
+}
+
+.DCF-loading i {
+    color: var(--dcf-primary);
+    font-size: 2rem;
+    margin-bottom: 15px;
+    animation: DCF-spin 1.5s infinite linear;
+}
+
+.DCF-loading p {
+    font-size: 1rem;
+    margin: 0;
+}
+
+@keyframes DCF-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes DCF-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes DCF-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes DCF-stats-appear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes DCF-modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes DCF-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(var(--dcf-on-process-rgb, 255, 193, 7), 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(var(--dcf-on-process-rgb, 255, 193, 7), 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(var(--dcf-on-process-rgb, 255, 193, 7), 0);
+    }
+}
+
+/* Refresh pulse animation has been removed */
+
+@keyframes DCF-slide-in-right {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes DCF-fade-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .DCF-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .DCF-main-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .DCF-chart-container,
+    .DCF-recent-dcfs {
+        max-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .DCF-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .DCF-stats-card {
+        padding: 15px;
+    }
+
+    .DCF-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .DCF-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .DCF-card-actions {
+        width: 100%;
+    }
+
+    .DCF-search-container {
+        width: 100%;
+    }
+
+    .DCF-search-input {
+        width: 100%;
+    }
+
+    .DCF-details-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .DCF-form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .DCF-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .DCF-pagination {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .DCF-pagination-pages {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+    .DCF-stats-container {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .DCF-stats-card {
+        padding: 12px;
+    }
+
+    .DCF-pagination-numbers {
+        display: none;
+    }
+
+    .DCF-recent-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .DCF-view-details-btn {
+        width: 100%;
+    }
+
+    .DCF-action-buttons {
+        flex-wrap: wrap;
+    }
+
+    .DCF-modal-content {
+        width: 95%;
+    }
+}

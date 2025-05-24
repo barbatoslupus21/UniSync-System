@@ -1,10 +1,384 @@
-{% extends "main.html" %}
+{% extends 'main.html' %}
 {% load static %}
 
-{% block title %}UniSync - Dashboard{% endblock title %}Overview
+{% block title %}UniSync - Dashboard{% endblock %}
+
+{% block body_class %}
+{% if user_roles.job_order_requestor %}job_order_requestor{% endif %}
+{% if user_roles.job_order_approver %}job_order_approver{% endif %}
+{% if user_roles.manhours_staff %}manhours_staff{% endif %}
+{% if user_roles.monitoring_staff %}monitoring_staff{% endif %}
+{% if user_roles.dcf_requestor %}dcf_requestor{% endif %}
+{% if user_roles.dcf_approver %}dcf_approver{% endif %}
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/overview/overview.css' %}">
+{% endblock %}
+
 {% block content %}
 <main class="main-content">
-<h4>This is the Overview ( for Development )</h4>
+    <!-- Dashboard Header -->
+    <div class="dashboard-header">
+        <div class="dashboard-title">
+            <h1>Welcome, {{ request.user.name }}!</h1>
+            <p>Your personalized dashboard overview</p>
+        </div>
+        <div class="dashboard-actions">
+            <button class="btn btn-primary" id="add-widget-btn">
+                <i class="fas fa-plus"></i> <span class="btn-text">Add Widget</span>
+            </button>
+            <button class="btn btn-secondary" id="save-layout-btn">
+                <i class="fas fa-save"></i> <span class="btn-text">Save Layout</span>
+            </button>
+            <button class="btn btn-icon" id="dashboard-settings-btn" title="Dashboard Settings">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard Grid -->
+    <div class="dashboard-grid" id="dashboard-grid">
+        <!-- Widgets will be dynamically generated here -->
+    </div>
+
+    <!-- Add Widget Modal -->
+    <div class="modal" id="add-widget-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Widget</h2>
+                <button class="close-btn" id="close-widget-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="widget-categories">
+                    <button class="category-btn active" data-category="all">All</button>
+                    <button class="category-btn" data-category="charts">Charts</button>
+                    <button class="category-btn" data-category="tools">Tools</button>
+                    <button class="category-btn" data-category="info">Info</button>
+                </div>
+                <div class="widget-grid" id="widget-selection">
+                    <!-- Widget options will be dynamically loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Calendar Event Modal -->
+    <div class="modal" id="calendar-event-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="event-modal-title">Add Calendar Event</h2>
+                <button class="close-btn" id="close-event-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="event-form">
+                    <div class="form-group">
+                        <label for="event-title">Title *</label>
+                        <input type="text" id="event-title" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-description">Description</label>
+                        <textarea id="event-description" class="form-control" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="event-start-date">Start Date *</label>
+                            <input type="date" id="event-start-date" class="form-control" required>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="event-start-time">Start Time</label>
+                            <input type="time" id="event-start-time" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="event-end-date">End Date</label>
+                            <input type="date" id="event-end-date" class="form-control">
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="event-end-time">End Time</label>
+                            <input type="time" id="event-end-time" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="event-all-day">
+                            <label for="event-all-day">All Day Event</label>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="event-category">Event Type</label>
+                            <select id="event-category" class="form-control">
+                                <option value="task">Task</option>
+                                <option value="meeting">Meeting</option>
+                                <option value="reminder">Reminder</option>
+                                <option value="deadline">Deadline</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group form-group-half">
+                            <label for="event-priority">Priority</label>
+                            <select id="event-priority" class="form-control">
+                                <option value="low">Low</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="high">High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-location">Location</label>
+                        <input type="text" id="event-location" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="event-attendees">Attendees</label>
+                        <input type="text" id="event-attendees" class="form-control" placeholder="Names separated by commas">
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="event-completed">
+                            <label for="event-completed">Completed</label>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="event-id">
+                    <input type="hidden" id="widget-id">
+                    <input type="hidden" id="event-selected-date">
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancel-event-btn">Cancel</button>
+                <button class="btn btn-danger" id="delete-event-btn" style="display:none;">Delete</button>
+                <button class="btn btn-primary" id="save-event-btn">Save Event</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Settings Modal -->
+    <div class="modal" id="dashboard-settings-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Dashboard Settings</h2>
+                <button class="close-btn" id="close-settings-modal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-section">
+                    <h3>Layout Options</h3>
+                    <div class="form-group">
+                        <label for="edit-layout-toggle">Edit Layout Mode</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="edit-layout-toggle">
+                            <label for="edit-layout-toggle"></label>
+                        </div>
+                        <p class="setting-description">Enable to drag and resize widgets</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="auto-save-toggle">Auto-save Layout Changes</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="auto-save-toggle" checked>
+                            <label for="auto-save-toggle"></label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Dashboard Appearance</h3>
+                    <div class="form-group">
+                        <label for="grid-gap">Widget Spacing</label>
+                        <select id="grid-gap" class="form-control">
+                            <option value="small">Compact</option>
+                            <option value="medium" selected>Default</option>
+                            <option value="large">Spacious</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-section">
+                    <h3>Data Refresh</h3>
+                    <div class="form-group">
+                        <label for="auto-refresh-interval">Auto-refresh Interval</label>
+                        <select id="auto-refresh-interval" class="form-control">
+                            <option value="0">Disabled</option>
+                            <option value="5">Every 5 minutes</option>
+                            <option value="15" selected>Every 15 minutes</option>
+                            <option value="30">Every 30 minutes</option>
+                            <option value="60">Every hour</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="reset-dashboard-btn" title="Reset entire dashboard layout">Reset Dashboard</button>
+                <button class="btn btn-secondary" id="reset-settings-btn">Reset to Default</button>
+                <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Widget Templates (Hidden) -->
+    <div id="widget-templates" style="display: none;">
+        <!-- Quick Notes Widget Template -->
+        <div class="widget-template" id="quicknotes-template" data-widget-type="quicknotes" data-category="tools">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-sticky-note"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Quick Notes</h3>
+                    <p>Create and manage personal notes</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar Widget Template -->
+        <div class="widget-template" id="calendar-template" data-widget-type="calendar" data-category="tools">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Calendar</h3>
+                    <p>View and manage your schedule</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Order Chart Template (for requestor) -->
+        <div class="widget-template" id="jo-requestor-chart-template" data-widget-type="jo-requestor-chart" data-category="charts" data-role="job_order_requestor">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Job Order Trends</h3>
+                    <p>Monthly job order request statistics</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Order Chart Template (for approver/checker) -->
+        <div class="widget-template" id="jo-approver-chart-template" data-widget-type="jo-approver-chart" data-category="charts" data-role="job_order_approver job_order_checker">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Approval Analytics</h3>
+                    <p>Job order approval trends and statistics</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Job Order Templates for Maintenance -->
+        <div class="widget-template" id="jo-maintenance-trends-template" data-widget-type="jo-maintenance-trends" data-category="charts" data-role="job_order_maintenance">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-chart-area"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Job Order Trends</h3>
+                    <p>Maintenance job order statistics</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-template" id="jo-upcoming-deadlines-template" data-widget-type="jo-upcoming-deadlines" data-category="info" data-role="job_order_maintenance">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Upcoming Deadlines</h3>
+                    <p>View your approaching deadlines</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manhours Templates -->
+        <div class="widget-template" id="manhours-chart-template" data-widget-type="manhours-chart" data-category="charts" data-role="manhours_staff">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>Manhours Data</h3>
+                    <p>Analysis of manhours utilization</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DCF Templates -->
+        <div class="widget-template" id="dcf-requestor-chart-template" data-widget-type="dcf-requestor-chart" data-category="charts" data-role="dcf_requestor">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>DCF Request Status</h3>
+                    <p>Status of your document change requests</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-template" id="dcf-approver-chart-template" data-widget-type="dcf-approver-chart" data-category="charts" data-role="dcf_approver">
+            <div class="widget-preview">
+                <div class="preview-icon">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="preview-info">
+                    <h3>DCF Approval Analytics</h3>
+                    <p>Document change approval statistics</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </main>
 
-{% endblock content %}
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+<script>
+    // Add user role classes to body
+    document.addEventListener('DOMContentLoaded', function() {
+        {% if user_roles.job_order_requestor %}
+        document.body.classList.add('job_order_requestor');
+        {% endif %}
+        {% if user_roles.job_order_approver %}
+        document.body.classList.add('job_order_approver');
+        {% endif %}
+        {% if user_roles.manhours_staff %}
+        document.body.classList.add('manhours_staff');
+        {% endif %}
+        {% if user_roles.monitoring_staff %}
+        document.body.classList.add('monitoring_staff');
+        {% endif %}
+        {% if user_roles.dcf_requestor %}
+        document.body.classList.add('dcf_requestor');
+        {% endif %}
+        {% if user_roles.dcf_approver %}
+        document.body.classList.add('dcf_approver');
+        {% endif %}
+    });
+</script>
+<script src="{% static 'js/overview/overview.js' %}"></script>
+{% endblock %}

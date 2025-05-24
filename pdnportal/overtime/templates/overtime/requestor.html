@@ -1,0 +1,377 @@
+<!-- Requestor Tab Content -->
+<div class="OT-requestor-container">
+    <!-- Chart and Activity Feed Row -->
+    <div class="OT-dashboard-row OT-full-width">
+        <!-- Employee Status Distribution Chart -->
+        <div class="OT-card OT-charts-panel">
+            <div class="OT-card-header">
+                <h2>Employee Status Distribution</h2>
+                <div class="OT-card-actions">
+                    <div class="OT-filter-container">
+                        <select class="OT-select OT-filter-select" id="chart-period-filter">
+                            <option value="week">This Week</option>
+                            <option value="month" selected>This Month</option>
+                            <option value="quarter">Quarterly</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="OT-chart-container">
+                <canvas id="overtime-stats-chart" height="100%"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent Activity Feed -->
+        <div class="OT-card OT-activity-panel">
+            <div class="OT-card-header">
+                <h2>Recent Activity</h2>
+                <div class="OT-card-actions">
+                    <button class="OT-button OT-icon-button" id="refresh-activity">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="OT-activity-list">
+                {% for filing in ot_history|slice:":5" %}
+                <div class="OT-activity-item">
+                    <div class="OT-activity-icon {% if filing.status == 'APPROVED' %}OT-icon-approved{% elif filing.status == 'REJECTED' %}OT-icon-rejected{% else %}OT-icon-pending{% endif %}">
+                        {% if filing.status == 'APPROVED' %}
+                        <i class="fas fa-check"></i>
+                        {% elif filing.status == 'REJECTED' %}
+                        <i class="fas fa-times"></i>
+                        {% else %}
+                        <i class="fas fa-clock"></i>
+                        {% endif %}
+                    </div>
+                    <div class="OT-activity-content">
+                        <div class="OT-activity-header">
+                            <span class="OT-activity-user">{{ filing.requestor|default:"You" }}</span>
+                            <span class="OT-activity-action">
+                                {% if filing.status == 'APPROVED' %}approved{% elif filing.status == 'REJECTED' %}rejected{% else %}submitted{% endif %}
+                            </span>
+                            <a href="#" class="OT-activity-link OT-view-history" data-id="{{ filing.id }}">{{ filing.id }}</a>
+                        </div>
+                        <div class="OT-activity-description">
+                            {{ filing.type }} - {{ filing.group }}
+                        </div>
+                        <div class="OT-activity-footer">
+                            <div class="OT-activity-time">
+                                <i class="far fa-clock"></i> {{ filing.date|date:"M d, Y" }}
+                            </div>
+                            <button class="OT-button OT-view-details-btn" data-id="{{ filing.id }}">
+                                <i class="fas fa-eye"></i> View Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="OT-empty-activity">
+                    <i class="fas fa-history"></i>
+                    <p>No recent activity found.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Third Row: Employee Groups Table -->
+    <div class="OT-card OT-full-width">
+        <div class="OT-card-header">
+            <h2>Employee Groups</h2>
+            <div class="OT-card-actions">
+                <div class="OT-search-container">
+                    <input type="text" class="OT-search-input" id="group-search-input" placeholder="Search by Employee ID, Name, Department...">
+                    <button class="OT-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="OT-filter-container">
+                    <select class="OT-select OT-filter-select" id="group-filter">
+                        <option value="all">All Groups</option>
+                        {% for group in employee_groups %}
+                            <option value="{{ group.id }}">{{ group.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="OT-table-container">
+            <table class="OT-table" id="employee-groups-table">
+                <thead>
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Line</th>
+                        <th>Shuttle Service</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr data-employee-id="{{ employee.id }}">
+                        <td data-label="Employee ID">{{ employee.id_number }}</td>
+                        <td data-label="Name">{{ employee.name }}</td>
+                        <td data-label="Department">{{ employee.department|default:"-" }}</td>
+                        <td data-label="Line">{{ employee.line|default:"-" }}</td>
+                        <td data-label="Shuttle Service">{{ employee.shuttle_service|default:"-" }}</td>
+                        <td data-label="Actions">
+                            <button class="OT-button OT-text-button OT-edit-group-btn" data-employee-id="{{ employee.id }}" title="Edit Group">
+                                <i class="fas fa-edit"></i> Edit Group
+                            </button>
+                            <button class="OT-button OT-text-button OT-danger-button OT-delete-employee-btn" data-employee-id="{{ employee.id }}" title="Delete">
+                                <i class="fas fa-trash-alt"></i> Delete
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="OT-empty-table">No employees found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="OT-table-footer">
+            <div class="OT-table-info">
+                Showing <span id="showing-start">1</span>-<span id="showing-end">{{ employees|length }}</span> of <span id="total-entries">{{ employees|length }}</span> entries
+            </div>
+            <div class="OT-pagination">
+                <button class="OT-pagination-button" id="prev-page" disabled>
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <div class="OT-pagination-pages">
+                    <button class="OT-pagination-page active">1</button>
+                </div>
+                <button class="OT-pagination-button" id="next-page" disabled>
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Group Creation/Edit Modal -->
+<div class="OT-modal" id="group-modal">
+    {% csrf_token %}
+    <div class="OT-modal-content">
+        <div class="OT-modal-header">
+            <h2 id="group-modal-title">Create New Employee Group</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-form-group">
+                <label for="group-name">Group Name</label>
+                <input type="text" id="group-name" class="OT-input" placeholder="Enter a descriptive name" required>
+            </div>
+
+            <div class="OT-form-group" id="existing-group-container" style="display: none;">
+                <label for="existing-group">Select Existing Group</label>
+                <div class="OT-select-container">
+                    <select id="existing-group" class="OT-select">
+                        <option value="">Select a group to modify</option>
+                        {% for group in employee_groups %}
+                            <option value="{{ group.id }}">{{ group.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="OT-form-group">
+                <label>Employee Selection</label>
+                <div class="OT-search-container" style="margin-bottom: 15px;">
+                    <input type="text" id="employee-search" class="OT-search-input OT-full-width" placeholder="Search employees by ID or name">
+                </div>
+            </div>
+
+            <div class="OT-employee-selection">
+                <div class="OT-selection-header">
+                    <h3>Available Employees</h3>
+                    <h3>Selected Employees <span id="selected-count" class="OT-count-badge">0</span></h3>
+                </div>
+                <div class="OT-selection-container">
+                    <div class="OT-available-employees">
+                        <div class="OT-employee-list" id="available-employees">
+                            {% for employee in employees %}
+                            <div class="OT-employee-item" data-id="{{ employee.id }}">
+                                <div class="OT-employee-info">
+                                    <p class="OT-employee-id">{{ employee.id_number }}</p>
+                                    <p class="OT-employee-name">{{ employee.name }}</p>
+                                </div>
+                                <button type="button" class="OT-button OT-icon-button OT-add-employee">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Hidden template for reloading available employees -->
+                        <div id="available-employees-template" style="display: none;">
+                            {% for employee in employees %}
+                            <div class="OT-employee-item" data-id="{{ employee.id }}">
+                                <div class="OT-employee-info">
+                                    <p class="OT-employee-id">{{ employee.id_number }}</p>
+                                    <p class="OT-employee-name">{{ employee.name }}</p>
+                                </div>
+                                <button type="button" class="OT-button OT-icon-button OT-add-employee">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="OT-selected-employees">
+                        <div class="OT-employee-list" id="selected-employees">
+                            <!-- Selected employees will be added here dynamically -->
+                            <div class="OT-empty-selection" id="selected-empty-message">
+                                <i class="fas fa-user-plus"></i>
+                                <p>No employees selected yet</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <div class="OT-modal-actions">
+                <div class="OT-mode-toggle">
+                    <button type="button" class="OT-button OT-text-button OT-mode-button active" data-mode="create">
+                        <i class="fas fa-plus-circle"></i> Create New
+                    </button>
+                    <button type="button" class="OT-button OT-text-button OT-mode-button" data-mode="modify">
+                        <i class="fas fa-edit"></i> Modify Existing
+                    </button>
+                </div>
+                <div class="OT-action-buttons">
+                    <button type="button" class="OT-button OT-secondary-button" id="cancel-group">Cancel</button>
+                    <button type="button" class="OT-button OT-primary-button" id="save-group">Save Group</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OT Review Modal -->
+<div class="OT-modal" id="ot-review-modal">
+    <div class="OT-modal-content">
+        <div class="OT-modal-header">
+            <h2 id="review-modal-title">Review Overtime Request</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body" id="review-content">
+            <!-- Content will be populated dynamically -->
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-review">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="confirm-ot-submission">Confirm Submission</button>
+        </div>
+    </div>
+</div>
+
+<!-- Password Confirmation Modal for Late Filing -->
+<div class="OT-modal" id="password-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Password Required</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-password-info">
+                <i class="fas fa-lock OT-lock-icon"></i>
+                <p class="OT-password-message">
+                    This is a late filing and requires authorization. Please enter the password provided by your facilitator.
+                </p>
+            </div>
+            <div class="OT-form-group">
+                <label for="authorization-password">Password</label>
+                <input type="password" id="authorization-password" class="OT-input" placeholder="Enter authorization password" required>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-password">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="submit-password">Submit</button>
+        </div>
+    </div>
+</div>
+
+<!-- View OT Details Modal -->
+<div class="OT-modal" id="ot-details-modal">
+    <div class="OT-modal-content OT-large-modal">
+        <div class="OT-modal-header">
+            <h2 id="details-modal-title">Overtime Details</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body" id="details-content">
+            <!-- Loading state is shown initially -->
+            <div class="OT-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p>Loading overtime details...</p>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="close-details">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Status Change Modal -->
+<div class="OT-modal" id="status-change-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2 id="status-change-modal-title">Change Employee Status</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div id="status-change-content" class="OT-status-change-content">
+                <p>Select the new status for the selected employees:</p>
+                <div class="OT-form-group">
+                    <label for="new-status">New Status:</label>
+                    <select id="new-status" class="OT-select">
+                        <option value="OT">OT</option>
+                        <option value="NOT-OT">NOT-OT</option>
+                        <option value="ABSENT">ABSENT</option>
+                        <option value="LEAVE">LEAVE</option>
+                    </select>
+                </div>
+                <input type="hidden" id="filing-id-for-status-change">
+                <input type="hidden" id="selected-employees-for-status-change">
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-status-change">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="submit-status-change">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Status Change Locked Modal -->
+<div class="OT-modal" id="status-change-locked-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Status Change Not Permitted</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-locked-message">
+                <i class="fas fa-lock"></i>
+                <p id="status-change-locked-message">Status changes are no longer permitted for this overtime request. Please visit the Lobby and consult with HRGAD personnel who manage overtime requests for any necessary changes.</p>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-primary-button" id="close-locked-modal">Understood</button>
+        </div>
+    </div>
+</div>

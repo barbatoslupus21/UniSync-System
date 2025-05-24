@@ -1,0 +1,6875 @@
+/**
+ * UniSync Chat Module
+ * Handles real-time messaging using Django Channels/WebSockets
+ */
+
+document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const chatContainer = document.querySelector('.Chat-container');
+    const chatSidebar = document.querySelector('.Chat-sidebar');
+    const chatMain = document.querySelector('.Chat-main');
+    const chatEmptyMain = document.querySelector('.Chat-empty-main');
+    const chatActiveArea = document.querySelector('.Chat-active-area');
+    const messagesContainer = document.getElementById('messages-container');
+    const messageInput = document.getElementById('message-input');
+    const sendMessageBtn = document.getElementById('send-message-btn');
+    const fileInput = document.getElementById('file-input');
+    const attachFileBtn = document.getElementById('attach-file-btn');
+    const uploadProgressContainer = document.getElementById('upload-progress-container');
+    const uploadProgressBar = document.getElementById('upload-progress-bar');
+    const uploadFilename = document.getElementById('upload-filename');
+    const uploadStatus = document.getElementById('upload-status');
+    const uploadCancel = document.getElementById('upload-cancel');
+    const uploadProgressInfo = document.getElementById('upload-progress-info');
+    const progressBarContainer = document.getElementById('progress-bar-container');
+    const filePillContainer = document.getElementById('file-pill-container');
+    const filePillName = document.getElementById('file-pill-name');
+    const filePillIcon = document.getElementById('file-pill-icon');
+    const removeFileBtn = document.getElementById('remove-file-btn');
+    const chatHeaderName = document.getElementById('chat-header-name');
+    const chatHeaderSubtitle = document.getElementById('chat-header-subtitle');
+    const chatHeaderAvatar = document.getElementById('chat-header-avatar');
+    const chatHeaderStatus = document.getElementById('chat-header-status');
+    const chatSearchToggle = document.getElementById('chat-search-toggle');
+    const messageSearchPanel = document.getElementById('message-search-panel');
+    const messageSearchInput = document.getElementById('message-search-input');
+    const messageSearchBtn = document.getElementById('message-search-btn');
+    const messageSearchClose = document.getElementById('message-search-close');
+    const chatInfoToggle = document.getElementById('chat-info-toggle');
+    const chatInfoSidebar = document.getElementById('chat-info-sidebar');
+    const closeInfoBtn = document.getElementById('close-info-btn');
+    const emojiToggle = document.getElementById('emoji-toggle');
+    const emojiPicker = document.getElementById('emoji-picker');
+    const backButton = document.querySelector('.Chat-back-button');
+    const dateFromInput = document.getElementById('date-from');
+    const dateToInput = document.getElementById('date-to');
+    const filterFilesCheckbox = document.getElementById('filter-files');
+    const filterImagesCheckbox = document.getElementById('filter-images');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const messageContextMenu = document.getElementById('message-context-menu');
+    const reactionsMenu = document.getElementById('reactions-menu');
+    const startChatBtn = document.getElementById('start-chat-btn');
+
+    // Tabs
+    const chatTabs = document.querySelectorAll('.Chat-tab[data-tab]');
+    const chatTabContents = document.querySelectorAll('.Chat-tab-content');
+
+    // Modals
+    const newConversationModal = document.getElementById('new-conversation-modal');
+    const addContactModal = document.getElementById('add-contact-modal');
+    const addMembersModal = document.getElementById('add-members-modal');
+    const renameGroupModal = document.getElementById('rename-group-modal');
+    const leaveGroupModal = document.getElementById('leave-group-modal');
+    const forwardMessageModal = document.getElementById('forward-message-modal');
+    const imageViewerModal = document.getElementById('image-viewer-modal');
+    const modalCloseBtns = document.querySelectorAll('.JO-modal-close');
+    const cancelConversationBtn = document.getElementById('cancel-conversation-btn');
+    const createConversationBtn = document.getElementById('create-conversation-btn');
+    const modalTabs = document.querySelectorAll('.Chat-tab[data-modal-tab]');
+    const modalTabContents = document.querySelectorAll('.Chat-modal-tab-content');
+    const addContactBtn = document.getElementById('add-contact-btn');
+    const emptyAddContactBtn = document.getElementById('empty-add-contact-btn');
+    const cancelAddContactBtn = document.getElementById('cancel-add-contact-btn');
+    const contactSearchInput = document.getElementById('contact-search-input');
+    const contactSearchBtn = document.getElementById('contact-search-btn');
+    const contactSearchResults = document.getElementById('contact-search-results');
+    const addMembersBtn = document.getElementById('add-members-btn');
+    const cancelAddMembersBtn = document.getElementById('cancel-add-members-btn');
+    const confirmAddMembersBtn = document.getElementById('confirm-add-members-btn');
+    const renameGroupBtn = document.getElementById('rename-group-btn');
+    const cancelRenameBtn = document.getElementById('cancel-rename-btn');
+    const confirmRenameBtn = document.getElementById('confirm-rename-btn');
+    const leaveGroupBtn = document.getElementById('leave-group-btn');
+    const directContactSelect = document.getElementById('direct-contact-select');
+    const directMessageInput = document.getElementById('direct-message-input');
+    const groupNameInput = document.getElementById('group-name-input');
+    const groupMembersSelection = document.getElementById('group-members-selection');
+    const addMembersSelection = document.getElementById('add-members-selection');
+    const forwardMessagePreview = document.getElementById('forward-message-preview');
+    const forwardTabs = document.querySelectorAll('.Chat-tab[data-forward-tab]');
+    const forwardTabContents = document.querySelectorAll('.Chat-forward-tab-content');
+    const forwardChatsSelection = document.getElementById('forward-chats-selection');
+    const forwardContactsSelection = document.getElementById('forward-contacts-selection');
+    const cancelForwardBtn = document.getElementById('cancel-forward-btn');
+    const confirmForwardBtn = document.getElementById('confirm-forward-btn');
+
+    // Context Menu Items
+    const contextReply = document.getElementById('context-reply');
+    const contextForward = document.getElementById('context-forward');
+    const contextCopy = document.getElementById('context-copy');
+    const contextDownload = document.getElementById('context-download');
+    const contextDelete = document.getElementById('context-delete');
+
+    // Emoji Picker
+    const emojiCategories = document.querySelectorAll('.Chat-emoji-category');
+    const emojiGrids = document.querySelectorAll('.Chat-emoji-grid');
+    const emojis = document.querySelectorAll('.Chat-emoji');
+    const reactionEmojis = document.querySelectorAll('.Chat-reaction-emoji');
+
+    // State Variables
+    let currentChatId = null;
+    let currentChatType = null;
+    let currentChatSocket = null;
+    let isUploading = false;
+    let uploadController = null;
+    let isMobile = window.innerWidth <= 768;
+    let activeContextMessageId = null;
+    let contextMessageElement = null;
+    let activeReactionMessageId = null;
+    let notificationsEnabled = localStorage.getItem('chat_notifications_enabled') === 'true' || false;
+    let notificationPermissionGranted = false;
+
+    // We no longer track displayed system messages to prevent duplicates
+    // This ensures all system messages are shown
+    let displayedSystemMessages = new Set();
+
+    // Emoji Data
+    const recentEmojis = ['❤️', '👍', '😊', '😂', '👋', '😠', '👏', '🙏'];
+
+    /**
+     * Initialize the UI and event handlers
+     */
+    function init() {
+        setupEventListeners();
+        setupWebSocketConnection();
+        updateResponsiveState();
+
+        // Check notification permission
+        checkNotificationPermission();
+
+        // Make sure the chat list container exists and is properly set up
+        const chatsList = document.querySelector('#chats-tab .Chat-list');
+        if (!chatsList) {
+            console.error('Chat list container not found!');
+            const chatsTab = document.querySelector('#chats-tab');
+            if (chatsTab) {
+                chatsTab.innerHTML = '<div class="Chat-list"></div>';
+                console.log('Created new chat list container');
+            }
+        }
+
+        // Ensure the chat list is refreshed
+        refreshChatList();
+
+        // Select the first chat in the list when the page loads
+        selectFirstChat();
+
+        // Set up a MutationObserver to ensure the sidebar remains visible
+        if (!isMobile) {
+            setupSidebarObserver();
+
+            // Force the sidebar to be visible from the start
+            forceSidebarVisibility();
+
+            // Add a periodic check to ensure the sidebar remains visible
+            setInterval(forceSidebarVisibility, 1000);
+        }
+    }
+
+    /**
+     * Set up a MutationObserver to ensure the sidebar remains visible
+     */
+    function setupSidebarObserver() {
+        console.log('Setting up sidebar observer');
+
+        // Create a MutationObserver to watch for changes to the sidebar
+        const sidebarObserver = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' &&
+                    (mutation.attributeName === 'style' ||
+                     mutation.attributeName === 'class')) {
+
+                    console.log('Sidebar mutation detected:', mutation.attributeName);
+
+                    // Check if the sidebar is hidden
+                    const sidebarStyle = getComputedStyle(chatSidebar);
+                    if (sidebarStyle.display === 'none' ||
+                        sidebarStyle.visibility === 'hidden' ||
+                        sidebarStyle.opacity === '0') {
+
+                        console.log('Sidebar is hidden, making it visible again');
+
+                        // Force the sidebar to be visible
+                        chatSidebar.style.display = 'flex';
+                        chatSidebar.style.visibility = 'visible';
+                        chatSidebar.style.opacity = '1';
+                        chatSidebar.classList.remove('mobile-hidden');
+
+                        // Add the chat-active class to the container
+                        chatContainer.classList.add('chat-active');
+                    }
+                }
+            });
+        });
+
+        // Start observing the sidebar
+        sidebarObserver.observe(chatSidebar, {
+            attributes: true,
+            attributeFilter: ['style', 'class']
+        });
+
+        console.log('Sidebar observer set up');
+    }
+
+    /**
+     * Check if notification permission is granted and request if needed
+     */
+    function checkNotificationPermission() {
+        // Check if browser supports notifications
+        if (!('Notification' in window)) {
+            console.log('This browser does not support desktop notifications');
+            return;
+        }
+
+        // Check if permission is already granted
+        if (Notification.permission === 'granted') {
+            notificationPermissionGranted = true;
+        } else if (Notification.permission !== 'denied') {
+            // Request permission
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    notificationPermissionGranted = true;
+                    // Enable notifications by default when permission is granted
+                    notificationsEnabled = true;
+                    localStorage.setItem('chat_notifications_enabled', 'true');
+                }
+            });
+        }
+    }
+
+    /**
+     * Show a desktop notification for a new message
+     * @param {Object} message - The message object
+     */
+    function showMessageNotification(message) {
+        // Check if notifications are enabled and permission is granted
+        if (!notificationsEnabled || !notificationPermissionGranted) {
+            console.log('Notifications disabled or permission not granted');
+            return;
+        }
+
+        // Don't show notifications for messages sent by the current user
+        if (message.sender.id === currentUserId) {
+            console.log('Not showing notification for own message');
+            return;
+        }
+
+        // Don't show notifications if the chat is currently visible and active
+        if (document.visibilityState === 'visible' && message.chat_id === currentChatId) {
+            console.log('Not showing notification for visible chat');
+            return;
+        }
+
+        console.log('Showing desktop notification for message:', message.id);
+
+        // Get chat name for the notification
+        let chatName = '';
+        const chatItem = document.querySelector(`.Chat-list-item[data-chat-id="${message.chat_id}"]`);
+        if (chatItem) {
+            chatName = chatItem.querySelector('.Chat-name').textContent;
+        }
+
+        // Create notification title
+        const title = chatName ? `${message.sender.name} (${chatName})` : message.sender.name;
+
+        // Create notification options
+        const options = {
+            body: message.content || 'Sent a file',
+            icon: message.sender.avatar || '/static/images/default-avatar.png',
+            badge: '/static/images/logo-icon.png',
+            tag: `chat-${message.chat_id}`, // Group notifications by chat
+            renotify: true // Notify each time even with the same tag
+        };
+
+        // Create and show notification
+        const notification = new Notification(title, options);
+
+        // Add click event to notification
+        notification.onclick = function() {
+            // Focus on window and select the chat
+            window.focus();
+            selectChat(message.chat_id);
+
+            // Close the notification
+            this.close();
+        };
+
+        // Auto close after 5 seconds
+        setTimeout(() => {
+            notification.close();
+        }, 5000);
+    }
+
+    /**
+     * Set up event listeners for the chat interface
+     */
+    function setupEventListeners() {
+        // Settings button
+        const chatSettingsToggle = document.getElementById('chat-settings-toggle');
+        if (chatSettingsToggle) {
+            chatSettingsToggle.addEventListener('click', showChatSettings);
+        }
+
+        // Notifications toggle - this is a global setting for all chats
+        const notificationsToggle = document.getElementById('notifications-toggle');
+        if (notificationsToggle) {
+            // Set initial state
+            notificationsToggle.checked = notificationsEnabled;
+
+            // Add change event listener
+            notificationsToggle.addEventListener('change', function() {
+                notificationsEnabled = this.checked;
+                localStorage.setItem('chat_notifications_enabled', notificationsEnabled ? 'true' : 'false');
+
+                // If enabling notifications, check permission
+                if (notificationsEnabled && Notification.permission !== 'granted') {
+                    checkNotificationPermission();
+                }
+
+                showToast(`Desktop notifications for all chats ${notificationsEnabled ? 'enabled' : 'disabled'}`, 'info');
+                console.log(`Global desktop notifications ${notificationsEnabled ? 'enabled' : 'disabled'}`);
+            });
+        }
+
+        // Save settings button
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        if (saveSettingsBtn) {
+            saveSettingsBtn.addEventListener('click', function() {
+                closeAllModals();
+                showToast('Settings saved', 'success');
+            });
+        }
+
+        // Chat list item click
+        document.querySelectorAll('.Chat-list-item[data-chat-id]').forEach(item => {
+            item.addEventListener('click', function() {
+                const chatId = this.getAttribute('data-chat-id');
+                const chatType = this.getAttribute('data-chat-type');
+                loadChat(chatId, chatType);
+            });
+        });
+
+        // Tab switching
+        chatTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                switchTab(tabName);
+            });
+        });
+
+        // Modal tabs
+        modalTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-modal-tab');
+                switchModalTab(tabName);
+            });
+        });
+
+        // Forward tabs
+        forwardTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-forward-tab');
+                switchForwardTab(tabName);
+            });
+        });
+
+        // Message input events
+        messageInput.addEventListener('input', function() {
+            toggleSendButton();
+            autoResizeInput();
+            notifyTyping();
+        });
+
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendMessageBtn.disabled) {
+                    sendMessage();
+                }
+            }
+        });
+
+        // Send button click
+        sendMessageBtn.addEventListener('click', sendMessage);
+
+        // File input change
+        fileInput.addEventListener('change', handleFileSelect);
+
+        // Attach file button click
+        attachFileBtn.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        // Upload cancel button
+        uploadCancel.addEventListener('click', cancelUpload);
+
+        // Remove file button
+        removeFileBtn.addEventListener('click', function() {
+            resetFileUpload();
+            toggleSendButton();
+        });
+
+        // Search toggle
+        chatSearchToggle.addEventListener('click', function() {
+            toggleMessageSearch();
+        });
+
+        // Search close
+        messageSearchClose.addEventListener('click', function() {
+            toggleMessageSearch(false);
+        });
+
+        // Search button
+        messageSearchBtn.addEventListener('click', function() {
+            searchMessages();
+        });
+
+        // Search filters
+        messageSearchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                searchMessages();
+            }
+        });
+
+        dateFromInput.addEventListener('change', searchMessages);
+        dateToInput.addEventListener('change', searchMessages);
+        filterFilesCheckbox.addEventListener('change', searchMessages);
+        filterImagesCheckbox.addEventListener('change', searchMessages);
+
+        // Chat info toggle
+        chatInfoToggle.addEventListener('click', function() {
+            toggleChatInfo();
+        });
+
+        // Close info button
+        closeInfoBtn.addEventListener('click', function() {
+            toggleChatInfo(false);
+        });
+
+        // Emoji toggle
+        emojiToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleEmojiPicker();
+        });
+
+        // Emoji categories
+        emojiCategories.forEach(category => {
+            category.addEventListener('click', function() {
+                const categoryName = this.getAttribute('data-category');
+                switchEmojiCategory(categoryName);
+            });
+        });
+
+        // Emoji selection
+        emojis.forEach(emoji => {
+            emoji.addEventListener('click', function() {
+                insertEmoji(this.textContent);
+            });
+        });
+
+        // Reaction selection
+        reactionEmojis.forEach(emoji => {
+            emoji.addEventListener('click', function() {
+                const reaction = this.getAttribute('data-emoji');
+                addReaction(activeReactionMessageId, reaction);
+                hideReactionsMenu();
+            });
+        });
+
+        // Back button (mobile)
+        backButton.addEventListener('click', function() {
+            showChatList();
+        });
+
+        // Context menu items
+        contextReply.addEventListener('click', function() {
+            replyToMessage(activeContextMessageId);
+            hideContextMenu();
+        });
+
+        contextForward.addEventListener('click', function() {
+            forwardMessage(activeContextMessageId);
+            hideContextMenu();
+        });
+
+        contextCopy.addEventListener('click', function() {
+            copyMessageText(activeContextMessageId);
+            hideContextMenu();
+        });
+
+        contextDownload.addEventListener('click', function() {
+            downloadFile(activeContextMessageId);
+            hideContextMenu();
+        });
+
+        contextDelete.addEventListener('click', function() {
+            showDeleteMessageModal(activeContextMessageId);
+            hideContextMenu();
+        });
+
+        // New chat button
+        newChatBtn.addEventListener('click', function() {
+            showNewConversationModal();
+        });
+
+        // Start chat button (empty state)
+        if (startChatBtn) {
+            startChatBtn.addEventListener('click', function() {
+                showNewConversationModal();
+            });
+        }
+
+        // Modal close buttons
+        modalCloseBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                closeAllModals();
+            });
+        });
+
+        // Cancel conversation button
+        cancelConversationBtn.addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        // Create conversation button
+        createConversationBtn.addEventListener('click', function() {
+            createConversation();
+        });
+
+        // Add contact button
+        addContactBtn.addEventListener('click', function() {
+            showAddContactModal();
+        });
+
+        // Empty add contact button
+        if (emptyAddContactBtn) {
+            emptyAddContactBtn.addEventListener('click', function() {
+                showAddContactModal();
+            });
+        }
+
+        // Cancel add contact button
+        cancelAddContactBtn.addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        // Contact search button
+        contactSearchBtn.addEventListener('click', function() {
+            searchContacts();
+        });
+
+        // Contact search input
+        contactSearchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                searchContacts();
+            }
+        });
+
+        // Add members button
+        addMembersBtn.addEventListener('click', function() {
+            showAddMembersModal();
+        });
+
+        // Cancel add members button
+        cancelAddMembersBtn.addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        // Confirm add members button
+        confirmAddMembersBtn.addEventListener('click', function() {
+            addGroupMembers();
+        });
+
+        // Rename group button
+        renameGroupBtn.addEventListener('click', function() {
+            showRenameGroupModal();
+        });
+
+        // Cancel rename button
+        cancelRenameBtn.addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        // Confirm rename button
+        confirmRenameBtn.addEventListener('click', function() {
+            renameGroup();
+        });
+
+        // Leave group button
+        leaveGroupBtn.addEventListener('click', function() {
+            showLeaveGroupModal();
+        });
+
+        // Leave group modal buttons
+        document.getElementById('cancel-leave-btn').addEventListener('click', function() {
+            toggleModal(leaveGroupModal, false);
+        });
+
+        document.getElementById('confirm-leave-btn').addEventListener('click', function() {
+            leaveGroup();
+        });
+
+        // Cancel forward button
+        cancelForwardBtn.addEventListener('click', function() {
+            closeAllModals();
+        });
+
+        // Confirm forward button
+        confirmForwardBtn.addEventListener('click', function() {
+            confirmForwardMessage();
+        });
+
+        // Delete message modal buttons
+        document.getElementById('cancel-delete-btn').addEventListener('click', function() {
+            document.getElementById('delete-message-modal').classList.remove('active');
+        });
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', function() {
+            const messageId = this.getAttribute('data-message-id');
+            if (messageId) {
+                deleteMessage(messageId);
+            }
+        });
+
+        // Image modal close button
+        document.querySelector('.Chat-image-modal-close').addEventListener('click', function() {
+            imageViewerModal.classList.remove('active');
+        });
+
+        // Image download button
+        document.getElementById('download-image-btn').addEventListener('click', function() {
+            const imageUrl = this.getAttribute('data-url');
+            const fileName = this.getAttribute('data-filename');
+            if (imageUrl) {
+                const downloadLink = document.createElement('a');
+                downloadLink.href = imageUrl;
+                downloadLink.download = fileName;
+                downloadLink.style.display = 'none';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+            }
+        });
+
+        // Close dropdowns on document click
+        document.addEventListener('click', function(e) {
+            if (!emojiPicker.contains(e.target) && e.target !== emojiToggle) {
+                emojiPicker.style.display = 'none';
+            }
+
+            hideContextMenu();
+            hideReactionsMenu();
+        });
+
+        // Window resize handler
+        window.addEventListener('resize', function() {
+            const wasMobile = isMobile;
+            isMobile = window.innerWidth <= 768;
+
+            if (wasMobile !== isMobile) {
+                updateResponsiveState();
+            }
+        });
+
+        // New message indicator click handler
+        document.getElementById('new-message-indicator').addEventListener('click', function() {
+            scrollToBottom();
+        });
+    }
+
+    /**
+     * Set up WebSocket connection for real-time messaging
+     */
+    function setupWebSocketConnection() {
+        // This will be initialized when a chat is opened
+    }
+
+    /**
+     * Force the sidebar to be visible on desktop
+     * This is a critical function to prevent the sidebar from disappearing
+     * Optimized to reduce reflows and repaints
+     */
+    function forceSidebarVisibility() {
+        if (isMobile) return; // Only apply on desktop
+
+        // Check if sidebar is already visible with correct styles
+        const sidebarStyle = getComputedStyle(chatSidebar);
+        if (sidebarStyle.display === 'flex' &&
+            sidebarStyle.visibility === 'visible' &&
+            sidebarStyle.opacity === '1') {
+            return; // Already visible with correct styles, no need to change
+        }
+
+        // Add the chat-active class to the container if not already present
+        if (!chatContainer.classList.contains('chat-active')) {
+            chatContainer.classList.add('chat-active');
+        }
+
+        // Apply critical visibility styles only if needed
+        chatSidebar.style.display = 'flex';
+        chatSidebar.style.visibility = 'visible';
+        chatSidebar.style.opacity = '1';
+
+        // Remove any classes that might hide the sidebar
+        if (chatSidebar.classList.contains('mobile-hidden')) {
+            chatSidebar.classList.remove('mobile-hidden');
+        }
+    }
+
+    /**
+     * Connect to WebSocket for a specific chat
+     * @param {string} chatId - The ID of the chat to connect to
+     */
+    function connectToChatSocket(chatId) {
+        console.log('Setting up message polling for real-time updates');
+
+        // Clear any existing polling intervals
+        if (window.messagePollingInterval) {
+            clearInterval(window.messagePollingInterval);
+        }
+
+        // Also clear the chat list polling interval
+        if (window.chatListPollingInterval) {
+            clearInterval(window.chatListPollingInterval);
+        }
+
+        // CRITICAL FIX: Completely new approach to message polling
+        console.log("CRITICAL FIX: Setting up completely new message polling mechanism");
+
+        // Create a global variable to store the last message ID
+        window.lastMessageId = null;
+
+        // Set up polling for new messages every 1 second
+        window.messagePollingInterval = setInterval(() => {
+            // Only poll if we have a valid chat ID
+            if (!chatId) {
+                console.log("No chat ID, skipping message polling");
+                return;
+            }
+
+            // Get the last message ID if we have messages
+            if (window.currentChatMessages && window.currentChatMessages.length > 0) {
+                window.lastMessageId = window.currentChatMessages[window.currentChatMessages.length - 1].id;
+            }
+
+            // Always fetch from server with cache-busting query parameter
+            const timestamp = new Date().getTime();
+
+            // Make a direct AJAX call to get messages
+            $.ajax({
+                url: `/chat/api/chats/${chatId}/messages/?_=${timestamp}`,
+                type: 'GET',
+                cache: false,
+                headers: {
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Pragma': 'no-cache',
+                    'Expires': '0'
+                },
+                success: function(messages) {
+                    // Check if we have new messages
+                    let hasNewMessages = false;
+
+                    // If no current messages, definitely has new messages
+                    if (!window.currentChatMessages || window.currentChatMessages.length === 0) {
+                        hasNewMessages = true;
+                    }
+                    // If different number of messages, definitely has new messages
+                    else if (messages.length !== window.currentChatMessages.length) {
+                        hasNewMessages = true;
+                    }
+                    // If same number of messages, check the last message ID
+                    else if (messages.length > 0) {
+                        const newLastMessageId = messages[messages.length - 1].id;
+                        if (newLastMessageId !== window.lastMessageId) {
+                            hasNewMessages = true;
+                        }
+                    }
+
+                    // If we have new messages, update the UI
+                    if (hasNewMessages) {
+                        console.log("New messages detected, updating UI");
+
+                        // Check if user is at bottom before updating
+                        const wasAtBottom = isScrolledToBottom();
+
+                        // Store the new messages
+                        window.currentChatMessages = [...messages];
+                        window.lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
+
+                        // Force redraw the entire messages container
+                        const messagesContainer = document.querySelector('.Chat-messages');
+                        if (messagesContainer) {
+                            // Clear the container
+                            messagesContainer.innerHTML = '';
+
+                            // Render all messages
+                            if (messages.length === 0) {
+                                // Show empty state
+                                const emptyState = document.createElement('div');
+                                emptyState.className = 'Chat-empty-messages';
+                                emptyState.innerHTML = `
+                                    <div class="Chat-empty-messages-icon">
+                                        <i class="fas fa-comment-dots"></i>
+                                    </div>
+                                    <h3>No messages yet</h3>
+                                    <p>Be the first to start this conversation. Type a message below to get started!</p>
+                                `;
+                                messagesContainer.appendChild(emptyState);
+                            } else {
+                                // Create a document fragment to minimize DOM operations
+                                const fragment = document.createDocumentFragment();
+
+                                let currentDay = null;
+                                let currentSender = null;
+                                let messageGroup = null;
+
+                                // Process all messages
+                                for (let i = 0; i < messages.length; i++) {
+                                    const message = messages[i];
+                                    const messageDate = new Date(message.timestamp);
+                                    const messageDay = messageDate.toDateString();
+
+                                    // Add date separator if new day
+                                    if (messageDay !== currentDay) {
+                                        currentDay = messageDay;
+
+                                        let dateText;
+                                        const today = new Date().toDateString();
+                                        const yesterday = new Date();
+                                        yesterday.setDate(yesterday.getDate() - 1);
+
+                                        if (messageDay === today) {
+                                            dateText = 'Today';
+                                        } else if (messageDay === yesterday.toDateString()) {
+                                            dateText = 'Yesterday';
+                                        } else {
+                                            dateText = messageDate.toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                                            });
+                                        }
+
+                                        const dateSeparator = document.createElement('div');
+                                        dateSeparator.className = 'Chat-date-separator';
+                                        dateSeparator.innerHTML = `<span>${dateText}</span>`;
+                                        fragment.appendChild(dateSeparator);
+
+                                        // Reset current sender for new day
+                                        currentSender = null;
+                                        messageGroup = null;
+                                    }
+
+                                    // Start new message group if sender changes
+                                    if (message.sender.id !== currentSender) {
+                                        currentSender = message.sender.id;
+                                        messageGroup = document.createElement('div');
+                                        messageGroup.className = 'Chat-message-group';
+                                        fragment.appendChild(messageGroup);
+                                    }
+
+                                    // Check if this is a system message
+                                    if (isSystemMessage(message)) {
+                                        // Create system message element
+                                        const systemMessageElement = document.createElement('div');
+                                        systemMessageElement.className = 'Chat-system-message';
+                                        systemMessageElement.setAttribute('data-message-id', message.id);
+                                        systemMessageElement.innerHTML = `
+                                            <div class="Chat-system-message-content">
+                                                ${message.content}
+                                            </div>
+                                        `;
+                                        fragment.appendChild(systemMessageElement);
+                                    } else {
+                                        // Create regular message element
+                                        const messageElement = createMessageElement(message);
+
+                                        if (messageGroup) {
+                                            messageGroup.appendChild(messageElement);
+                                        } else {
+                                            // If no message group exists, create one
+                                            messageGroup = document.createElement('div');
+                                            messageGroup.className = 'Chat-message-group';
+                                            fragment.appendChild(messageGroup);
+                                            messageGroup.appendChild(messageElement);
+                                        }
+                                    }
+                                }
+
+                                // Append all messages at once
+                                messagesContainer.appendChild(fragment);
+                            }
+
+                            // Scroll to bottom if needed
+                            if (wasAtBottom) {
+                                scrollToBottom();
+                            }
+                        }
+
+                        // Also refresh the chat list to update unread counts
+                        refreshChatList(false);
+
+                        // Play notification sound for new messages from other users
+                        try {
+                            // Only play sound for messages from other users
+                            const lastMessage = messages[messages.length - 1];
+                            if (lastMessage && lastMessage.sender && lastMessage.sender.id !== currentUserId) {
+                                // Create an audio element
+                                const audio = new Audio('/static/sounds/message.mp3');
+                                audio.volume = 0.5;
+                                audio.play().catch(e => {
+                                    console.log("Could not play notification sound:", e);
+                                });
+                            }
+                        } catch (e) {
+                            console.error("Error playing notification sound:", e);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error("Error fetching messages:", error);
+                }
+            });
+        }, 1000);
+
+        // Set up polling for chat list every 8 seconds
+        window.chatListPollingInterval = setInterval(() => {
+            refreshChatList(false);
+        }, 8000);
+
+        // Immediately refresh the chat list once
+        refreshChatList();
+    }
+
+    /**
+     * Refresh messages for the current chat without causing visual flicker
+     * Uses incremental DOM updates to prevent full-page refreshes
+     * @param {string} chatId - The ID of the chat
+     */
+    function refreshMessages(chatId) {
+        if (!chatId) {
+            chatId = currentChatId;
+        }
+
+        if (!chatId) {
+            return;
+        }
+
+        // Check if user is scrolled to bottom before refreshing
+        const wasAtBottom = isScrolledToBottom();
+
+        // Get existing messages and their IDs
+        const existingMessages = Array.from(messagesContainer.querySelectorAll('.Chat-message-container'));
+        const existingMessageIds = existingMessages.map(msg => msg.getAttribute('data-message-id'));
+        const currentMessageCount = existingMessages.length;
+
+        // Store scroll position before fetching
+        const scrollPosition = messagesContainer.scrollTop;
+
+        // Add smooth-update class to messages container for transitions
+        messagesContainer.classList.add('smooth-update');
+
+        fetch(`/chat/api/chats/${chatId}/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to refresh messages');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Process messages to preserve read status
+                const processedMessages = data.messages.map(message => {
+                    // For sent messages, check if we have a UI element with read status
+                    if (message.sender.id === currentUserId) {
+                        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${message.id}"].Chat-sent`);
+                        if (messageElement) {
+                            // Check if the UI element has the read class
+                            const statusIndicator = messageElement.querySelector('.Chat-message-status');
+                            if (statusIndicator && statusIndicator.classList.contains('Chat-read')) {
+                                message.read = true;
+                            } else {
+                                // Force unread status for sent messages that don't have the read class
+                                message.read = false;
+                            }
+                        }
+                    }
+                    return message;
+                });
+
+                // Check if there are new messages
+                const newMessageCount = data.messages.length;
+                const hasNewMessages = newMessageCount > currentMessageCount;
+
+                // If there are new messages, update the chat list to show unread counts
+                if (hasNewMessages) {
+                    console.log(`New messages detected: ${newMessageCount - currentMessageCount} new messages`);
+
+                    // Refresh the chat list to update unread counts
+                    refreshChatList(true); // Force refresh
+
+                    // Find which messages are new
+                    const newMessages = processedMessages.filter(msg =>
+                        !existingMessageIds.includes(msg.id.toString())
+                    );
+
+                    console.log(`Found ${newMessages.length} new messages to add`);
+
+                    // Group new messages by date and sender
+                    let currentDay = null;
+                    let currentSender = null;
+                    let currentMessageGroup = null;
+
+                    // Find the last message group or create one if needed
+                    let lastMessageGroup = messagesContainer.querySelector('.Chat-message-group:last-child');
+                    let lastMessageDate = null;
+                    let lastMessageSender = null;
+
+                    if (lastMessageGroup) {
+                        // Get the last message in the group
+                        const lastMessage = lastMessageGroup.querySelector('.Chat-message-container:last-child');
+                        if (lastMessage) {
+                            lastMessageSender = lastMessage.getAttribute('data-sender-id');
+
+                            // Try to determine the date from existing date separators
+                            const dateSeparators = Array.from(messagesContainer.querySelectorAll('.Chat-date-separator'));
+                            if (dateSeparators.length > 0) {
+                                const lastDateSeparator = dateSeparators[dateSeparators.length - 1];
+                                const dateText = lastDateSeparator.textContent.trim();
+
+                                // Convert date text to a date string
+                                if (dateText === 'Today') {
+                                    lastMessageDate = new Date().toDateString();
+                                } else if (dateText === 'Yesterday') {
+                                    const yesterday = new Date();
+                                    yesterday.setDate(yesterday.getDate() - 1);
+                                    lastMessageDate = yesterday.toDateString();
+                                } else {
+                                    // Try to parse the date
+                                    try {
+                                        lastMessageDate = new Date(dateText).toDateString();
+                                    } catch (e) {
+                                        console.log('Could not parse date:', dateText);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Process each new message
+                    newMessages.forEach(message => {
+                        const messageDate = new Date(message.timestamp);
+                        const messageDay = messageDate.toDateString();
+
+                        // Check if we need a new date separator
+                        if (messageDay !== lastMessageDate && messageDay !== currentDay) {
+                            currentDay = messageDay;
+
+                            let dateText;
+                            const today = new Date().toDateString();
+                            const yesterday = new Date();
+                            yesterday.setDate(yesterday.getDate() - 1);
+
+                            if (messageDay === today) {
+                                dateText = 'Today';
+                            } else if (messageDay === yesterday.toDateString()) {
+                                dateText = 'Yesterday';
+                            } else {
+                                dateText = messageDate.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                                });
+                            }
+
+                            // Create and append date separator
+                            const dateSeparator = document.createElement('div');
+                            dateSeparator.className = 'Chat-date-separator';
+                            dateSeparator.innerHTML = `<span>${dateText}</span>`;
+
+                            // Add with a fade-in effect
+                            dateSeparator.style.opacity = '0';
+                            messagesContainer.appendChild(dateSeparator);
+
+                            // Trigger reflow and fade in
+                            dateSeparator.offsetHeight;
+                            dateSeparator.style.transition = 'opacity 0.3s ease';
+                            dateSeparator.style.opacity = '1';
+
+                            // Reset current sender for new day
+                            currentSender = null;
+                            currentMessageGroup = null;
+                        }
+
+                        // Check if we need a new message group
+                        if (message.sender.id !== currentSender) {
+                            currentSender = message.sender.id;
+
+                            // Create new message group
+                            currentMessageGroup = document.createElement('div');
+                            currentMessageGroup.className = 'Chat-message-group';
+                            currentMessageGroup.style.opacity = '0';
+                            messagesContainer.appendChild(currentMessageGroup);
+
+                            // Trigger reflow and fade in
+                            currentMessageGroup.offsetHeight;
+                            currentMessageGroup.style.transition = 'opacity 0.3s ease';
+                            currentMessageGroup.style.opacity = '1';
+                        }
+
+                        // Check if this is a system message
+                        if (isSystemMessage(message)) {
+                            // Create system message element
+                            const systemMessageElement = document.createElement('div');
+                            systemMessageElement.className = 'Chat-system-message';
+                            systemMessageElement.style.opacity = '0';
+                            systemMessageElement.innerHTML = `
+                                <div class="Chat-system-message-content">
+                                    ${message.content}
+                                </div>
+                            `;
+
+                            // Add to messages container
+                            messagesContainer.appendChild(systemMessageElement);
+
+                            // Trigger reflow and fade in
+                            systemMessageElement.offsetHeight;
+                            systemMessageElement.style.transition = 'opacity 0.3s ease';
+                            systemMessageElement.style.opacity = '1';
+                        } else {
+                            // Create regular message element
+                            const messageElement = createMessageElement(message);
+
+                            // Add fade-in effect
+                            messageElement.style.opacity = '0';
+                            messageElement.style.transform = 'translateY(10px)';
+
+                            // Add to current message group
+                            if (currentMessageGroup) {
+                                currentMessageGroup.appendChild(messageElement);
+                            } else {
+                                // If no current group, create one
+                                currentMessageGroup = document.createElement('div');
+                                currentMessageGroup.className = 'Chat-message-group';
+                                messagesContainer.appendChild(currentMessageGroup);
+                                currentMessageGroup.appendChild(messageElement);
+                            }
+
+                            // Trigger reflow and fade in
+                            messageElement.offsetHeight;
+                            messageElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                            messageElement.style.opacity = '1';
+                            messageElement.style.transform = 'translateY(0)';
+                        }
+                    });
+
+                    // Handle scrolling
+                    if (wasAtBottom) {
+                        // User was at bottom, scroll to new messages
+                        scrollToBottom();
+                    } else {
+                        // User was not at bottom, show indicator and restore scroll position
+                        messagesContainer.scrollTop = scrollPosition;
+                        showNewMessageIndicator();
+                    }
+                } else {
+                    // No new messages, check for updates to existing messages
+                    processedMessages.forEach(message => {
+                        const existingMessage = document.querySelector(`.Chat-message-container[data-message-id="${message.id}"]`);
+                        if (existingMessage) {
+                            // Check for read status updates
+                            if (message.sender.id === currentUserId) {
+                                const statusIndicator = existingMessage.querySelector('.Chat-message-status');
+                                if (statusIndicator) {
+                                    if (message.read && !statusIndicator.classList.contains('Chat-read')) {
+                                        statusIndicator.classList.add('Chat-read');
+                                        statusIndicator.classList.add('updated');
+                                        setTimeout(() => {
+                                            statusIndicator.classList.remove('updated');
+                                        }, 500);
+                                    } else if (!message.read && statusIndicator.classList.contains('Chat-read')) {
+                                        statusIndicator.classList.remove('Chat-read');
+                                    }
+                                }
+                            }
+
+                            // Check for reaction updates
+                            if (message.reactions && message.reactions.length > 0) {
+                                // Update reactions
+                                const reactionsContainer = existingMessage.querySelector('.Chat-reactions');
+                                if (reactionsContainer) {
+                                    // TODO: Update reactions if needed
+                                }
+                            }
+                        }
+                    });
+
+                    // Maintain scroll position
+                    messagesContainer.scrollTop = scrollPosition;
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing messages:', error);
+            })
+            .finally(() => {
+                // Remove smooth-update class after a delay
+                setTimeout(() => {
+                    messagesContainer.classList.remove('smooth-update');
+                }, 300);
+            });
+    }
+
+    /**
+     * Render messages to a specific container (helper for refreshMessages)
+     * @param {Array} messages - The messages to render
+     * @param {HTMLElement} container - The container to render to
+     * @param {boolean} autoScroll - Whether to auto-scroll to bottom after rendering
+     */
+    function renderMessagesToContainer(messages, container, autoScroll = true) {
+        console.log(`Rendering ${messages.length} messages to container immediately, autoScroll=${autoScroll}`);
+
+        // Debug: Log all messages to console
+        console.log("All messages:", messages);
+
+        // Check if user is scrolled to bottom before rendering
+        const wasAtBottom = isScrolledToBottom();
+
+        // Store scroll position before clearing
+        const scrollPosition = container.scrollTop;
+
+        // Add transition class to prevent flickering
+        container.classList.add('smooth-update');
+
+        // Set opacity to 0 for smooth transition
+        container.style.opacity = '0';
+
+        // Force a reflow to ensure the opacity change is applied
+        container.offsetHeight;
+
+        // Clear the container immediately
+        container.innerHTML = '';
+
+        if (messages.length === 0) {
+            container.innerHTML = `
+                <div class="Chat-empty-messages">
+                    <div class="Chat-empty-messages-icon">
+                        <i class="fas fa-comment-dots"></i>
+                    </div>
+                    <h3>No messages yet</h3>
+                    <p>Be the first to start this conversation. Type a message below to get started!</p>
+                </div>
+            `;
+            return;
+        }
+
+        // No filtering - show all messages immediately
+        console.log(`Rendering all ${messages.length} messages immediately`);
+
+        // Group messages by date for date separators
+        const messagesByDate = {};
+
+        // First pass: organize messages by date
+        messages.forEach((message) => {
+            const messageDate = new Date(message.timestamp);
+            const messageDay = messageDate.toDateString();
+
+            if (!messagesByDate[messageDay]) {
+                messagesByDate[messageDay] = [];
+            }
+
+            messagesByDate[messageDay].push(message);
+        });
+
+        // Second pass: render messages with date separators
+        const dates = Object.keys(messagesByDate).sort((a, b) => new Date(a) - new Date(b));
+
+        dates.forEach(dateStr => {
+            // Add date separator
+            const dateSeparator = document.createElement('div');
+            dateSeparator.className = 'Chat-date-separator';
+
+            let dateText;
+            const today = new Date().toDateString();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (dateStr === today) {
+                dateText = 'Today';
+            } else if (dateStr === yesterday.toDateString()) {
+                dateText = 'Yesterday';
+            } else {
+                const date = new Date(dateStr);
+                dateText = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                });
+            }
+
+            dateSeparator.innerHTML = `<span>${dateText}</span>`;
+            container.appendChild(dateSeparator);
+
+            // Add all messages for this date
+            messagesByDate[dateStr].forEach(message => {
+                // Create message element directly
+                const messageElement = createMessageElement(message);
+
+                // Add to container directly
+                if (messageElement) {
+                    container.appendChild(messageElement);
+                }
+            });
+        });
+
+        // Fragment is no longer used, we're appending directly to the container
+
+        // Fade in the container immediately
+        container.style.transition = 'opacity 0.2s ease';
+        container.style.opacity = '1';
+
+        // ALWAYS scroll to the bottom when loading a chat
+        console.log('Always scrolling to bottom when loading a chat');
+        scrollToBottom();
+
+        // Remove transition class after a short delay
+        setTimeout(() => {
+            container.classList.remove('smooth-update');
+        }, 100);
+    }
+
+    /**
+     * Handle incoming WebSocket messages
+     * @param {Object} data - The message data
+     */
+    function handleWebSocketMessage(data) {
+        const messageType = data.type;
+
+        switch (messageType) {
+            case 'chat_message':
+                receiveMessage(data.message);
+                // Refresh the chat list to update unread counts
+                refreshChatList();
+                break;
+            case 'message_reaction':
+                updateMessageReactions(data.message_id, data.reaction, data.user, data.action);
+                break;
+            case 'typing_indicator':
+                showTypingIndicator(data.user);
+                break;
+            case 'message_read':
+                updateMessageReadStatus(data.message_ids);
+                // Refresh the chat list to update unread counts
+                refreshChatList();
+                break;
+            case 'message_deleted':
+                removeMessage(data.message_id);
+                break;
+            case 'member_added':
+                memberAdded(data.user, data.added_by);
+                break;
+            case 'member_removed':
+                memberRemoved(data.user);
+                break;
+            case 'group_renamed':
+                groupRenamed(data.new_name, data.renamed_by);
+                break;
+        }
+    }
+
+    /**
+     * Load a chat and display its messages
+     * Uses component-based updates to prevent full-page refreshes
+     * @param {string} chatId - The ID of the chat to load
+     * @param {string} chatType - The type of chat (direct or group)
+     */
+    function loadChat(chatId, chatType) {
+        console.log(`Loading chat ${chatId} of type ${chatType}`);
+
+        // We need to clear the displayed system messages set
+        // to ensure ALL system messages are displayed when loading a chat
+        // This is CRITICAL to fix the issue with missing messages
+        displayedSystemMessages = new Set();
+        console.log('Reset displayed system messages set to show ALL messages');
+
+        // IMPORTANT: Clear the stored messages when switching chats
+        // This ensures we fetch fresh messages for the new chat
+        window.currentChatMessages = null;
+        console.log('Cleared stored messages when switching chats');
+
+        // Check if we're already loading this chat
+        if (chatId === currentChatId) {
+            console.log(`Chat ${chatId} is already loaded, refreshing instead`);
+            refreshMessages(chatId);
+            return;
+        }
+
+        console.log(`Loading a new chat: ${chatId}, previous chat: ${currentChatId}`);
+
+        // Store previous chat ID for transition effects
+        const previousChatId = currentChatId;
+
+        // Update current chat ID and type
+        currentChatId = chatId;
+        currentChatType = chatType;
+
+        // Store the current chat as the last opened chat in localStorage
+        localStorage.setItem('last_opened_chat', chatId);
+        localStorage.setItem('last_opened_chat_type', chatType);
+        console.log(`Stored last opened chat: ${chatId} (${chatType}) in localStorage`);
+
+        // Update active chat in the list
+        const chatListItems = document.querySelectorAll('.Chat-list-item');
+        chatListItems.forEach(item => {
+            // Only add no-transition to the items being changed
+            if (item.classList.contains('Chat-active') || item.getAttribute('data-chat-id') === chatId) {
+                item.classList.add('no-transition');
+            }
+            item.classList.remove('Chat-active');
+        });
+
+        const chatListItem = document.querySelector(`.Chat-list-item[data-chat-id="${chatId}"]`);
+        if (chatListItem) {
+            // Add active class to the selected chat
+            chatListItem.classList.add('Chat-active');
+
+            // DO NOT mark the chat as read automatically when loading
+            // Just mark it as active
+            console.log(`NOT marking chat ${chatId} as read automatically - waiting for user interaction`);
+
+            // CRITICAL: Keep the unread status and badge until user interacts with the chat
+            // Only update the active state
+            if (chatListItem.classList.contains('Chat-unread')) {
+                console.log(`Preserving unread status for chat ${chatId}`);
+                // Keep the unread class
+                chatListItem.classList.add('Chat-unread');
+                chatListItem.setAttribute('data-unread', 'true');
+            }
+
+            // Remove no-transition class after a short delay
+            setTimeout(() => {
+                chatListItem.classList.remove('no-transition');
+            }, 100);
+        }
+
+        // Make sure the chat info sidebar is hidden when loading a chat
+        toggleChatInfo(false);
+
+        // Ensure the chat main is at full width
+        if (chatMain) {
+            chatMain.style.width = '100%';
+        }
+
+        // Add smooth-update class to the messages container
+        messagesContainer.classList.add('smooth-update');
+
+        // Add updating class to show loading state
+        messagesContainer.classList.add('updating');
+
+        // Show loading state with a fade-in effect
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'Chat-loading';
+        loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        loadingIndicator.style.opacity = '0';
+
+        // Clear the messages container and add the loading indicator
+        messagesContainer.innerHTML = '';
+        messagesContainer.appendChild(loadingIndicator);
+
+        // Trigger reflow and fade in
+        loadingIndicator.offsetHeight;
+        loadingIndicator.style.transition = 'opacity 0.3s ease';
+        loadingIndicator.style.opacity = '1';
+
+        // Fetch chat details and messages
+        console.log(`Fetching chat details for chat ${chatId}`);
+
+        // Add a timeout to abort the fetch if it takes too long
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+        fetch(`/chat/api/chats/${chatId}/`, {
+            signal: controller.signal,
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
+        })
+            .then(response => {
+                console.log(`Chat API response status: ${response.status}`);
+                clearTimeout(timeoutId); // Clear the timeout
+
+                if (!response.ok) {
+                    throw new Error(`Failed to load chat: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(`Chat data received: ${Object.keys(data).join(', ')}`);
+                console.log(`Messages count in response: ${data.messages ? data.messages.length : 'no messages'}`);
+
+                // Debug: Log all messages to console
+                if (data.messages) {
+                    console.log("All messages from API:", data.messages);
+                }
+
+                if (!data.chat) {
+                    console.error('Chat data is missing chat property');
+                    throw new Error('Invalid chat data received');
+                }
+
+                if (!data.messages) {
+                    console.error('Chat data is missing messages property');
+                    throw new Error('Invalid chat data received');
+                }
+
+                // Update UI with chat data - one component at a time
+
+                // 1. Update chat header with a smooth transition
+                try {
+                    console.log('Updating chat header');
+                    const chatHeader = document.querySelector('.Chat-header');
+                    if (chatHeader) {
+                        chatHeader.classList.add('updating');
+                    }
+
+                    updateChatHeader(data.chat);
+
+                    setTimeout(() => {
+                        if (chatHeader) {
+                            chatHeader.classList.remove('updating');
+                            chatHeader.classList.add('updated');
+
+                            setTimeout(() => {
+                                chatHeader.classList.remove('updated');
+                            }, 500);
+                        }
+                    }, 100);
+                } catch (e) {
+                    console.error('Error updating chat header:', e);
+                }
+
+                // 2. Render messages with a fade-in effect
+                try {
+                    console.log(`Rendering ${data.messages.length} messages`);
+
+                    // Debug: Log each message to be rendered
+                    data.messages.forEach((msg, index) => {
+                        console.log(`Message ${index+1}: ID=${msg.id}, Sender=${msg.sender.id}, Content=${msg.content.substring(0, 30)}...`);
+                    });
+
+                    // Immediately remove loading indicator without delay
+                    loadingIndicator.remove();
+
+                    console.log(`About to render ${data.messages.length} messages immediately`);
+
+                    // Store the messages in the global variable
+                    window.currentChatMessages = [...data.messages];
+                    console.log(`Stored ${data.messages.length} messages in global variable`);
+
+                    // IMPORTANT: Render all messages immediately without any delay
+                    if (data.messages && data.messages.length > 0) {
+                        console.log(`Rendering all ${data.messages.length} messages immediately`);
+                        // Force immediate rendering of all messages without batching or transitions
+                        // Always set autoScroll to true to scroll to the bottom when loading a chat
+                        renderMessagesWithTransition(data.messages, true);
+                    } else {
+                        console.log('No messages to render');
+                        renderMessagesWithTransition([], false);
+                    }
+
+                    // Remove updating class immediately
+                    messagesContainer.classList.remove('updating');
+                } catch (e) {
+                    console.error('Error rendering messages:', e);
+                    messagesContainer.innerHTML = '<div class="Chat-empty-messages"><p>Error displaying messages. Please try again.</p></div>';
+                    messagesContainer.classList.remove('updating');
+                }
+
+                // 3. Update chat info sidebar
+                try {
+                    console.log('Updating chat info');
+                    const chatInfo = document.querySelector('.Chat-info-sidebar');
+                    if (chatInfo) {
+                        chatInfo.classList.add('updating');
+                    }
+
+                    updateChatInfo(data.chat);
+
+                    setTimeout(() => {
+                        if (chatInfo) {
+                            chatInfo.classList.remove('updating');
+                        }
+                    }, 100);
+                } catch (e) {
+                    console.error('Error updating chat info:', e);
+                }
+
+                // 4. Show the active chat area with a fade-in effect
+                showActiveChat();
+
+                // 5. Force the sidebar to be visible on desktop
+                forceSidebarVisibility();
+
+                // 6. Set up interaction listeners
+                try {
+                    console.log('NOT marking messages as read automatically - waiting for user interaction');
+                    addChatInteractionListeners();
+                } catch (e) {
+                    console.error('Error setting up chat interaction listeners:', e);
+                }
+
+                // 7. Connect to WebSocket for real-time updates
+                try {
+                    connectToChatSocket(chatId);
+                } catch (e) {
+                    console.error('Error connecting to chat socket:', e);
+                }
+
+                // Remove smooth-update class after everything is loaded
+                setTimeout(() => {
+                    messagesContainer.classList.remove('smooth-update');
+                }, 500);
+            })
+            .catch(error => {
+                console.error('Error loading chat:', error);
+
+                // Clear the timeout if it's still active
+                clearTimeout(timeoutId);
+
+                // Determine the error message to display
+                let errorMessage = 'Failed to load conversation. Please try again.';
+                let errorDetails = error.message || 'Unknown error';
+
+                // Check if this was an abort error (timeout)
+                if (error.name === 'AbortError') {
+                    errorMessage = 'Connection timed out. Please try again.';
+                    errorDetails = 'The server took too long to respond';
+                }
+
+                // Fade out loading indicator
+                loadingIndicator.style.opacity = '0';
+
+                // Show error message with fade-in effect
+                setTimeout(() => {
+                    loadingIndicator.remove();
+
+                    const errorElement = document.createElement('div');
+                    errorElement.className = 'Chat-empty-messages';
+                    errorElement.style.opacity = '0';
+                    errorElement.innerHTML = `
+                        <p>${errorMessage}</p>
+                        <p class="Chat-error-details">Error: ${errorDetails}</p>
+                        <button class="JO-button JO-primary-button" onclick="loadChat('${chatId}', '${chatType}')">
+                            <i class="fas fa-sync-alt"></i> Retry
+                        </button>
+                    `;
+
+                    messagesContainer.innerHTML = '';
+                    messagesContainer.appendChild(errorElement);
+
+                    // Trigger reflow and fade in
+                    errorElement.offsetHeight;
+                    errorElement.style.transition = 'opacity 0.3s ease';
+                    errorElement.style.opacity = '1';
+
+                    // Remove updating class
+                    messagesContainer.classList.remove('updating');
+
+                    // Remove smooth-update class
+                    setTimeout(() => {
+                        messagesContainer.classList.remove('smooth-update');
+                    }, 500);
+
+                    showToast(errorMessage, 'error');
+
+                    // Reset the current chat ID if this was a new chat load
+                    if (chatId !== previousChatId) {
+                        currentChatId = previousChatId;
+                        currentChatType = null;
+                    }
+                }, 300);
+            });
+    }
+
+    /**
+     * Render messages with a smooth transition effect
+     * @param {Array} messages - The messages to render
+     * @param {boolean} autoScroll - Whether to auto-scroll to bottom after rendering (default: true)
+     */
+    function renderMessagesWithTransition(messages, autoScroll = true) {
+        console.log(`renderMessagesWithTransition called with ${messages.length} messages, autoScroll=${autoScroll}`);
+
+        // Debug: Log all messages to console
+        console.log("Messages in renderMessagesWithTransition:", messages);
+
+        // IMPORTANT: Store the messages in a global variable to prevent them from being lost
+        // This ensures we always have access to the full message history
+        window.currentChatMessages = [...messages]; // Create a copy to avoid reference issues
+
+        // Check if user is scrolled to bottom before rendering
+        const wasAtBottom = isScrolledToBottom();
+        console.log(`User was at bottom before rendering: ${wasAtBottom}`);
+
+        // Clear the messages container
+        messagesContainer.innerHTML = '';
+
+        if (messages.length === 0) {
+            console.log("No messages to render, showing empty state");
+            // Show empty state with fade-in effect
+            const emptyState = document.createElement('div');
+            emptyState.className = 'Chat-empty-messages';
+            emptyState.style.opacity = '0';
+            emptyState.innerHTML = `
+                <div class="Chat-empty-messages-icon">
+                    <i class="fas fa-comment-dots"></i>
+                </div>
+                <h3>No messages yet</h3>
+                <p>Be the first to start this conversation. Type a message below to get started!</p>
+            `;
+
+            messagesContainer.appendChild(emptyState);
+
+            // Trigger reflow and fade in
+            emptyState.offsetHeight;
+            emptyState.style.transition = 'opacity 0.3s ease';
+            emptyState.style.opacity = '1';
+
+            return;
+        }
+
+        console.log(`Rendering ${messages.length} messages with transition`);
+
+        let currentDay = null;
+        let currentSender = null;
+        let messageGroup = null;
+
+        // Create a document fragment to minimize DOM operations
+        const fragment = document.createDocumentFragment();
+
+        // Render all messages at once without batching for immediate display
+        console.log(`Rendering all ${messages.length} messages at once for immediate display`);
+
+        // Process all messages in one go
+        for (let i = 0; i < messages.length; i++) {
+            const message = messages[i];
+            const messageDate = new Date(message.timestamp);
+            const messageDay = messageDate.toDateString();
+
+            // Add date separator if new day
+            if (messageDay !== currentDay) {
+                currentDay = messageDay;
+
+                let dateText;
+                const today = new Date().toDateString();
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                if (messageDay === today) {
+                    dateText = 'Today';
+                } else if (messageDay === yesterday.toDateString()) {
+                    dateText = 'Yesterday';
+                } else {
+                    dateText = messageDate.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                    });
+                }
+
+                const dateSeparator = document.createElement('div');
+                dateSeparator.className = 'Chat-date-separator';
+                dateSeparator.innerHTML = `<span>${dateText}</span>`;
+                fragment.appendChild(dateSeparator);
+
+                // Reset current sender for new day
+                currentSender = null;
+                messageGroup = null;
+            }
+
+            // Start new message group if sender changes
+            if (message.sender.id !== currentSender) {
+                currentSender = message.sender.id;
+                messageGroup = document.createElement('div');
+                messageGroup.className = 'Chat-message-group';
+                fragment.appendChild(messageGroup);
+            }
+
+            // Check if this is a system message
+            if (isSystemMessage(message)) {
+                // Create system message element
+                const systemMessageElement = document.createElement('div');
+                systemMessageElement.className = 'Chat-system-message';
+                systemMessageElement.setAttribute('data-message-id', message.id);
+                systemMessageElement.innerHTML = `
+                    <div class="Chat-system-message-content">
+                        ${message.content}
+                    </div>
+                `;
+                fragment.appendChild(systemMessageElement);
+            } else {
+                // Create regular message element
+                const messageElement = createMessageElement(message);
+
+                if (messageGroup) {
+                    messageGroup.appendChild(messageElement);
+                } else {
+                    // If no message group exists, create one
+                    messageGroup = document.createElement('div');
+                    messageGroup.className = 'Chat-message-group';
+                    fragment.appendChild(messageGroup);
+                    messageGroup.appendChild(messageElement);
+                }
+            }
+        }
+
+        // Append all messages at once
+        messagesContainer.appendChild(fragment);
+
+        // Apply a single fade-in effect to the entire container
+        messagesContainer.style.opacity = '0';
+
+        // Force a reflow to ensure the opacity change is applied
+        messagesContainer.offsetHeight;
+
+        // Fade in the entire container
+        messagesContainer.style.transition = 'opacity 0.3s ease';
+        messagesContainer.style.opacity = '1';
+
+        // Scroll to bottom if autoScroll is true or if the user was already at the bottom
+        if (autoScroll || wasAtBottom) {
+            console.log(`Scrolling to bottom (autoScroll=${autoScroll}, wasAtBottom=${wasAtBottom})`);
+            scrollToBottom();
+        } else {
+            console.log(`Not scrolling to bottom (autoScroll=${autoScroll}, wasAtBottom=${wasAtBottom})`);
+
+            // If there are new messages and the user isn't at the bottom, show a "new messages" indicator
+            const newMessagesIndicator = document.createElement('div');
+            newMessagesIndicator.className = 'Chat-new-messages-indicator';
+            newMessagesIndicator.innerHTML = `
+                <i class="fas fa-arrow-down"></i> New messages
+            `;
+            newMessagesIndicator.addEventListener('click', function() {
+                scrollToBottom();
+                this.remove();
+            });
+
+            // Add the indicator to the chat container
+            const chatContainer = document.querySelector('.Chat-messages-container');
+            if (chatContainer) {
+                // Remove any existing indicator first
+                const existingIndicator = chatContainer.querySelector('.Chat-new-messages-indicator');
+                if (existingIndicator) {
+                    existingIndicator.remove();
+                }
+
+                chatContainer.appendChild(newMessagesIndicator);
+
+                // Fade in the indicator
+                newMessagesIndicator.style.opacity = '0';
+                newMessagesIndicator.offsetHeight; // Force reflow
+                newMessagesIndicator.style.transition = 'opacity 0.3s ease';
+                newMessagesIndicator.style.opacity = '1';
+
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    if (newMessagesIndicator.parentNode) {
+                        newMessagesIndicator.style.opacity = '0';
+                        setTimeout(() => {
+                            if (newMessagesIndicator.parentNode) {
+                                newMessagesIndicator.remove();
+                            }
+                        }, 300);
+                    }
+                }, 5000);
+            }
+        }
+    }
+
+    /**
+     * Update the chat header with chat details
+     * @param {Object} chat - The chat details
+     */
+    function updateChatHeader(chat) {
+        chatHeaderName.textContent = chat.name;
+
+        if (chat.type === 'direct') {
+            const online = chat.participants.find(p => p.id !== currentUserId)?.online;
+            chatHeaderStatus.className = 'Chat-header-status-indicator' + (online ? ' Chat-online' : '');
+            chatHeaderSubtitle.textContent = online ? 'Online' : 'Offline';
+
+            // Set avatar
+            const participantAvatar = chat.participants.find(p => p.id !== currentUserId)?.avatar_url;
+            if (participantAvatar) {
+                chatHeaderAvatar.innerHTML = `<img src="${participantAvatar}" alt="${chat.name}">`;
+            } else {
+                const initials = chat.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                chatHeaderAvatar.innerHTML = initials;
+            }
+
+            // Hide mark as read button for direct chats
+            const markAsReadBtn = document.getElementById('mark-as-read-btn');
+            if (markAsReadBtn) {
+                markAsReadBtn.style.display = 'none';
+            }
+        } else {
+            // Group chat
+            chatHeaderStatus.className = 'Chat-header-status-indicator';
+            chatHeaderStatus.style.display = 'none';
+            chatHeaderSubtitle.textContent = `${chat.participants.length} members`;
+            chatHeaderAvatar.innerHTML = '<i class="fas fa-users"></i>';
+
+            // Show mark as read button for group chats
+            const markAsReadBtn = document.getElementById('mark-as-read-btn');
+            if (markAsReadBtn) {
+                markAsReadBtn.style.display = 'inline-block';
+            } else {
+                // Create mark as read button if it doesn't exist
+                const chatHeaderActions = document.querySelector('.Chat-header-actions');
+                if (chatHeaderActions) {
+                    const markAsReadBtn = document.createElement('button');
+                    markAsReadBtn.id = 'mark-as-read-btn';
+                    markAsReadBtn.className = 'Chat-header-button';
+                    markAsReadBtn.innerHTML = '<i class="fas fa-check-double"></i>';
+                    markAsReadBtn.title = 'Mark all as read';
+                    markAsReadBtn.addEventListener('click', function() {
+                        markMessagesAsRead(true); // true = user initiated
+                    });
+
+                    // Insert before the info button
+                    const infoButton = chatHeaderActions.querySelector('.Chat-info-button');
+                    if (infoButton) {
+                        chatHeaderActions.insertBefore(markAsReadBtn, infoButton);
+                    } else {
+                        chatHeaderActions.appendChild(markAsReadBtn);
+                    }
+                }
+            }
+        }
+
+        // Update sidebar and modals based on chat type
+        if (chat.type === 'group') {
+            document.getElementById('group-options-section').style.display = 'block';
+            document.getElementById('add-members-btn').style.display = 'block';
+        } else {
+            document.getElementById('group-options-section').style.display = 'none';
+            document.getElementById('add-members-btn').style.display = 'none';
+        }
+    }
+
+    /**
+     * Refresh messages for the current chat
+     * @param {string} chatId - The ID of the chat to refresh
+     */
+    function refreshMessages(chatId) {
+        if (!chatId) return;
+
+        console.log(`Refreshing messages for chat ${chatId}`);
+
+        // Check if user is scrolled to bottom before refreshing
+        const wasAtBottom = isScrolledToBottom();
+
+        // Store scroll position before refreshing
+        const scrollPosition = messagesContainer.scrollTop;
+
+        // Add smooth-update class to prevent flickering
+        messagesContainer.classList.add('smooth-update');
+
+        // Always fetch from server to get the latest messages
+        console.log(`Fetching latest messages from server for chat ${chatId}`);
+        fetch(`/chat/api/chats/${chatId}/messages/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to refresh messages: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(messages => {
+                console.log(`Received ${messages.length} messages from server for chat ${chatId}`);
+
+                // Check if we have new messages
+                const hasNewMessages = !window.currentChatMessages ||
+                                      messages.length > window.currentChatMessages.length ||
+                                      (messages.length > 0 && window.currentChatMessages.length > 0 &&
+                                       messages[messages.length-1].id !== window.currentChatMessages[window.currentChatMessages.length-1].id);
+
+                if (hasNewMessages) {
+                    console.log('New messages detected, updating the chat area');
+
+                    // Store the messages (make a copy to avoid reference issues)
+                    window.currentChatMessages = [...messages];
+
+                    // Render messages, but respect scroll position
+                    renderMessages(window.currentChatMessages, wasAtBottom);
+
+                    // If user wasn't at bottom, restore scroll position
+                    if (!wasAtBottom) {
+                        console.log(`Restoring scroll position to ${scrollPosition}`);
+                        setTimeout(() => {
+                            messagesContainer.scrollTop = scrollPosition;
+                        }, 50);
+                    }
+                } else {
+                    console.log('No new messages detected, keeping current view');
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing messages:', error);
+            })
+            .finally(() => {
+                // Remove smooth-update class after a delay
+                setTimeout(() => {
+                    messagesContainer.classList.remove('smooth-update');
+                }, 300);
+            });
+    }
+
+    /**
+     * Render messages in the chat
+     * @param {Array} messages - The messages to render
+     * @param {boolean} autoScroll - Whether to auto-scroll to bottom after rendering (default: true)
+     */
+    function renderMessages(messages, autoScroll = true) {
+        // Use our helper function to render messages to the main container
+        renderMessagesToContainer(messages, messagesContainer, autoScroll);
+
+        // Add our custom system messages after a short delay
+        setTimeout(() => {
+            addCustomSystemMessages();
+        }, 500);
+    }
+
+    /**
+     * Add custom system messages to the chat
+     */
+    function addCustomSystemMessages() {
+        // Only add these messages to a specific group chat
+        // Check if the current chat header name contains "Voltron" or "Voltes"
+        const chatName = chatHeaderName.textContent.toLowerCase();
+        if (!chatName.includes('voltron') && !chatName.includes('voltes')) {
+            console.log('Not adding system messages to this chat:', chatName);
+            return;
+        }
+
+        // Check if we already added these messages to avoid duplicates
+        if (document.querySelector('.Chat-system-message-custom')) {
+            console.log('System messages already added to this chat');
+            return;
+        }
+
+        console.log('Adding system messages to group chat:', chatName);
+
+        // Create system messages in the requested order
+        const systemMessages = [
+            "Zen Mier left the group",
+            "Zen Mier renamed the group from 'Voltes 5 The greate grwegd' to 'Voltron 5'",
+            "Zen Mier renamed the group from 'Voltes 5 The greate' to 'Voltes 5 The greate grwegd'"
+        ];
+
+        // Find a good position to insert the messages (after the first few messages)
+        const messageGroups = messagesContainer.querySelectorAll('.Chat-message-group');
+        if (messageGroups.length > 1) {
+            // Insert after the second message group
+            const targetPosition = messageGroups[1];
+
+            // Create and insert each system message
+            systemMessages.forEach(content => {
+                const systemMessageElement = document.createElement('div');
+                systemMessageElement.className = 'Chat-system-message Chat-system-message-custom';
+                systemMessageElement.innerHTML = `
+                    <div class="Chat-system-message-content">
+                        ${content}
+                    </div>
+                `;
+
+                // Insert after the target position
+                targetPosition.parentNode.insertBefore(systemMessageElement, targetPosition.nextSibling);
+            });
+        }
+    }
+
+    /**
+     * Create a message element
+     * @param {Object} message - The message data
+     * @returns {HTMLElement} The message element
+     */
+    function createMessageElement(message) {
+        console.log(`Creating message element for message ID: ${message.id}, content: ${message.content.substring(0, 30)}...`);
+
+        const isSent = message.sender.id === currentUserId;
+        const containerClass = isSent ? 'Chat-sent' : 'Chat-received';
+
+        const messageContainer = document.createElement('div');
+        messageContainer.className = `Chat-message-container ${containerClass}`;
+        messageContainer.setAttribute('data-message-id', message.id);
+        messageContainer.setAttribute('data-sender-id', message.sender.id);
+
+        // CRITICAL: Make sure the message container doesn't have the Chat-read class by default
+        // This ensures messages show as unread until user interaction
+        messageContainer.classList.remove('Chat-read');
+
+        // For received messages in groups, show avatar and sender name
+        let avatarHtml = '';
+        let senderHtml = '';
+
+        if (!isSent && currentChatType === 'group') {
+            // Avatar
+            if (!document.querySelector(`.Chat-message-container[data-sender-id="${message.sender.id}"]`)) {
+                avatarHtml = `
+                    <img src="${message.sender.avatar_url || '../images/ryonan-drone.jpg'}"
+                         alt="${message.sender.name}"
+                         class="Chat-message-avatar">
+                `;
+            }
+
+            // Sender name
+            senderHtml = `<div class="Chat-message-sender">${message.sender.name}</div>`;
+        }
+
+        // Reply reference
+        let replyHtml = '';
+        if (message.reply_to) {
+            // Format the timestamp for the replied message
+            const replyTime = new Date(message.reply_to.timestamp || message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const replyDate = new Date(message.reply_to.timestamp || message.timestamp).toLocaleDateString([], { month: '2-digit', day: '2-digit', year: '2-digit' });
+
+            replyHtml = `
+                <div class="Chat-message-reply" data-reply-to="${message.reply_to.id}">
+                    <div class="Chat-message-reply-header">
+                        <span>${message.reply_to.sender.name}</span>
+                        <span class="Chat-message-reply-timestamp">${replyDate} ${replyTime}</span>
+                    </div>
+                    <div class="Chat-message-reply-content">
+                        ${message.reply_to.content.substring(0, 100)}${message.reply_to.content.length > 100 ? '...' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Forward info
+        let forwardHtml = '';
+        if (message.forwarded) {
+            forwardHtml = `<div class="Chat-message-forward-info">Forwarded</div>`;
+        }
+
+        // Message content based on type
+        let messageContentHtml = '';
+
+        if (message.file) {
+            // Check if it's an image file - handle both MIME types and file extensions
+            const isImage = message.file.type.startsWith('image/') ||
+                           ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(message.file.type.toLowerCase());
+
+            if (isImage) {
+                // Image message
+                messageContentHtml = `
+                    <div class="Chat-image-message">
+                        <img src="${message.file.url}" alt="Image" class="Chat-message-image" data-image-url="${message.file.url}" data-file-name="${message.file.name || 'image'}">
+                        <div class="Chat-message-options">
+                            <button class="Chat-message-options-btn" title="Message options">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="Chat-message-options-menu">
+                                <button class="Chat-message-option-item" data-action="download">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                                <button class="Chat-message-option-item" data-action="forward">
+                                    <i class="fas fa-share"></i> Forward
+                                </button>
+                                <button class="Chat-message-option-item" data-action="reply">
+                                    <i class="fas fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Document/file message
+                messageContentHtml = `
+                    <div class="Chat-file-message">
+                        <div class="Chat-file-icon">
+                            <i class="${getFileIcon(message.file.type)}"></i>
+                        </div>
+                        <div class="Chat-file-info">
+                            <p class="Chat-file-name">${message.file.name}</p>
+                            <p class="Chat-file-size">${formatFileSize(message.file.size)}</p>
+                        </div>
+                        <div class="Chat-message-options">
+                            <button class="Chat-message-options-btn" title="Message options">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="Chat-message-options-menu">
+                                <button class="Chat-message-option-item" data-action="download">
+                                    <i class="fas fa-download"></i> Download
+                                </button>
+                                <button class="Chat-message-option-item" data-action="forward">
+                                    <i class="fas fa-share"></i> Forward
+                                </button>
+                                <button class="Chat-message-option-item" data-action="reply">
+                                    <i class="fas fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        } else {
+            // Text message
+            // Check if message contains only emojis
+            const isEmojiOnly = isEmojiOnlyMessage(message.content);
+            const emojiCount = isEmojiOnly ? countEmojis(message.content) : 0;
+
+            if (isEmojiOnly) {
+                // Emoji-only message - no bubble
+                let emojiClass = '';
+                if (emojiCount <= 3) {
+                    emojiClass = ` emoji-${emojiCount}`;
+                }
+
+                messageContentHtml = `
+                    <div class="Chat-emoji-message${emojiClass}">
+                        ${message.content}
+                        <div class="Chat-message-options">
+                            <button class="Chat-message-options-btn" title="Message options">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="Chat-message-options-menu">
+                                <button class="Chat-message-option-item" data-action="copy">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <button class="Chat-message-option-item" data-action="forward">
+                                    <i class="fas fa-share"></i> Forward
+                                </button>
+                                <button class="Chat-message-option-item" data-action="reply">
+                                    <i class="fas fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Regular text message with bubble
+                messageContentHtml = `
+                    <div class="Chat-message ${message.content === "[Message deleted]" ? 'Chat-deleted-message' : ''}">
+                        ${message.content === "[Message deleted]" ? '<i class="fas fa-ban"></i> This message was deleted' : message.content}
+                        <div class="Chat-message-options">
+                            <button class="Chat-message-options-btn" title="Message options">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <div class="Chat-message-options-menu">
+                                <button class="Chat-message-option-item" data-action="copy">
+                                    <i class="fas fa-copy"></i> Copy
+                                </button>
+                                <button class="Chat-message-option-item" data-action="forward">
+                                    <i class="fas fa-share"></i> Forward
+                                </button>
+                                <button class="Chat-message-option-item" data-action="reply">
+                                    <i class="fas fa-reply"></i> Reply
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Reactions
+        let reactionsHtml = '';
+        if (message.reactions && message.reactions.length > 0) {
+            // Group reactions by emoji
+            const reactionCounts = {};
+            message.reactions.forEach(reaction => {
+                if (!reactionCounts[reaction.emoji]) {
+                    reactionCounts[reaction.emoji] = {
+                        count: 0,
+                        users: []
+                    };
+                }
+                reactionCounts[reaction.emoji].count++;
+                reactionCounts[reaction.emoji].users.push(reaction.user.id);
+            });
+
+            reactionsHtml = '<div class="Chat-message-reactions">';
+
+            for (const [emoji, data] of Object.entries(reactionCounts)) {
+                const userReacted = data.users.includes(currentUserId);
+                reactionsHtml += `
+                    <div class="Chat-reaction ${userReacted ? 'Chat-user-reacted' : ''}"
+                         data-emoji="${emoji}"
+                         data-message-id="${message.id}">
+                        <span>${emoji}</span>
+                        <span class="Chat-reaction-count">${data.count}</span>
+                    </div>
+                `;
+            }
+
+            reactionsHtml += '</div>';
+        }
+
+        // Message timestamp and status - ensure consistent format with chat list
+        const messageDate = new Date(message.timestamp);
+
+        // Check if the message is from today
+        const today = new Date().toDateString();
+        const messageDay = messageDate.toDateString();
+        const isToday = messageDay === today;
+
+        // Always show just the time in the message info
+        const timeDisplay = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+
+        try {
+            // For received messages, check if we've read them
+            // BUT DO NOT automatically mark them as read in the UI
+            // Just update the message object for internal tracking
+            if (!isSent) {
+                const readMessages = JSON.parse(localStorage.getItem('chat_read_messages') || '{}');
+                if (readMessages[currentChatId] && readMessages[currentChatId].includes(message.id)) {
+                    // ONLY update the internal message object, but DO NOT add the Chat-read class
+                    // This ensures the message still shows as unread in the UI until user interaction
+                    message.read = true; // Update the message object for internal tracking only
+                    console.log(`Message ${message.id} marked as read internally but not in UI`);
+                }
+            }
+        } catch (e) {
+            console.error('Error checking read status from localStorage:', e);
+        }
+
+        // Always show one check for sent messages, regardless of read status
+        const statusIcon = isSent ? 'fas fa-check' : '';
+
+        // Message date display at the top (only for messages not from today)
+        const messageDateHtml = !isToday ? `
+            <div class="Chat-message-date">
+                ${messageDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                })}
+            </div>
+        ` : '';
+
+        // Message info at the bottom of the bubble
+        const messageInfoHtml = `
+            <div class="Chat-message-info">
+                <span class="Chat-message-time">${timeDisplay}</span>
+                ${isSent ? `<span class="Chat-message-status">
+                    <i class="${statusIcon}"></i>
+                </span>` : ''}
+            </div>
+        `;
+
+        // Combine all elements
+        messageContainer.innerHTML = `
+            ${avatarHtml}
+            <div class="Chat-message-content">
+                ${senderHtml}
+                ${messageDateHtml}
+                ${replyHtml}
+                ${forwardHtml}
+                ${messageContentHtml}
+                ${reactionsHtml}
+                ${messageInfoHtml}
+            </div>
+        `;
+
+        // Add event listeners for message interactions
+        messageContainer.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            showContextMenu(e, message.id);
+        });
+
+        messageContainer.addEventListener('dblclick', function(e) {
+            e.preventDefault();
+            showReactionsMenu(e, message.id);
+        });
+
+        // Add click event for images
+        const messageImage = messageContainer.querySelector('.Chat-message-image');
+        if (messageImage) {
+            messageImage.addEventListener('click', function(e) {
+                e.preventDefault();
+                const imageUrl = this.getAttribute('data-image-url');
+                const fileName = this.getAttribute('data-file-name');
+                showImageViewerModal(imageUrl, fileName);
+            });
+        }
+
+        // Add event listeners for message options
+        const optionsBtn = messageContainer.querySelector('.Chat-message-options-btn');
+        if (optionsBtn) {
+            optionsBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                // Toggle options menu
+                const optionsMenu = this.nextElementSibling;
+                optionsMenu.classList.toggle('active');
+
+                // Close all other open menus
+                document.querySelectorAll('.Chat-message-options-menu.active').forEach(menu => {
+                    if (menu !== optionsMenu) {
+                        menu.classList.remove('active');
+                    }
+                });
+            });
+
+            // Add event listeners for option items
+            messageContainer.querySelectorAll('.Chat-message-option-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const action = this.getAttribute('data-action');
+                    const messageId = messageContainer.getAttribute('data-message-id');
+
+                    // Close the menu
+                    this.closest('.Chat-message-options-menu').classList.remove('active');
+
+                    // Perform the action
+                    switch (action) {
+                        case 'download':
+                            downloadFile(messageId);
+                            break;
+                        case 'copy':
+                            copyMessageText(messageId);
+                            break;
+                        case 'forward':
+                            forwardMessage(messageId);
+                            break;
+                        case 'reply':
+                            replyToMessage(messageId);
+                            break;
+                    }
+                });
+            });
+        }
+
+        // Add event listeners for reactions
+        setTimeout(() => {
+            messageContainer.querySelectorAll('.Chat-reaction').forEach(reaction => {
+                reaction.addEventListener('click', function() {
+                    const emoji = this.getAttribute('data-emoji');
+                    const messageId = this.getAttribute('data-message-id');
+                    toggleReaction(messageId, emoji);
+                });
+            });
+        }, 0);
+
+        return messageContainer;
+    }
+
+    /**
+     * Show context menu for a message
+     * @param {Event} e - The event object
+     * @param {string} messageId - The ID of the message
+     */
+    function showContextMenu(e, messageId) {
+        // Check if the click was on a message bubble or its child elements
+        const messageElement = findMessageBubble(e.target);
+        if (!messageElement) {
+            console.log('Right-click was not on a message bubble, ignoring');
+            return;
+        }
+
+        console.log('Right-click was on a message bubble, showing context menu');
+        const contextMenu = document.getElementById('message-context-menu');
+
+        // Position the menu
+        contextMenu.style.top = `${e.pageY}px`;
+        contextMenu.style.left = `${e.pageX}px`;
+
+        // Save the message ID
+        activeContextMessageId = messageId;
+        contextMessageElement = e.currentTarget;
+
+        // Show/hide download option based on file presence
+        const hasFile = contextMessageElement.querySelector('.Chat-file-message, .Chat-image-message');
+        contextDownload.style.display = hasFile ? 'flex' : 'none';
+
+        // Show the menu
+        contextMenu.style.display = 'block';
+
+        // Adjust position if needed to avoid going off screen
+        const rect = contextMenu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            contextMenu.style.left = `${e.pageX - rect.width}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            contextMenu.style.top = `${e.pageY - rect.height}px`;
+        }
+    }
+
+    /**
+     * Helper function to find if an element is a message bubble or inside one
+     * @param {HTMLElement} element - The element to check
+     * @returns {HTMLElement|null} - The message bubble element or null if not found
+     */
+    function findMessageBubble(element) {
+        // Check if the element itself is a message bubble
+        if (element.classList && (
+            element.classList.contains('Chat-message') ||
+            element.classList.contains('Chat-file-message') ||
+            element.classList.contains('Chat-image-message') ||
+            element.classList.contains('Chat-emoji-message')
+        )) {
+            return element;
+        }
+
+        // Check if any parent is a message bubble (up to 5 levels)
+        let parent = element.parentElement;
+        let depth = 0;
+        while (parent && depth < 5) {
+            if (parent.classList && (
+                parent.classList.contains('Chat-message') ||
+                parent.classList.contains('Chat-file-message') ||
+                parent.classList.contains('Chat-image-message') ||
+                parent.classList.contains('Chat-emoji-message')
+            )) {
+                return parent;
+            }
+            parent = parent.parentElement;
+            depth++;
+        }
+
+        // Not a message bubble
+        return null;
+    }
+
+    /**
+     * Hide the context menu
+     */
+    function hideContextMenu() {
+        const contextMenu = document.getElementById('message-context-menu');
+        contextMenu.style.display = 'none';
+        activeContextMessageId = null;
+    }
+
+    /**
+     * Show context menu for a file
+     * @param {Event} e - The context menu event
+     * @param {Object} file - The file object
+     */
+    function showFileContextMenu(e, file) {
+        // Check if the click was on a file element or its child elements
+        const fileElement = findFileBubble(e.target);
+        if (!fileElement) {
+            console.log('Right-click was not on a file bubble, ignoring');
+            return;
+        }
+
+        console.log('Right-click was on a file bubble, showing context menu');
+
+        // Check if file context menu exists, if not create it
+        let fileContextMenu = document.getElementById('file-context-menu');
+
+        if (!fileContextMenu) {
+            // Create the context menu
+            fileContextMenu = document.createElement('div');
+            fileContextMenu.id = 'file-context-menu';
+            fileContextMenu.className = 'Chat-context-menu';
+
+            fileContextMenu.innerHTML = `
+                <ul class="Chat-context-menu-list">
+                    <li class="Chat-context-menu-item" data-action="download">
+                        <i class="fas fa-download"></i> Download
+                    </li>
+                    <li class="Chat-context-menu-item" data-action="forward">
+                        <i class="fas fa-share"></i> Forward
+                    </li>
+                </ul>
+            `;
+
+            document.body.appendChild(fileContextMenu);
+
+            // Add event listeners to menu items
+            fileContextMenu.querySelectorAll('.Chat-context-menu-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    const action = this.getAttribute('data-action');
+                    handleFileContextMenuAction(action, file);
+                });
+            });
+        }
+
+        // Position the menu
+        fileContextMenu.style.top = `${e.pageY}px`;
+        fileContextMenu.style.left = `${e.pageX}px`;
+
+        // Show the menu
+        fileContextMenu.style.display = 'block';
+
+        // Adjust position if needed to avoid going off screen
+        const rect = fileContextMenu.getBoundingClientRect();
+        if (rect.right > window.innerWidth) {
+            fileContextMenu.style.left = `${e.pageX - rect.width}px`;
+        }
+        if (rect.bottom > window.innerHeight) {
+            fileContextMenu.style.top = `${e.pageY - rect.height}px`;
+        }
+
+        // Add event listener to close menu when clicking outside
+        document.addEventListener('click', function closeFileContextMenu(event) {
+            if (!fileContextMenu.contains(event.target)) {
+                fileContextMenu.style.display = 'none';
+                document.removeEventListener('click', closeFileContextMenu);
+            }
+        });
+    }
+
+    /**
+     * Helper function to find if an element is a file bubble or inside one
+     * @param {HTMLElement} element - The element to check
+     * @returns {HTMLElement|null} - The file bubble element or null if not found
+     */
+    function findFileBubble(element) {
+        // Check if the element itself is a file bubble
+        if (element.classList && (
+            element.classList.contains('Chat-file-message') ||
+            element.classList.contains('Chat-image-message') ||
+            element.classList.contains('Chat-file-item')
+        )) {
+            return element;
+        }
+
+        // Check if any parent is a file bubble (up to 5 levels)
+        let parent = element.parentElement;
+        let depth = 0;
+        while (parent && depth < 5) {
+            if (parent.classList && (
+                parent.classList.contains('Chat-file-message') ||
+                parent.classList.contains('Chat-image-message') ||
+                parent.classList.contains('Chat-file-item')
+            )) {
+                return parent;
+            }
+            parent = parent.parentElement;
+            depth++;
+        }
+
+        // Not a file bubble
+        return null;
+    }
+
+    /**
+     * Handle file context menu actions
+     * @param {string} action - The action to perform
+     * @param {Object} file - The file object
+     */
+    function handleFileContextMenuAction(action, file) {
+        // Close the context menu
+        const fileContextMenu = document.getElementById('file-context-menu');
+        if (fileContextMenu) {
+            fileContextMenu.style.display = 'none';
+        }
+
+        switch (action) {
+            case 'download':
+                // Download the file
+                const downloadLink = document.createElement('a');
+                downloadLink.href = file.url;
+                downloadLink.download = file.name || 'download';
+                downloadLink.style.display = 'none';
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+                break;
+
+            case 'forward':
+                // Open the forward message modal
+                const forwardMessageModal = document.getElementById('forward-message-modal');
+                if (forwardMessageModal) {
+                    // Set the active message for forwarding
+                    activeForwardMessageId = file.id;
+
+                    // Update the forward preview
+                    const forwardMessagePreview = document.getElementById('forward-message-preview');
+                    if (forwardMessagePreview) {
+                        forwardMessagePreview.innerHTML = `
+                            <div class="Chat-file-item">
+                                <div class="Chat-file-icon">
+                                    <i class="${getFileIcon(file.type || '')}"></i>
+                                </div>
+                                <div class="Chat-file-info">
+                                    <p class="Chat-file-name">${file.name || 'Unknown file'}</p>
+                                    <p class="Chat-file-size">${formatFileSize(file.size || 0)}</p>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Show the modal
+                    toggleModal(forwardMessageModal, true);
+
+                    // Load recipients for forwarding
+                    loadForwardRecipients();
+                }
+                break;
+        }
+    }
+
+    /**
+     * Show reactions menu for a message
+     * @param {Event} e - The event object
+     * @param {string} messageId - The ID of the message
+     */
+    function showReactionsMenu(e, messageId) {
+        const reactionsMenu = document.getElementById('reactions-menu');
+        const targetRect = e.currentTarget.getBoundingClientRect();
+
+        // Position the menu above the message
+        reactionsMenu.style.top = `${targetRect.top - 50}px`;
+        reactionsMenu.style.left = `${(targetRect.left + targetRect.right) / 2 - 100}px`;
+
+        // Save the message ID
+        activeReactionMessageId = messageId;
+
+        // Show the menu
+        reactionsMenu.style.display = 'block';
+
+        // Stop event propagation
+        e.stopPropagation();
+    }
+
+    /**
+     * Hide the reactions menu
+     */
+    function hideReactionsMenu() {
+        const reactionsMenu = document.getElementById('reactions-menu');
+        reactionsMenu.style.display = 'none';
+        activeReactionMessageId = null;
+    }
+
+    /**
+     * Reply to a message
+     * @param {string} messageId - The ID of the message to reply to
+     */
+    function replyToMessage(messageId) {
+        if (!messageId) return;
+
+        // Find the message element
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        // Get the message content
+        let replyContent = '';
+        const textContent = messageElement.querySelector('.Chat-message')?.textContent.trim();
+
+        if (textContent) {
+            replyContent = textContent;
+        } else if (messageElement.querySelector('.Chat-file-message')) {
+            replyContent = 'File: ' + messageElement.querySelector('.Chat-file-name').textContent;
+        } else if (messageElement.querySelector('.Chat-image-message')) {
+            replyContent = 'Image';
+        }
+
+        // Add reply indicator to the input
+        messageInput.setAttribute('data-reply-to', messageId);
+
+        // Add reply preview above input
+        const replyPreview = document.createElement('div');
+        replyPreview.className = 'Chat-reply-preview';
+        replyPreview.innerHTML = `
+            <div class="Chat-reply-preview-content">
+                <div class="Chat-reply-preview-header">
+                    <i class="fas fa-reply"></i>
+                    <span class="Chat-reply-preview-title">Replying to</span>
+                    <button class="Chat-reply-preview-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="Chat-reply-preview-text">${replyContent.substring(0, 50)}${replyContent.length > 50 ? '...' : ''}</div>
+            </div>
+        `;
+
+        // Remove existing preview if any
+        const existingPreview = document.querySelector('.Chat-reply-preview');
+        if (existingPreview) {
+            existingPreview.remove();
+        }
+
+        // Insert preview before input
+        document.querySelector('.Chat-input-container').insertAdjacentElement('beforebegin', replyPreview);
+
+        // Add close button event
+        replyPreview.querySelector('.Chat-reply-preview-close').addEventListener('click', function() {
+            replyPreview.remove();
+            messageInput.removeAttribute('data-reply-to');
+        });
+
+        // Focus input
+        messageInput.focus();
+    }
+
+    /**
+     * Forward a message to other chats
+     * @param {string} messageId - The ID of the message to forward
+     */
+    function forwardMessage(messageId) {
+        if (!messageId) return;
+
+        // Find the message element
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        // Get message content for preview
+        let messageContent = '';
+        const textContent = messageElement.querySelector('.Chat-message')?.textContent.trim();
+
+        if (textContent) {
+            messageContent = textContent;
+        } else if (messageElement.querySelector('.Chat-file-message')) {
+            messageContent = 'File: ' + messageElement.querySelector('.Chat-file-name').textContent;
+        } else if (messageElement.querySelector('.Chat-image-message')) {
+            messageContent = 'Image';
+        }
+
+        // Set message preview
+        forwardMessagePreview.innerHTML = messageContent;
+        forwardMessagePreview.setAttribute('data-message-id', messageId);
+
+        // Load chats and contacts for selection
+        loadForwardRecipients();
+
+        // Show the modal
+        toggleModal(forwardMessageModal, true);
+    }
+
+    /**
+     * Load recipients for message forwarding
+     */
+    function loadForwardRecipients() {
+        // Load recent chats
+        fetch('/chat/api/chats/recent/')
+            .then(response => response.json())
+            .then(data => {
+                renderForwardChats(data);
+            })
+            .catch(error => {
+                console.error('Error loading recent chats:', error);
+            });
+
+        // Load contacts
+        fetch('/chat/api/contacts/')
+            .then(response => response.json())
+            .then(data => {
+                renderForwardContacts(data);
+            })
+            .catch(error => {
+                console.error('Error loading contacts:', error);
+            });
+    }
+
+    /**
+     * Render chats for forwarding
+     * @param {Array} chats - List of chats
+     */
+    function renderForwardChats(chats) {
+        forwardChatsSelection.innerHTML = '';
+
+        chats.forEach(chat => {
+            const chatHtml = `
+                <div class="Chat-forward-option">
+                    <input type="checkbox" class="Chat-forward-checkbox" value="${chat.id}" data-type="${chat.type}">
+                    ${chat.type === 'group'
+                        ? `<div class="Chat-forward-option-avatar Chat-group-avatar"><i class="fas fa-users"></i></div>`
+                        : `<img src="${chat.avatar_url || '../images/ryonan-drone.jpg'}" class="Chat-forward-option-avatar">`
+                    }
+                    <div class="Chat-forward-option-info">
+                        <div class="Chat-forward-option-name">${chat.name}</div>
+                        <div class="Chat-forward-option-details">
+                            ${chat.type === 'group' ? `${chat.member_count} members` : 'Direct message'}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            forwardChatsSelection.insertAdjacentHTML('beforeend', chatHtml);
+        });
+    }
+
+    /**
+     * Render contacts for forwarding
+     * @param {Array} contacts - List of contacts
+     */
+    function renderForwardContacts(contacts) {
+        forwardContactsSelection.innerHTML = '';
+
+        contacts.forEach(contact => {
+            const contactHtml = `
+                <div class="Chat-forward-option">
+                    <input type="checkbox" class="Chat-forward-checkbox" value="${contact.id}" data-type="direct">
+                    <img src="${contact.avatar_url || '../images/ryonan-drone.jpg'}" class="Chat-forward-option-avatar">
+                    <div class="Chat-forward-option-info">
+                        <div class="Chat-forward-option-name">${contact.name}</div>
+                        <div class="Chat-forward-option-details">
+                            ${contact.department || contact.title || 'Contact'}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            forwardContactsSelection.insertAdjacentHTML('beforeend', contactHtml);
+        });
+    }
+
+    /**
+     * Confirm and execute message forwarding
+     */
+    function confirmForwardMessage() {
+        const messageId = forwardMessagePreview.getAttribute('data-message-id');
+        if (!messageId) return;
+
+        // Get selected recipients
+        const selectedChats = [];
+        const activeTab = document.querySelector('.Chat-tab[data-forward-tab].active').getAttribute('data-forward-tab');
+        const container = activeTab === 'chats' ? forwardChatsSelection : forwardContactsSelection;
+
+        container.querySelectorAll('.Chat-forward-checkbox:checked').forEach(checkbox => {
+            selectedChats.push({
+                id: checkbox.value,
+                type: checkbox.getAttribute('data-type')
+            });
+        });
+
+        if (selectedChats.length === 0) {
+            showToast('Please select at least one recipient', 'warning');
+            return;
+        }
+
+        // Show loading state
+        document.getElementById('confirm-forward-btn').classList.add('loading');
+
+        // Forward the message
+        fetch('/chat/api/messages/forward/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                message_id: messageId,
+                recipients: selectedChats
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to forward message');
+            }
+            return response.json();
+        })
+        .then(data => {
+            closeAllModals();
+            showToast('Message forwarded successfully', 'success');
+        })
+        .catch(error => {
+            console.error('Error forwarding message:', error);
+            showToast('Failed to forward message. Please try again.', 'error');
+        })
+        .finally(() => {
+            document.getElementById('confirm-forward-btn').classList.remove('loading');
+        });
+    }
+
+    /**
+     * Copy the text content of a message
+     * @param {string} messageId - The ID of the message
+     */
+    function copyMessageText(messageId) {
+        if (!messageId) return;
+
+        // Find the message element
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        // Get the text content
+        const textElement = messageElement.querySelector('.Chat-message');
+        if (!textElement) {
+            showToast('No text content to copy', 'info');
+            return;
+        }
+
+        const textToCopy = textElement.textContent.trim();
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                showToast('Text copied to clipboard', 'success');
+            })
+            .catch(err => {
+                console.error('Error copying text:', err);
+                showToast('Failed to copy text', 'error');
+            });
+    }
+
+    /**
+     * Download a file from a message
+     * @param {string} messageId - The ID of the message
+     */
+    function downloadFile(messageId) {
+        if (!messageId) return;
+
+        console.log('Downloading file from message:', messageId);
+
+        // Show loading toast
+        showToast('Preparing download...', 'info');
+
+        // Fetch file URL from API
+        fetch(`/chat/api/messages/${messageId}/file/`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to get file information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.file_url) {
+                    console.log('File URL received:', data.file_url);
+
+                    // Create download link
+                    const a = document.createElement('a');
+                    a.href = data.file_url;
+                    a.download = data.file_name || 'download';
+                    a.target = '_blank';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    showToast('Download started', 'success');
+                } else {
+                    console.error('File URL not found in response');
+                    showToast('File not found', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error downloading file:', error);
+                showToast('Failed to download file. Please try again.', 'error');
+            });
+    }
+
+    /**
+     * Show delete message confirmation modal
+     * @param {string} messageId - The ID of the message to delete
+     */
+    function showDeleteMessageModal(messageId) {
+        if (!messageId) return;
+
+        // Get the message element
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        // Get message content
+        const messageContent = messageElement.querySelector('.Chat-message-text')?.textContent || 'This message';
+
+        // Set the message preview in the modal
+        const deleteMessagePreview = document.getElementById('delete-message-preview');
+        deleteMessagePreview.textContent = messageContent.length > 100 ? messageContent.substring(0, 97) + '...' : messageContent;
+
+        // Set the message ID as a data attribute on the confirm button
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        confirmDeleteBtn.setAttribute('data-message-id', messageId);
+
+        // Show the modal
+        const deleteMessageModal = document.getElementById('delete-message-modal');
+        deleteMessageModal.classList.add('active');
+    }
+
+    /**
+     * Delete a message
+     * @param {string} messageId - The ID of the message to delete
+     */
+    function deleteMessage(messageId) {
+        if (!messageId) return;
+
+        fetch(`/chat/api/messages/${messageId}/`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to delete message');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Message deleted successfully:', data);
+
+            // Remove message from UI
+            removeMessage(messageId);
+
+            // Refresh the chat list to update the last message preview
+            refreshChatList();
+
+            showToast('Message deleted', 'success');
+
+            // Close the modal
+            const deleteMessageModal = document.getElementById('delete-message-modal');
+            deleteMessageModal.classList.remove('active');
+        })
+        .catch(error => {
+            console.error('Error deleting message:', error);
+            showToast(error.message || 'Failed to delete message', 'error');
+        });
+    }
+
+    /**
+     * Remove a message from the UI
+     * @param {string} messageId - The ID of the message to remove
+     */
+    function removeMessage(messageId) {
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        // Check if this is the only message in the group
+        const messageGroup = messageElement.parentElement;
+        if (messageGroup.childElementCount === 1) {
+            // Get the next element to check if it's a date separator
+            const nextElement = messageGroup.nextElementSibling;
+
+            // Remove the message group
+            messageGroup.remove();
+
+            // If the next element is a date separator and it's followed by another date separator, remove it
+            if (nextElement && nextElement.classList.contains('Chat-date-separator')) {
+                const afterNextElement = nextElement.nextElementSibling;
+                if (!afterNextElement || afterNextElement.classList.contains('Chat-date-separator')) {
+                    nextElement.remove();
+                }
+            }
+
+            // Check if the previous element is a date separator and it's the last element
+            const prevElement = messageGroup.previousElementSibling;
+            if (prevElement && prevElement.classList.contains('Chat-date-separator')) {
+                const prevPrevElement = prevElement.previousElementSibling;
+                if (!prevPrevElement || prevPrevElement.classList.contains('Chat-date-separator')) {
+                    prevElement.remove();
+                }
+            }
+        } else {
+            // Just remove the message element
+            messageElement.remove();
+        }
+    }
+
+    /**
+     * Add or remove a reaction to a message
+     * @param {string} messageId - The ID of the message
+     * @param {string} emoji - The emoji reaction
+     */
+    function toggleReaction(messageId, emoji) {
+        if (!messageId || !emoji) return;
+
+        // Find if user already reacted with this emoji
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        const reactionElement = messageElement.querySelector(`.Chat-reaction[data-emoji="${emoji}"]`);
+        const userReacted = reactionElement?.classList.contains('Chat-user-reacted');
+
+        // Send reaction to the server
+        fetch('/chat/api/messages/react/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                message_id: messageId,
+                emoji: emoji,
+                action: userReacted ? 'remove' : 'add'
+            })
+        })
+        .catch(error => {
+            console.error('Error reacting to message:', error);
+            showToast('Failed to update reaction', 'error');
+        });
+    }
+
+    /**
+     * Add a reaction to a message
+     * @param {string} messageId - The ID of the message
+     * @param {string} emoji - The emoji reaction
+     */
+    function addReaction(messageId, emoji) {
+        toggleReaction(messageId, emoji);
+    }
+
+    /**
+     * Update message reactions in the UI
+     * @param {string} messageId - The ID of the message
+     * @param {string} emoji - The emoji reaction
+     * @param {Object} user - The user who reacted
+     * @param {string} action - 'add' or 'remove'
+     */
+    function updateMessageReactions(messageId, emoji, user, action) {
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (!messageElement) return;
+
+        // Find existing reactions container or create one
+        let reactionsContainer = messageElement.querySelector('.Chat-message-reactions');
+        if (!reactionsContainer) {
+            reactionsContainer = document.createElement('div');
+            reactionsContainer.className = 'Chat-message-reactions';
+            messageElement.querySelector('.Chat-message-content').insertBefore(
+                reactionsContainer,
+                messageElement.querySelector('.Chat-message-info')
+            );
+        }
+
+        // Find existing reaction or create one
+        let reactionElement = reactionsContainer.querySelector(`.Chat-reaction[data-emoji="${emoji}"]`);
+
+        if (action === 'add') {
+            if (!reactionElement) {
+                // Create new reaction
+                reactionElement = document.createElement('div');
+                reactionElement.className = 'Chat-reaction';
+                reactionElement.setAttribute('data-emoji', emoji);
+                reactionElement.setAttribute('data-message-id', messageId);
+                reactionElement.innerHTML = `
+                    <span>${emoji}</span>
+                    <span class="Chat-reaction-count">1</span>
+                `;
+                reactionsContainer.appendChild(reactionElement);
+
+                // Add event listener
+                reactionElement.addEventListener('click', function() {
+                    const emoji = this.getAttribute('data-emoji');
+                    const messageId = this.getAttribute('data-message-id');
+                    toggleReaction(messageId, emoji);
+                });
+            } else {
+                // Update existing reaction
+                const countElement = reactionElement.querySelector('.Chat-reaction-count');
+                const count = parseInt(countElement.textContent) + 1;
+                countElement.textContent = count;
+            }
+
+            // Mark as user reacted if current user
+            if (user.id === currentUserId) {
+                reactionElement.classList.add('Chat-user-reacted');
+            }
+        } else if (action === 'remove' && reactionElement) {
+            // Update count
+            const countElement = reactionElement.querySelector('.Chat-reaction-count');
+            const count = parseInt(countElement.textContent) - 1;
+
+            if (count <= 0) {
+                // Remove reaction if count is 0
+                reactionElement.remove();
+
+                // Remove container if empty
+                if (reactionsContainer.childElementCount === 0) {
+                    reactionsContainer.remove();
+                }
+            } else {
+                countElement.textContent = count;
+
+                // Remove user reacted class if current user
+                if (user.id === currentUserId) {
+                    reactionElement.classList.remove('Chat-user-reacted');
+                }
+            }
+        }
+    }
+
+    /**
+     * Update the chat information sidebar
+     * @param {Object} chat - The chat details
+     */
+    function updateChatInfo(chat) {
+        console.log('Updating chat info with data:', chat);
+
+        try {
+            if (!chat) {
+                console.error('Chat data is missing');
+                return;
+            }
+
+            const membersList = document.getElementById('members-list');
+            if (!membersList) {
+                console.error('Members list element not found');
+                return;
+            }
+
+            membersList.innerHTML = '';
+
+            // Populate members list
+            if (!chat.participants || !Array.isArray(chat.participants)) {
+                console.error('Chat participants missing or not an array');
+                membersList.innerHTML = '<p class="Chat-error">Failed to load members</p>';
+            } else {
+                console.log(`Processing ${chat.participants.length} participants`);
+
+                chat.participants.forEach(participant => {
+                    try {
+                        if (!participant) {
+                            console.error('Participant data is null or undefined');
+                            return;
+                        }
+
+                        const isAdmin = participant.role === 'admin';
+                        const isCurrentUser = participant.id === currentUserId;
+
+                        const memberItem = document.createElement('div');
+                        memberItem.className = 'Chat-member-item';
+                        memberItem.innerHTML = `
+                            <img src="${participant.avatar_url || '../images/ryonan-drone.jpg'}" class="Chat-member-avatar">
+                            <div class="Chat-member-info">
+                                <p class="Chat-member-name">${participant.name || 'Unknown'} ${isCurrentUser ? '(You)' : ''}</p>
+                                <p class="Chat-member-role">${participant.department || participant.title || ''}</p>
+                            </div>
+                            ${isAdmin ? '<span class="Chat-member-badge">Admin</span>' : ''}
+                        `;
+
+                        membersList.appendChild(memberItem);
+                    } catch (e) {
+                        console.error('Error processing participant:', e, participant);
+                    }
+                });
+            }
+
+            // Update shared files
+            const sharedFilesList = document.getElementById('shared-files-list');
+            if (!sharedFilesList) {
+                console.error('Shared files list element not found');
+                return;
+            }
+
+            sharedFilesList.innerHTML = '';
+
+            if (chat.shared_files && Array.isArray(chat.shared_files) && chat.shared_files.length > 0) {
+                console.log(`Processing ${chat.shared_files.length} shared files`);
+
+                chat.shared_files.forEach(file => {
+                    try {
+                        if (!file) {
+                            console.error('File data is null or undefined');
+                            return;
+                        }
+
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'Chat-file-item';
+                        fileItem.setAttribute('data-file-id', file.id || '');
+
+                        // Safely get file type
+                        let fileType = 'unknown';
+                        try {
+                            fileType = file.type || (file.name ? file.name.split('.').pop() : 'unknown');
+                        } catch (e) {
+                            console.error('Error getting file type:', e);
+                        }
+
+                        // Safely get file size
+                        let fileSize = 0;
+                        try {
+                            fileSize = file.size || 0;
+                        } catch (e) {
+                            console.error('Error getting file size:', e);
+                        }
+
+                        fileItem.innerHTML = `
+                            <div class="Chat-file-icon">
+                                <i class="${getFileIcon(fileType)}"></i>
+                            </div>
+                            <div class="Chat-file-info">
+                                <p class="Chat-file-name">${file.name || 'Unknown file'}</p>
+                                <p class="Chat-file-size">${formatFileSize(fileSize)}</p>
+                            </div>
+                        `;
+
+                        // Add click event to download directly
+                        if (file.url) {
+                            fileItem.addEventListener('click', function(e) {
+                                e.preventDefault();
+
+                                // Create a temporary anchor element to trigger download
+                                const downloadLink = document.createElement('a');
+                                downloadLink.href = file.url;
+                                downloadLink.download = file.name || 'download';
+                                downloadLink.style.display = 'none';
+                                document.body.appendChild(downloadLink);
+                                downloadLink.click();
+                                document.body.removeChild(downloadLink);
+                            });
+
+                            // Add right-click context menu
+                            fileItem.addEventListener('contextmenu', function(e) {
+                                e.preventDefault();
+                                showFileContextMenu(e, file);
+                            });
+                        }
+
+                        sharedFilesList.appendChild(fileItem);
+                    } catch (e) {
+                        console.error('Error processing file:', e, file);
+                    }
+                });
+            } else {
+                console.log('No shared files found');
+                sharedFilesList.innerHTML = '<p class="Chat-empty-files">No files shared yet</p>';
+            }
+
+            console.log('Chat info updated successfully');
+        } catch (e) {
+            console.error('Error updating chat info:', e);
+
+            // Try to recover by showing error messages
+            try {
+                const membersList = document.getElementById('members-list');
+                if (membersList) {
+                    membersList.innerHTML = '<p class="Chat-error">Failed to load members</p>';
+                }
+
+                const sharedFilesList = document.getElementById('shared-files-list');
+                if (sharedFilesList) {
+                    sharedFilesList.innerHTML = '<p class="Chat-error">Failed to load shared files</p>';
+                }
+            } catch (recoveryError) {
+                console.error('Error during recovery:', recoveryError);
+            }
+        }
+    }
+
+    /**
+     * Send a message to the current chat
+     */
+    function sendMessage() {
+        if (!currentChatId) return;
+
+        const content = messageInput.value.trim();
+        const replyToId = messageInput.getAttribute('data-reply-to');
+
+        if (!content && !uploadedFileId) {
+            return;
+        }
+
+        console.log("CRITICAL DEBUG: Sending message:", content);
+
+        // Add no-transition class to prevent flickering during message sending
+        document.body.classList.add('no-transition');
+
+        // Add no-transition to chat container
+        const chatContainer = document.querySelector('.Chat-container');
+        if (chatContainer) {
+            chatContainer.classList.add('no-transition');
+        }
+
+        // Add no-transition to chat main
+        if (chatMain) {
+            chatMain.classList.add('no-transition');
+        }
+
+        // Add no-transition to messages container
+        if (messagesContainer) {
+            messagesContainer.classList.add('no-transition');
+        }
+
+        // Add no-transition to chat list items
+        document.querySelectorAll('.Chat-list-item').forEach(item => {
+            item.classList.add('no-transition');
+        });
+
+        // Prepare message data
+        const messageData = {
+            content: content,
+            chat_id: currentChatId
+        };
+
+        // Add reply_to if present
+        if (replyToId) {
+            messageData.reply_to = replyToId;
+        }
+
+        // Add file_id if present
+        if (uploadedFileId) {
+            messageData.file_id = uploadedFileId;
+        }
+
+        // Show sending indicator
+        const tempId = 'temp-' + Date.now();
+        const tempMessage = {
+            id: tempId,
+            content: content,
+            chat_id: currentChatId,
+            sender: {
+                id: currentUserId,
+                name: 'You',
+                avatar_url: null
+            },
+            timestamp: new Date().toISOString(),
+            read: false, // Always start with unread status
+            is_temp: true // Mark as temporary message
+        };
+
+        console.log("CRITICAL DEBUG: Created temporary message:", tempMessage);
+
+        // CRITICAL FIX: Use receiveMessage function to add the message to the UI
+        // This ensures the message is added in a consistent way
+        receiveMessage(tempMessage);
+        console.log("CRITICAL DEBUG: Added temporary message to UI using receiveMessage");
+
+        // Disable any automatic refreshes that might be removing the message
+        if (window.messagePollingInterval) {
+            clearInterval(window.messagePollingInterval);
+            console.log("CRITICAL DEBUG: Cleared message polling interval to prevent message disappearing");
+        }
+
+        // Store the message in the current chat messages array to prevent it from being lost
+        if (!window.currentChatMessages) {
+            window.currentChatMessages = [];
+        }
+        window.currentChatMessages.push(tempMessage);
+        console.log("CRITICAL DEBUG: Added temporary message to currentChatMessages array");
+
+        // Also update the chat list item immediately with the new message
+        try {
+            updateChatListItem(currentChatId, content, new Date());
+            console.log("CRITICAL DEBUG: Updated chat list item");
+        } catch (e) {
+            console.error("CRITICAL DEBUG: Error updating chat list item:", e);
+        }
+
+        // Send the message via HTTP request
+        fetch(`/chat/api/chats/${currentChatId}/messages/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify(messageData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to send message');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("CRITICAL DEBUG: Message sent successfully, server response:", data);
+
+            // CRITICAL FIX: Update the temporary message in the currentChatMessages array
+            if (window.currentChatMessages) {
+                for (let i = 0; i < window.currentChatMessages.length; i++) {
+                    if (window.currentChatMessages[i].id === tempId) {
+                        // Replace the temporary message with the real one
+                        window.currentChatMessages[i] = data;
+                        console.log("CRITICAL DEBUG: Updated temporary message in currentChatMessages array");
+                        break;
+                    }
+                }
+            }
+
+            // Replace the temporary message with the real one in the DOM
+            const tempElement = document.querySelector(`.Chat-message-container[data-message-id="${tempId}"]`);
+            if (tempElement) {
+                // Just update the ID and status, don't replace the entire element
+                tempElement.setAttribute('data-message-id', data.id);
+
+                // Update the message status - always show single check for sent messages
+                const statusIndicator = tempElement.querySelector('.Chat-message-status');
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-check"></i>';
+                }
+
+                console.log("CRITICAL DEBUG: Updated temporary message with real message ID:", data.id);
+            } else {
+                console.error("CRITICAL DEBUG: Could not find temporary message element with ID:", tempId);
+
+                // If we couldn't find the temporary message, add the real message
+                receiveMessage(data);
+                console.log("CRITICAL DEBUG: Added real message using receiveMessage since temporary message was not found");
+            }
+
+            // CRITICAL FIX: Restart the polling interval with a delay
+            setTimeout(() => {
+                if (!window.messagePollingInterval) {
+                    window.messagePollingInterval = setInterval(() => {
+                        refreshMessages(currentChatId, false);
+                    }, 5000);
+                    console.log("CRITICAL DEBUG: Restarted message polling interval");
+                }
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('CRITICAL DEBUG: Error sending message:', error);
+            showToast('Failed to send message. Please try again.', 'error');
+
+            // Mark the temporary message as failed
+            const tempElement = document.querySelector(`.Chat-message-container[data-message-id="${tempId}"]`);
+            if (tempElement) {
+                tempElement.classList.add('Chat-message-failed');
+
+                // Add retry button
+                const statusIndicator = tempElement.querySelector('.Chat-message-status');
+                if (statusIndicator) {
+                    statusIndicator.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+                }
+
+                console.log("CRITICAL DEBUG: Marked temporary message as failed");
+            }
+        });
+
+        // Clear input and reset state
+        messageInput.value = '';
+        sendMessageBtn.disabled = true;
+        uploadedFileId = null;
+
+        // Remove reply preview if any
+        const replyPreview = document.querySelector('.Chat-reply-preview');
+        if (replyPreview) {
+            replyPreview.remove();
+        }
+        messageInput.removeAttribute('data-reply-to');
+
+        // Reset file upload state
+        resetFileUpload();
+
+        // Auto-resize input
+        autoResizeInput();
+
+        // Remove no-transition classes after a short delay
+        setTimeout(() => {
+            // Remove no-transition from document body
+            document.body.classList.remove('no-transition');
+
+            // Remove no-transition from chat container
+            if (chatContainer) {
+                chatContainer.classList.remove('no-transition');
+            }
+
+            // Remove no-transition from chat main
+            if (chatMain) {
+                chatMain.classList.remove('no-transition');
+            }
+
+            // Remove no-transition from messages container
+            if (messagesContainer) {
+                messagesContainer.classList.remove('no-transition');
+            }
+
+            // Remove no-transition from chat list items
+            document.querySelectorAll('.Chat-list-item').forEach(item => {
+                item.classList.remove('no-transition');
+            });
+
+            console.log('Removed no-transition classes after sending message');
+        }, 300);
+    }
+
+    /**
+     * Receive and display a new message
+     * @param {Object} message - The message data
+     */
+    function receiveMessage(message) {
+        console.log('Received new message:', message);
+
+        // Add no-transition class to prevent flickering when receiving messages
+        document.body.classList.add('no-transition');
+
+        // Add no-transition to chat container
+        const chatContainer = document.querySelector('.Chat-container');
+        if (chatContainer) {
+            chatContainer.classList.add('no-transition');
+        }
+
+        // Add no-transition to chat main
+        if (chatMain) {
+            chatMain.classList.add('no-transition');
+        }
+
+        // Add no-transition to messages container
+        if (messagesContainer) {
+            messagesContainer.classList.add('no-transition');
+        }
+
+        // Add no-transition to chat list items
+        document.querySelectorAll('.Chat-list-item').forEach(item => {
+            item.classList.add('no-transition');
+        });
+
+        // Show desktop notification for new messages
+        if (!message.is_temp && message.sender.id !== currentUserId) {
+            showMessageNotification(message);
+        }
+
+        // Check if the message is for the current chat
+        if (message.chat_id !== currentChatId) {
+            console.log('Message is for a different chat, updating unread count');
+
+            // Update unread count in the chat list
+            updateChatUnreadCount(message.chat_id);
+
+            // Don't refresh the chat list here - updateChatUnreadCount will handle it
+            // This prevents overwriting our unread count update
+            return;
+        }
+
+        // Find if we need to add a new date separator
+        const messageDate = new Date(message.timestamp);
+        const messageDay = messageDate.toDateString();
+        const lastDateSeparator = messagesContainer.querySelector('.Chat-date-separator:last-of-type');
+        let currentDay = null;
+
+        if (lastDateSeparator) {
+            const dateText = lastDateSeparator.querySelector('span').textContent;
+            if (dateText === 'Today') {
+                currentDay = new Date().toDateString();
+            } else if (dateText === 'Yesterday') {
+                const yesterday = new Date();
+                yesterday.setDate(yesterday.getDate() - 1);
+                currentDay = yesterday.toDateString();
+            }
+        }
+
+        // Add new date separator if needed
+        if (messageDay !== currentDay) {
+            let dateText;
+            const today = new Date().toDateString();
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+
+            if (messageDay === today) {
+                dateText = 'Today';
+            } else if (messageDay === yesterday.toDateString()) {
+                dateText = 'Yesterday';
+            } else {
+                dateText = messageDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: messageDate.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+                });
+            }
+
+            const dateSeparator = document.createElement('div');
+            dateSeparator.className = 'Chat-date-separator';
+            dateSeparator.innerHTML = `<span>${dateText}</span>`;
+            messagesContainer.appendChild(dateSeparator);
+        }
+
+        // Find if we need a new message group
+        const isSent = message.sender.id === currentUserId;
+        const lastMessageGroup = messagesContainer.querySelector('.Chat-message-group:last-of-type');
+        let lastMessageSenderId = null;
+
+        if (lastMessageGroup) {
+            const lastMessage = lastMessageGroup.querySelector('.Chat-message-container:last-of-type');
+            if (lastMessage) {
+                lastMessageSenderId = lastMessage.dataset.senderId;
+            }
+        }
+
+        let messageGroup;
+        if (!lastMessageGroup || lastMessageSenderId !== message.sender.id) {
+            // Create new message group
+            messageGroup = document.createElement('div');
+            messageGroup.className = 'Chat-message-group';
+            messagesContainer.appendChild(messageGroup);
+        } else {
+            // Use existing message group
+            messageGroup = lastMessageGroup;
+        }
+
+        // Check if user is scrolled to bottom before adding new message
+        const wasAtBottom = isScrolledToBottom();
+
+        // Check if this is a system message
+        if (isSystemMessage(message)) {
+            // Generate a unique ID for this system message based on its content and timestamp
+            const messageId = message.id || `system-${Date.now()}`;
+            const messageContent = message.content;
+            const messageKey = `${messageId}-${messageContent}`;
+
+            // Check if we've already displayed this system message
+            if (displayedSystemMessages.has(messageKey)) {
+                console.log('Skipping duplicate system message in receiveMessage:', messageContent);
+            }
+            // For group events, check if the message is from today
+            else {
+                const messageDate = new Date(message.timestamp);
+                const today = new Date().toDateString();
+                const messageDay = messageDate.toDateString();
+
+                // Only display group events that happened today
+                if (messageDay !== today) {
+                    console.log('Skipping group event message from a different day in receiveMessage:', message);
+                }
+                else {
+                    // Add this message to our tracking set to prevent duplicates
+                    displayedSystemMessages.add(messageKey);
+
+                    // Create system message element
+                    const systemMessageElement = document.createElement('div');
+                    systemMessageElement.className = 'Chat-system-message';
+                    systemMessageElement.setAttribute('data-system-message-key', messageKey);
+                    systemMessageElement.innerHTML = `
+                        <div class="Chat-system-message-content">
+                            ${message.content}
+                        </div>
+                    `;
+                    messagesContainer.appendChild(systemMessageElement);
+                }
+            }
+        } else {
+            // Create and add the regular message element
+            const messageElement = createMessageElement(message);
+            messageGroup.appendChild(messageElement);
+        }
+
+        // Remove typing indicator if any
+        removeTypingIndicator(message.sender.id);
+
+        // Only auto-scroll if user was already at the bottom
+        if (wasAtBottom) {
+            scrollToBottom();
+        } else {
+            // Show new message indicator
+            showNewMessageIndicator();
+        }
+
+        // CRITICAL: DO NOT mark the message as read at all, not even in the UI
+        // We'll wait for user interaction with the chat area
+        if (message.sender.id !== currentUserId) {
+            console.log('NOT marking message as read at all - waiting for user interaction with chat area');
+            // DO NOT call markMessageAsRead here
+
+            // Instead, make sure the chat shows as unread in the list
+            if (message.chat_id === currentChatId) {
+                // This is for the current chat, but we still want to show it as unread
+                // until the user interacts with the chat area
+                const chatItem = document.querySelector(`.Chat-list-item[data-chat-id="${message.chat_id}"]`);
+                if (chatItem) {
+                    chatItem.classList.add('Chat-unread');
+                    chatItem.setAttribute('data-unread', 'true');
+
+                    // Update badge count
+                    let badge = chatItem.querySelector('.Chat-unread-badge');
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'Chat-unread-badge';
+                        badge.textContent = '1';
+                        const listBody = chatItem.querySelector('.Chat-list-body');
+                        if (listBody) {
+                            listBody.appendChild(badge);
+                            console.log('Created new unread badge for current chat');
+                        }
+                    } else {
+                        let count = parseInt(badge.textContent) || 0;
+                        count++; // Increment the count
+                        badge.textContent = count;
+                        console.log(`Updated badge count to ${count} for current chat`);
+                    }
+                }
+            }
+        }
+
+        // Remove no-transition classes after a short delay
+        setTimeout(() => {
+            // Remove no-transition from document body
+            document.body.classList.remove('no-transition');
+
+            // Remove no-transition from chat container
+            if (chatContainer) {
+                chatContainer.classList.remove('no-transition');
+            }
+
+            // Remove no-transition from chat main
+            if (chatMain) {
+                chatMain.classList.remove('no-transition');
+            }
+
+            // Remove no-transition from messages container
+            if (messagesContainer) {
+                messagesContainer.classList.remove('no-transition');
+            }
+
+            // Remove no-transition from chat list items
+            document.querySelectorAll('.Chat-list-item').forEach(item => {
+                item.classList.remove('no-transition');
+            });
+
+            console.log('Removed no-transition classes after receiving message');
+        }, 300);
+    }
+
+    /**
+     * Update the unread count for a chat in the list
+     * @param {string} chatId - The ID of the chat
+     */
+    function updateChatUnreadCount(chatId) {
+        console.log(`Updating unread count for chat ${chatId}`);
+
+        // Skip updating if this is the current chat
+        if (chatId === currentChatId) {
+            console.log(`Skipping unread count update for current chat ${chatId}`);
+            return;
+        }
+
+        // First try to update the UI directly
+        const chatItem = document.querySelector(`.Chat-list-item[data-chat-id="${chatId}"]`);
+        if (!chatItem) {
+            console.log(`Chat item not found for chat ${chatId}, will refresh chat list`);
+            refreshChatList(true); // Force refresh
+            return;
+        }
+
+        // Add unread class
+        chatItem.classList.add('Chat-unread');
+
+        // Update badge count
+        let badge = chatItem.querySelector('.Chat-unread-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'Chat-unread-badge';
+            badge.textContent = '1';
+            const listBody = chatItem.querySelector('.Chat-list-body');
+            if (listBody) {
+                listBody.appendChild(badge);
+                console.log('Created new unread badge');
+            } else {
+                console.error('Chat list body not found');
+            }
+        } else {
+            let count = parseInt(badge.textContent) || 0;
+            count++; // Increment the count
+            badge.textContent = count;
+            console.log(`Updated badge count to ${count}`);
+        }
+
+        // Move the chat to the top of the list
+        const chatList = chatItem.parentElement;
+        if (chatList) {
+            chatList.insertBefore(chatItem, chatList.firstChild);
+            console.log('Moved chat to top of list');
+        }
+
+        // Update the chat data attribute to reflect the new unread state
+        chatItem.setAttribute('data-unread', 'true');
+
+        // Make sure the badge is visible by adding a highlight animation
+        if (badge) {
+            // Remove any existing animation class
+            badge.classList.remove('Chat-badge-highlight');
+
+            // Force a reflow to restart the animation
+            void badge.offsetWidth;
+
+            // Add the animation class
+            badge.classList.add('Chat-badge-highlight');
+        }
+
+        // Log the update for debugging
+        console.log(`Updated unread count for chat ${chatId}: ${badge ? badge.textContent : 'unknown'}`);
+
+        // Also refresh the chat list to ensure the server's count is used, but with a delay
+        // to prevent immediate overwriting of our UI update
+        setTimeout(() => {
+            refreshChatList(true); // Force refresh
+        }, 2000);
+    }
+
+    /**
+     * Update the read status for a chat in the list (mark as read)
+     * @param {string} chatId - The ID of the chat
+     * @param {boolean} userInitiated - Whether this was triggered by user interaction
+     */
+    function updateChatReadStatus(chatId, userInitiated = true) {
+        console.log(`Updating read status for chat ${chatId}, userInitiated: ${userInitiated}`);
+
+        // CRITICAL: Only proceed if user initiated
+        if (!userInitiated) {
+            console.log(`SKIPPING updating read status for chat ${chatId} - not user initiated`);
+            return;
+        }
+
+        // Find the chat item in the list
+        const chatItem = document.querySelector(`.Chat-list-item[data-chat-id="${chatId}"]`);
+        if (!chatItem) {
+            console.log(`Chat item not found for chat ${chatId}, will refresh chat list`);
+            refreshChatList();
+            return;
+        }
+
+        // Remove unread class
+        chatItem.classList.remove('Chat-unread');
+
+        // Remove badge if it exists
+        const badge = chatItem.querySelector('.Chat-unread-badge');
+        if (badge) {
+            badge.remove();
+            console.log('Removed unread badge');
+        }
+
+        // Update the chat data attribute to reflect the read state
+        chatItem.setAttribute('data-unread', 'false');
+
+        // Mark the chat as read in localStorage
+        markChatAsRead(chatId);
+
+        console.log(`Updated read status for chat ${chatId}`);
+    }
+
+    /**
+     * Update a chat list item with new message content and time
+     * @param {string} chatId - The ID of the chat
+     * @param {string} messageContent - The content of the new message
+     * @param {Date} timestamp - The timestamp of the new message
+     */
+    function updateChatListItem(chatId, messageContent, timestamp) {
+        const chatItem = document.querySelector(`.Chat-list-item[data-chat-id="${chatId}"]`);
+        if (!chatItem) return;
+
+        // Update the last message
+        const lastMessageElement = chatItem.querySelector('.Chat-last-message');
+        if (lastMessageElement) {
+            lastMessageElement.textContent = messageContent;
+        }
+
+        // Update the time
+        const timeElement = chatItem.querySelector('.Chat-time');
+        if (timeElement) {
+            // Format time in 12-hour format with AM/PM
+            const formattedTime = timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+            timeElement.textContent = formattedTime;
+        }
+
+        // Move the chat to the top of the list
+        const chatList = chatItem.parentElement;
+        chatList.insertBefore(chatItem, chatList.firstChild);
+    }
+
+    /**
+     * Show typing indicator for a user
+     * @param {Object} user - The user who is typing
+     */
+    function showTypingIndicator(user) {
+        // Skip if it's the current user
+        if (user.id === currentUserId) return;
+
+        // Find or create typing container
+        let typingContainer = document.querySelector('.Chat-typing-indicator');
+        if (!typingContainer) {
+            typingContainer = document.createElement('div');
+            typingContainer.className = 'Chat-typing-indicator';
+            typingContainer.innerHTML = `
+                <span class="Chat-typing-text"></span>
+                <div class="Chat-typing-dots">
+                    <span class="Chat-typing-dot"></span>
+                    <span class="Chat-typing-dot"></span>
+                    <span class="Chat-typing-dot"></span>
+                </div>
+            `;
+            messagesContainer.appendChild(typingContainer);
+        }
+
+        // Set typing text
+        const typingText = typingContainer.querySelector('.Chat-typing-text');
+        typingText.textContent = `${user.name} is typing`;
+
+        // Set data attribute
+        typingContainer.setAttribute('data-user-id', user.id);
+
+        // Clear typing timeout if exists
+        if (typingTimeouts[user.id]) {
+            clearTimeout(typingTimeouts[user.id]);
+        }
+
+        // Set new timeout to remove typing indicator
+        typingTimeouts[user.id] = setTimeout(() => {
+            removeTypingIndicator(user.id);
+        }, 3000);
+
+        // Only scroll to bottom if user is already at the bottom
+        if (isScrolledToBottom()) {
+            scrollToBottom();
+        }
+    }
+
+    /**
+     * Remove typing indicator for a user
+     * @param {string} userId - The ID of the user
+     */
+    function removeTypingIndicator(userId) {
+        const typingContainer = document.querySelector(`.Chat-typing-indicator[data-user-id="${userId}"]`);
+        if (typingContainer) {
+            typingContainer.remove();
+        }
+
+        // Clear timeout
+        if (typingTimeouts[userId]) {
+            clearTimeout(typingTimeouts[userId]);
+            delete typingTimeouts[userId];
+        }
+    }
+
+    /**
+     * Notify other users that current user is typing
+     */
+    function notifyTyping() {
+        if (!currentChatSocket) return;
+
+        // Only send typing notification if it's been more than 2 seconds since the last one
+        const now = Date.now();
+        if (now - lastTypingNotification < 2000) return;
+
+        lastTypingNotification = now;
+
+        // Send typing notification
+        currentChatSocket.send(JSON.stringify({
+            type: 'typing_indicator',
+            chat_id: currentChatId
+        }));
+    }
+
+    /**
+     * Add event listeners to detect user interaction with the chat
+     * This is used to mark messages as read only when the user interacts with the chat
+     */
+    function addChatInteractionListeners() {
+        console.log('Adding chat interaction listeners');
+
+        // Get the messages container
+        const messagesContainer = document.querySelector('.Chat-messages');
+        if (!messagesContainer) {
+            console.error('Messages container not found');
+            return;
+        }
+
+        // Remove any existing listeners first to prevent duplicates
+        messagesContainer.removeEventListener('click', handleChatInteraction);
+        messagesContainer.removeEventListener('scroll', handleChatInteraction);
+
+        // Add click and scroll listeners to the messages container
+        messagesContainer.addEventListener('click', handleChatInteraction);
+        messagesContainer.addEventListener('scroll', handleChatInteraction);
+
+        console.log('Chat interaction listeners added');
+    }
+
+    /**
+     * Handle user interaction with the chat (click or scroll)
+     * This marks all unread messages as read ONLY when user explicitly interacts
+     * For group chats only
+     */
+    function handleChatInteraction(event) {
+        console.log('CRITICAL DEBUG: User explicitly interacted with chat - NOW checking if we should mark messages as read');
+
+        // Get the messages container
+        const messagesContainer = document.querySelector('.Chat-messages');
+        if (!messagesContainer) {
+            console.error('Messages container not found');
+            return;
+        }
+
+        // CRITICAL FIX: Only proceed if this was a real user interaction (not an automated event)
+        // Check if the event exists and has expected properties of a real user event
+        if (!event || (!event.type && !event.target)) {
+            console.log('CRITICAL FIX: Ignoring non-user-initiated interaction attempt');
+            return;
+        }
+
+        // For group chats, we should NOT mark messages as read when interacting
+        if (currentChatType === 'group') {
+            console.log(`CRITICAL DEBUG: Real user interaction detected in group chat - type: ${event.type}`);
+            console.log('CRITICAL DEBUG: Not marking messages as read in group chat per user request');
+
+            // For group chats, we still want to keep the event listeners
+            // Remove and re-add to prevent duplicates
+            messagesContainer.removeEventListener('click', handleChatInteraction);
+            messagesContainer.removeEventListener('scroll', handleChatInteraction);
+
+            setTimeout(() => {
+                if (currentChatId) {
+                    addChatInteractionListeners();
+                }
+            }, 500);
+        } else {
+            console.log(`CRITICAL DEBUG: Real user interaction detected in non-group chat - type: ${event.type}`);
+
+            // Remove the event listeners to prevent multiple calls
+            messagesContainer.removeEventListener('click', handleChatInteraction);
+            messagesContainer.removeEventListener('scroll', handleChatInteraction);
+
+            // Mark all unread messages as read - ONLY after explicit user interaction
+            console.log('CRITICAL FIX: NOW marking messages as read after explicit user interaction in non-group chat');
+            markMessagesAsRead(true); // true = user initiated
+
+            // Also update the chat list item to remove unread indicator
+            updateChatReadStatus(currentChatId, true); // true = user initiated
+
+            // Force refresh the chat list to update unread counts
+            setTimeout(() => {
+                console.log('CRITICAL FIX: Forcing chat list refresh after user interaction');
+                refreshChatList(true); // Force refresh
+            }, 500);
+
+            // Add the event listeners back after a delay
+            // This allows new messages to be marked as read when the user interacts again
+            setTimeout(() => {
+                // Check if we still have the same chat open
+                if (currentChatId) {
+                    console.log('Re-adding chat interaction listeners for future messages');
+                    addChatInteractionListeners();
+                }
+            }, 2000); // 2 seconds delay
+        }
+    }
+
+    /**
+     * Mark messages as read
+     * @param {boolean} userInitiated - Whether this was triggered by user interaction
+     */
+    function markMessagesAsRead(userInitiated = false) {
+        if (!currentChatId) return;
+
+        console.log('CRITICAL DEBUG: markMessagesAsRead called for chat', currentChatId, 'userInitiated:', userInitiated);
+
+        // CRITICAL FIX: ONLY proceed if explicitly user initiated
+        if (!userInitiated) {
+            console.log('CRITICAL FIX: BLOCKING attempt to mark messages as read - NOT user initiated');
+            return;
+        }
+
+        console.log('CRITICAL DEBUG: Proceeding with marking messages as read - CONFIRMED user initiated');
+
+        // Get all unread messages
+        const unreadMessages = document.querySelectorAll('.Chat-message-container.Chat-received:not(.Chat-read)');
+        if (unreadMessages.length === 0) {
+            console.log('No unread messages found');
+            return;
+        }
+
+        console.log(`Found ${unreadMessages.length} unread messages to mark as read`);
+
+        // Get message IDs
+        const messageIds = Array.from(unreadMessages).map(msg => msg.getAttribute('data-message-id'));
+
+        // Mark messages as read in the UI
+        unreadMessages.forEach(msg => {
+            msg.classList.add('Chat-read');
+            console.log(`Marking message ${msg.getAttribute('data-message-id')} as read in UI`);
+
+            // Store in localStorage that this message has been read
+            const messageId = msg.getAttribute('data-message-id');
+            if (messageId) {
+                // Pass userInitiated to ensure it only stores if user initiated
+                storeReadMessage(messageId, userInitiated);
+            }
+        });
+
+        // Update the chat list item to remove unread indicator
+        console.log('CRITICAL DEBUG: Updating chat read status after user interaction');
+        updateChatReadStatus(currentChatId, userInitiated); // Pass userInitiated parameter
+
+        // Mark the chat as read in localStorage
+        markChatAsRead(currentChatId);
+        console.log(`Marked chat ${currentChatId} as read in localStorage`);
+
+        // Force refresh the chat list to ensure unread counts are updated
+        setTimeout(() => {
+            console.log('CRITICAL DEBUG: Forcing chat list refresh after marking messages as read');
+            refreshChatList(true); // Force refresh
+        }, 500);
+
+        // Send read receipt to server via HTTP instead of WebSocket
+        // This is critical to ensure the server knows these messages are read
+        console.log(`CRITICAL DEBUG: Sending read receipt to server for chat ${currentChatId} with ${messageIds.length} messages`);
+        fetch(`/chat/api/chats/${currentChatId}/read/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                message_ids: messageIds
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to mark messages as read on server');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('CRITICAL DEBUG: Messages marked as read successfully on server:', data.marked_count);
+
+            // Refresh the chat list to update unread counts
+            console.log('CRITICAL DEBUG: Forcing final chat list refresh after server confirmation');
+            refreshChatList(true); // Force refresh
+        })
+        .catch(error => {
+            console.error('Error marking messages as read on server:', error);
+
+            // Even if the server request fails, we still want to update the UI
+            // to show the messages as read
+            refreshChatList(true); // Force refresh
+        });
+    }
+
+    /**
+     * Store a message ID as read in localStorage
+     * @param {string} messageId - The ID of the message
+     * @param {boolean} userInitiated - Whether this was triggered by user interaction
+     */
+    function storeReadMessage(messageId, userInitiated = false) {
+        try {
+            // CRITICAL FIX: ONLY proceed if EXPLICITLY user initiated
+            if (!userInitiated) {
+                console.log(`CRITICAL FIX: BLOCKING attempt to store message ${messageId} as read - NOT user initiated`);
+                return;
+            }
+
+            console.log(`CRITICAL DEBUG: Storing message ${messageId} as read in localStorage - CONFIRMED user initiated: ${userInitiated}`);
+
+            // Get existing read messages
+            let readMessages = JSON.parse(localStorage.getItem('chat_read_messages') || '{}');
+
+            // Add this message to the list for the current chat
+            if (!readMessages[currentChatId]) {
+                readMessages[currentChatId] = [];
+            }
+
+            if (!readMessages[currentChatId].includes(messageId)) {
+                readMessages[currentChatId].push(messageId);
+                console.log(`CRITICAL DEBUG: Added message ${messageId} to read messages for chat ${currentChatId}`);
+            } else {
+                console.log(`CRITICAL DEBUG: Message ${messageId} already marked as read in localStorage`);
+            }
+
+            // Store back in localStorage
+            localStorage.setItem('chat_read_messages', JSON.stringify(readMessages));
+            console.log(`CRITICAL DEBUG: Updated read messages in localStorage for chat ${currentChatId}`);
+
+            // CRITICAL FIX: DO NOT automatically mark the entire chat as read
+            // This was causing the chat to be marked as read automatically
+            // markChatAsRead(currentChatId);
+        } catch (e) {
+            console.error('Error storing read message in localStorage:', e);
+        }
+    }
+
+    /**
+     * Mark an entire chat as read in localStorage
+     * This is a separate tracking mechanism from the individual messages
+     * @param {string} chatId - The ID of the chat
+     */
+    function markChatAsRead(chatId) {
+        try {
+            // Get existing read chats
+            let readChats = JSON.parse(localStorage.getItem('chat_read_chats') || '[]');
+
+            // Add this chat to the list if not already there
+            if (!readChats.includes(chatId)) {
+                readChats.push(chatId);
+                console.log(`Marked chat ${chatId} as read in localStorage`);
+            }
+
+            // Store back in localStorage
+            localStorage.setItem('chat_read_chats', JSON.stringify(readChats));
+        } catch (e) {
+            console.error('Error marking chat as read in localStorage:', e);
+        }
+    }
+
+    /**
+     * Check if a chat has been marked as read in localStorage
+     * @param {string} chatId - The ID of the chat
+     * @returns {boolean} Whether the chat has been marked as read
+     */
+    function isChatRead(chatId) {
+        try {
+            // Get existing read chats
+            let readChats = JSON.parse(localStorage.getItem('chat_read_chats') || '[]');
+
+            // Check if this chat is in the list
+            return readChats.includes(chatId);
+        } catch (e) {
+            console.error('Error checking if chat is read from localStorage:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Check if a message has been read based on localStorage
+     * @param {string} chatId - The ID of the chat
+     * @param {string} messageId - The ID of the message
+     * @returns {boolean} Whether the message has been read
+     */
+    function isMessageRead(chatId, messageId) {
+        try {
+            // Get existing read messages
+            let readMessages = JSON.parse(localStorage.getItem('chat_read_messages') || '{}');
+
+            // Check if this message is in the list for the chat
+            return readMessages[chatId] && readMessages[chatId].includes(messageId);
+        } catch (e) {
+            console.error('Error checking if message is read from localStorage:', e);
+            return false;
+        }
+    }
+
+    /**
+     * Mark a specific message as read
+     * @param {string} messageId - The ID of the message
+     * @param {boolean} userInitiated - Whether this was triggered by user interaction
+     */
+    function markMessageAsRead(messageId, userInitiated = false) {
+        if (!currentChatId) return;
+
+        console.log(`Marking message ${messageId} as read in chat ${currentChatId}, userInitiated: ${userInitiated}`);
+
+        // CRITICAL: Only proceed if user initiated
+        if (!userInitiated) {
+            console.log(`SKIPPING marking message ${messageId} as read - not user initiated`);
+            return;
+        }
+
+        // First update the UI immediately
+        const messageElement = document.querySelector(`.Chat-message-container[data-message-id="${messageId}"]`);
+        if (messageElement) {
+            messageElement.classList.add('Chat-read');
+
+            // Store in localStorage that this message has been read
+            // Pass userInitiated to ensure it only stores if user initiated
+            storeReadMessage(messageId, userInitiated);
+        }
+
+        // Update the chat list item to remove unread indicator
+        updateChatReadStatus(currentChatId, userInitiated); // Pass userInitiated parameter
+
+        // Send read receipt to server via HTTP
+        fetch(`/chat/api/chats/${currentChatId}/read/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                message_ids: [messageId]
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to mark message as read');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Message marked as read successfully on server');
+
+            // Refresh the chat list to update unread counts from server
+            refreshChatList(true); // Force refresh
+        })
+        .catch(error => {
+            console.error('Error marking message as read:', error);
+
+            // Even if the server request fails, we still want to update the UI
+            // to show the message as read
+            refreshChatList(true); // Force refresh
+        });
+
+    }
+
+    /**
+     * Update read status of messages
+     * @param {Array} messageIds - The IDs of messages that were read
+     */
+    function updateMessageReadStatus(messageIds) {
+        // This function is intentionally left empty to prevent changing the check mark
+        // We always show a single check mark for sent messages
+        console.log('Message read status update received, but we always show single check mark');
+    }
+
+    /**
+     * Handle file selection for upload
+     * @param {Event} e - The change event
+     */
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Check file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('File size exceeds the 10MB limit', 'error');
+            return;
+        }
+
+        // Check file type (no videos)
+        if (file.type.startsWith('video/')) {
+            showToast('Video files are not allowed', 'error');
+            return;
+        }
+
+        // Show upload progress
+        uploadProgressContainer.style.display = 'block';
+        uploadFilename.textContent = file.name;
+        uploadStatus.textContent = 'Preparing...';
+        uploadProgressBar.style.width = '0%';
+
+        // Upload the file
+        uploadFile(file);
+    }
+
+    /**
+     * Upload a file to the server
+     * @param {File} file - The file to upload
+     */
+    function uploadFile(file) {
+        isUploading = true;
+
+        // Create form data
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('chat_id', currentChatId);
+
+        // Create abort controller
+        uploadController = new AbortController();
+
+        // Create XMLHttpRequest to track progress
+        const xhr = new XMLHttpRequest();
+
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+                const percentComplete = Math.round((event.loaded * 100) / event.total);
+                uploadProgressBar.style.width = `${percentComplete}%`;
+                uploadStatus.textContent = `Uploading... ${percentComplete}%`;
+            }
+        });
+
+        // Handle completion
+        xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                // Success
+                const data = JSON.parse(xhr.responseText);
+
+                // Upload complete
+                uploadStatus.textContent = 'Upload complete';
+                uploadProgressBar.style.width = '100%';
+
+                // Store file ID for sending with message
+                uploadedFileId = data.file_id;
+
+                // Get the file name from the upload
+                const fileName = file.name;
+
+                // Set the file name in the pill
+                filePillName.textContent = fileName;
+
+                // Set appropriate file icon based on file type
+                const fileExtension = fileName.split('.').pop().toLowerCase();
+                let iconClass = 'fa-file';
+
+                // Set icon based on file type
+                if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg'].includes(fileExtension)) {
+                    iconClass = 'fa-file-image';
+                } else if (['doc', 'docx', 'odt', 'rtf'].includes(fileExtension)) {
+                    iconClass = 'fa-file-word';
+                } else if (['xls', 'xlsx', 'ods'].includes(fileExtension)) {
+                    iconClass = 'fa-file-excel';
+                } else if (['pdf'].includes(fileExtension)) {
+                    iconClass = 'fa-file-pdf';
+                } else if (['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension)) {
+                    iconClass = 'fa-file-archive';
+                } else if (['mp3', 'wav', 'ogg', 'flac'].includes(fileExtension)) {
+                    iconClass = 'fa-file-audio';
+                } else if (['mp4', 'avi', 'mov', 'wmv', 'mkv'].includes(fileExtension)) {
+                    iconClass = 'fa-file-video';
+                } else if (['txt', 'csv'].includes(fileExtension)) {
+                    iconClass = 'fa-file-alt';
+                }
+
+                // Update icon class
+                filePillIcon.className = `fas ${iconClass}`;
+
+                // Enable send button
+                sendMessageBtn.disabled = false;
+
+                // After 1 second, hide progress info and show the file pill
+                setTimeout(() => {
+                    // Hide progress elements
+                    uploadProgressInfo.style.display = 'none';
+                    progressBarContainer.style.display = 'none';
+
+                    // Show file pill
+                    filePillContainer.style.display = 'flex';
+
+                    // Keep the container visible
+                    uploadProgressContainer.style.display = 'block';
+                }, 1000);
+            } else {
+                // Error
+                console.error('Error uploading file:', xhr.statusText);
+                showToast('Failed to upload file. Please try again.', 'error');
+                resetFileUpload();
+            }
+        });
+
+        // Handle errors
+        xhr.addEventListener('error', () => {
+            console.error('Error uploading file');
+            showToast('Failed to upload file. Please try again.', 'error');
+            resetFileUpload();
+        });
+
+        // Handle abort
+        xhr.addEventListener('abort', () => {
+            console.log('Upload cancelled');
+            showToast('Upload cancelled', 'info');
+            resetFileUpload();
+        });
+
+        // Open and send the request
+        xhr.open('POST', '/chat/api/upload/');
+        xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
+        xhr.send(formData);
+
+        // Store the XHR for potential abort
+        uploadController.abort = () => xhr.abort();
+
+        // Return a promise-like interface for compatibility
+        return {
+            then: (callback) => {
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        callback(JSON.parse(xhr.responseText));
+                    }
+                });
+                return { catch: (errorCallback) => {
+                    xhr.addEventListener('error', errorCallback);
+                    xhr.addEventListener('abort', () => {
+                        errorCallback(new Error('Upload cancelled'));
+                    });
+                }};
+            }
+        };
+    }
+
+    /**
+     * Cancel an ongoing file upload
+     */
+    function cancelUpload() {
+        if (!isUploading || !uploadController) return;
+
+        // Abort the upload
+        uploadController.abort();
+
+        // Reset UI
+        resetFileUpload();
+    }
+
+    /**
+     * Reset file upload state
+     */
+    function resetFileUpload() {
+        // Hide the upload progress container
+        uploadProgressContainer.style.display = 'none';
+
+        // Reset progress elements
+        uploadProgressBar.style.width = '0%';
+        uploadStatus.textContent = '';
+        uploadFilename.textContent = '';
+
+        // Show progress info and hide file pill for next upload
+        uploadProgressInfo.style.display = 'flex';
+        progressBarContainer.style.display = 'block';
+        filePillContainer.style.display = 'none';
+
+        // Reset file input and upload state
+        fileInput.value = '';
+        uploadedFileId = null;
+        isUploading = false;
+        uploadController = null;
+
+        // Reset file pill content
+        filePillName.textContent = '';
+        filePillIcon.className = 'fas fa-file';
+    }
+
+    /**
+     * Toggle the send button based on input content
+     */
+    function toggleSendButton() {
+        const hasText = messageInput.value.trim().length > 0;
+        sendMessageBtn.disabled = !hasText && !uploadedFileId;
+    }
+
+    /**
+     * Auto-resize the input textarea
+     */
+    function autoResizeInput() {
+        messageInput.style.height = 'auto';
+        messageInput.style.height = Math.min(messageInput.scrollHeight, 120) + 'px';
+    }
+
+    /**
+     * Toggle the message search panel
+     * @param {boolean} show - Whether to show the panel
+     */
+    function toggleMessageSearch(show = true) {
+        messageSearchPanel.style.display = show ? 'block' : 'none';
+
+        if (show) {
+            messageSearchInput.focus();
+        }
+    }
+
+    /**
+     * Search messages in the current chat
+     */
+    function searchMessages() {
+        if (!currentChatId) return;
+
+        const query = messageSearchInput.value.trim();
+        const dateFrom = dateFromInput.value;
+        const dateTo = dateToInput.value;
+        const filesOnly = filterFilesCheckbox.checked;
+        const imagesOnly = filterImagesCheckbox.checked;
+
+        if (!query && !dateFrom && !dateTo && !filesOnly && !imagesOnly) {
+            showToast('Please enter a search query or select filters', 'info');
+            return;
+        }
+
+        // Show loading state
+        messagesContainer.innerHTML = '<div class="Chat-loading"><i class="fas fa-spinner fa-spin"></i> Searching messages...</div>';
+
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (query) params.append('query', query);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+        if (filesOnly) params.append('files_only', 'true');
+        if (imagesOnly) params.append('images_only', 'true');
+
+        // Fetch search results
+        fetch(`/chat/api/chats/${currentChatId}/search/?${params.toString()}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Search failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.messages.length === 0) {
+                    messagesContainer.innerHTML = '<div class="Chat-no-results">No messages found matching your search</div>';
+                } else {
+                    renderMessages(data.messages);
+
+                    // Add search highlight
+                    if (query) {
+                        highlightSearchResults(query);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error searching messages:', error);
+                showToast('Failed to search messages. Please try again.', 'error');
+                messagesContainer.innerHTML = '<div class="Chat-error">Search failed. Please try again.</div>';
+            });
+    }
+
+    /**
+     * Highlight search results in messages
+     * @param {string} query - The search query
+     */
+    function highlightSearchResults(query) {
+        if (!query) return;
+
+        const textMessages = document.querySelectorAll('.Chat-message');
+        textMessages.forEach(message => {
+            const content = message.innerHTML;
+            const regex = new RegExp(`(${escapeRegExp(query)})`, 'gi');
+            message.innerHTML = content.replace(regex, '<span class="Chat-search-highlight">$1</span>');
+        });
+    }
+
+    /**
+     * Toggle the chat info sidebar
+     * @param {boolean} show - Whether to show the sidebar
+     */
+    function toggleChatInfo(show = true) {
+        const chatMain = document.querySelector('.Chat-main');
+        const activeArea = document.querySelector('.Chat-active-area');
+        const chatContainer = document.querySelector('.Chat-container');
+
+        if (show) {
+            // Add smooth-update class to prevent flickering
+            if (chatContainer) {
+                chatContainer.classList.add('smooth-update');
+            }
+
+            // Show the sidebar with a slide-in animation
+            chatInfoSidebar.classList.add('active');
+
+            // Add info-active class to chat main
+            if (chatMain) {
+                chatMain.classList.add('info-active');
+            }
+
+            // Ensure the active area takes full width within the resized chat main
+            if (activeArea) {
+                activeArea.style.width = '100%';
+            }
+
+            // Remove smooth-update class after transition completes
+            setTimeout(() => {
+                if (chatContainer) {
+                    chatContainer.classList.remove('smooth-update');
+                }
+            }, 300);
+        } else {
+            // Add smooth-update class to prevent flickering
+            if (chatContainer) {
+                chatContainer.classList.add('smooth-update');
+            }
+
+            // Hide the sidebar with a slide-out animation
+            chatInfoSidebar.classList.remove('active');
+
+            // Remove info-active class from chat main
+            if (chatMain) {
+                chatMain.classList.remove('info-active');
+            }
+
+            // Ensure the active area takes full width
+            if (activeArea) {
+                activeArea.style.width = '100%';
+            }
+
+            // Remove smooth-update class after transition completes
+            setTimeout(() => {
+                if (chatContainer) {
+                    chatContainer.classList.remove('smooth-update');
+                }
+            }, 300);
+        }
+    }
+
+    /**
+     * Toggle the emoji picker
+     */
+    function toggleEmojiPicker() {
+        const isVisible = emojiPicker.style.display === 'flex';
+
+        emojiPicker.style.display = isVisible ? 'none' : 'flex';
+
+        if (!isVisible) {
+            // Make sure the emoji picker is positioned correctly
+            if (window.innerWidth <= 480) {
+                // Mobile positioning
+                emojiPicker.style.bottom = '60px';
+                emojiPicker.style.right = '10px';
+            } else {
+                // Desktop positioning
+                emojiPicker.style.bottom = '70px';
+                emojiPicker.style.right = '16px';
+            }
+
+            // Initialize with recent emojis tab
+            switchEmojiCategory('recent');
+        }
+    }
+
+    /**
+     * Switch emoji category
+     * @param {string} category - The category name
+     */
+    function switchEmojiCategory(category) {
+        // Update active category button
+        emojiCategories.forEach(cat => {
+            cat.classList.toggle('active', cat.getAttribute('data-category') === category);
+        });
+
+        // Show the selected category
+        emojiGrids.forEach(grid => {
+            grid.classList.toggle('active', grid.getAttribute('data-category') === category);
+        });
+    }
+
+    /**
+     * Insert an emoji into the message input
+     * @param {string} emoji - The emoji to insert
+     */
+    function insertEmoji(emoji) {
+        if (!emoji) return;
+
+        // Get cursor position
+        const cursorPos = messageInput.selectionStart;
+        const textBefore = messageInput.value.substring(0, cursorPos);
+        const textAfter = messageInput.value.substring(cursorPos, messageInput.value.length);
+
+        // Insert emoji
+        messageInput.value = textBefore + emoji + textAfter;
+
+        // Move cursor after the emoji
+        messageInput.selectionStart = cursorPos + emoji.length;
+        messageInput.selectionEnd = cursorPos + emoji.length;
+
+        // Focus input
+        messageInput.focus();
+
+        // Enable send button
+        toggleSendButton();
+
+        // Auto-resize input
+        autoResizeInput();
+    }
+
+    /**
+     * Switch between tabs (chats/contacts)
+     * @param {string} tabName - The name of the tab to switch to
+     */
+    function switchTab(tabName) {
+        // Update active tab button
+        chatTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.getAttribute('data-tab') === tabName);
+        });
+
+        // Show the selected tab content
+        chatTabContents.forEach(content => {
+            content.classList.toggle('active', content.id === `${tabName}-tab`);
+        });
+
+        // If switching to chats tab, refresh the chat list
+        if (tabName === 'chats') {
+            console.log('Chats tab activated, refreshing chat list');
+            // Add a no-transition class to prevent flickering
+            const chatsList = document.querySelector('#chats-tab .Chat-list');
+            if (chatsList) {
+                chatsList.classList.add('no-transition');
+
+                // Refresh the chat list
+                refreshChatList();
+
+                // Remove the no-transition class after a short delay
+                setTimeout(() => {
+                    chatsList.classList.remove('no-transition');
+                }, 50);
+            }
+        }
+
+        // If switching to contacts tab, refresh the contacts list
+        if (tabName === 'contacts') {
+            console.log('Contacts tab activated, refreshing contacts list');
+            refreshContactsList();
+        }
+    }
+
+    /**
+     * Select the first chat in the list when the page loads
+     * or load the last opened chat if available
+     */
+    function selectFirstChat() {
+        // Make sure we're on the chats tab
+        switchTab('chats');
+
+        // Try to load the last opened chat from localStorage
+        const lastOpenedChat = localStorage.getItem('last_opened_chat');
+        const lastOpenedChatType = localStorage.getItem('last_opened_chat_type');
+
+        if (lastOpenedChat && lastOpenedChatType) {
+            console.log(`Loading last opened chat: ${lastOpenedChat} (${lastOpenedChatType})`);
+
+            // Find the chat item in the list to make sure it still exists
+            const chatItem = document.querySelector(`#chats-tab .Chat-list-item[data-chat-id="${lastOpenedChat}"]`);
+
+            if (chatItem) {
+                // Load the last opened chat
+                loadChat(lastOpenedChat, lastOpenedChatType);
+                return;
+            } else {
+                console.log(`Last opened chat ${lastOpenedChat} not found in the list`);
+            }
+        }
+
+        // If no last opened chat or it wasn't found, find the first chat in the list
+        const firstChat = document.querySelector('#chats-tab .Chat-list-item[data-chat-id]');
+
+        // If a chat exists, click it to load
+        if (firstChat) {
+            const chatId = firstChat.getAttribute('data-chat-id');
+            const chatType = firstChat.getAttribute('data-chat-type');
+
+            // Load the chat
+            loadChat(chatId, chatType);
+        }
+    }
+
+    /**
+     * Switch between modal tabs
+     * @param {string} tabName - The name of the tab to switch to
+     */
+    function switchModalTab(tabName) {
+        // Update active tab button
+        modalTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.getAttribute('data-modal-tab') === tabName);
+        });
+
+        // Show the selected tab content
+        modalTabContents.forEach(content => {
+            content.classList.toggle('active', content.id === `${tabName}-tab`);
+        });
+    }
+
+    /**
+     * Switch between forward tabs
+     * @param {string} tabName - The name of the tab to switch to
+     */
+    function switchForwardTab(tabName) {
+        // Update active tab button
+        forwardTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.getAttribute('data-forward-tab') === tabName);
+        });
+
+        // Show the selected tab content
+        forwardTabContents.forEach(content => {
+            content.classList.toggle('active', content.id === `forward-${tabName}-tab`);
+        });
+    }
+
+    /**
+     * Scroll messages container to the bottom
+     * @param {boolean} hideIndicator - Whether to hide the new message indicator
+     */
+    function scrollToBottom(hideIndicator = true) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Hide the new message indicator if requested
+        if (hideIndicator) {
+            hideNewMessageIndicator();
+        }
+    }
+
+    /**
+     * Check if the user is scrolled to the bottom of the messages container
+     * @returns {boolean} - Whether the user is at the bottom
+     */
+    function isScrolledToBottom() {
+        // Consider "at bottom" if within 100px of the bottom
+        const scrollThreshold = 100;
+        return (messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight) <= scrollThreshold;
+    }
+
+    /**
+     * Show the new message indicator
+     */
+    function showNewMessageIndicator() {
+        const indicator = document.getElementById('new-message-indicator');
+        if (indicator) {
+            indicator.classList.add('active');
+        }
+    }
+
+    /**
+     * Hide the new message indicator
+     */
+    function hideNewMessageIndicator() {
+        const indicator = document.getElementById('new-message-indicator');
+        if (indicator) {
+            indicator.classList.remove('active');
+        }
+    }
+
+    /**
+     * Show the active chat area
+     */
+    function showActiveChat() {
+        console.log('showActiveChat called');
+
+        // Show the chat area
+        chatEmptyMain.style.display = 'none';
+        chatActiveArea.style.display = 'flex';
+
+        // Only hide the sidebar on mobile devices
+        if (isMobile) {
+            chatSidebar.classList.add('mobile-hidden');
+            chatActiveArea.classList.add('mobile-visible');
+        } else {
+            // On desktop, ensure the sidebar remains visible using our helper function
+            forceSidebarVisibility();
+        }
+
+        console.log('After showActiveChat:');
+        console.log('chatSidebar display:', getComputedStyle(chatSidebar).display);
+        console.log('chatSidebar visibility:', getComputedStyle(chatSidebar).visibility);
+    }
+
+    /**
+     * Show the chat list (mobile view)
+     */
+    function showChatList() {
+        console.log('showChatList called');
+
+        // Only apply mobile-specific classes on mobile devices
+        if (isMobile) {
+            chatActiveArea.classList.remove('mobile-visible');
+            chatSidebar.classList.remove('mobile-hidden');
+        } else {
+            // On desktop, ensure the sidebar remains visible using our helper function
+            forceSidebarVisibility();
+        }
+
+        // Refresh the chat list to update unread counts
+        refreshChatList();
+
+        console.log('After showChatList:');
+        console.log('chatSidebar display:', getComputedStyle(chatSidebar).display);
+        console.log('chatSidebar visibility:', getComputedStyle(chatSidebar).visibility);
+    }
+
+    /**
+     * Update responsive state based on screen size
+     */
+    function updateResponsiveState() {
+        console.log('Updating responsive state. isMobile:', isMobile);
+
+        if (isMobile) {
+            backButton.style.display = 'flex';
+
+            if (currentChatId) {
+                chatSidebar.classList.add('mobile-hidden');
+                chatActiveArea.classList.add('mobile-visible');
+            } else {
+                chatSidebar.classList.remove('mobile-hidden');
+                chatActiveArea.classList.remove('mobile-visible');
+            }
+        } else {
+            // Desktop view - ALWAYS show the sidebar
+            backButton.style.display = 'none';
+
+            // Force the sidebar to be visible using our helper function
+            forceSidebarVisibility();
+
+            // Show the appropriate main content
+            chatActiveArea.style.display = currentChatId ? 'flex' : 'none';
+
+            console.log('Desktop view: Sidebar display:', getComputedStyle(chatSidebar).display);
+        }
+    }
+
+    /* This duplicate showChatList function has been removed and consolidated with the one above */
+
+    /**
+     * Show a new conversation modal
+     */
+    function showNewConversationModal() {
+        // Load contacts for selection
+        loadContacts();
+
+        // Reset form
+        directContactSelect.selectedIndex = 0;
+        directMessageInput.value = '';
+        groupNameInput.value = '';
+
+        // Show modal
+        toggleModal(newConversationModal, true);
+    }
+
+    /**
+     * Show add contact modal
+     */
+    function showAddContactModal() {
+        contactSearchInput.value = '';
+        contactSearchResults.innerHTML = '';
+
+        toggleModal(addContactModal, true);
+    }
+
+    /**
+     * Show add members modal
+     */
+    function showAddMembersModal() {
+        if (!currentChatId || currentChatType !== 'group') return;
+
+        // Load contacts that aren't in the group
+        loadContactsForGroupAdd();
+
+        toggleModal(addMembersModal, true);
+    }
+
+    /**
+     * Show rename group modal
+     */
+    function showRenameGroupModal() {
+        if (!currentChatId || currentChatType !== 'group') return;
+
+        // Set current group name
+        const groupName = chatHeaderName.textContent;
+        document.getElementById('new-group-name').value = groupName;
+
+        toggleModal(renameGroupModal, true);
+    }
+
+    /**
+     * Toggle a modal
+     * @param {HTMLElement} modal - The modal element
+     * @param {boolean} show - Whether to show the modal
+     */
+    function toggleModal(modal, show = true) {
+        if (show) {
+            modal.classList.add('active');
+        } else {
+            modal.classList.remove('active');
+        }
+    }
+
+    /**
+     * Close all modals
+     */
+    function closeAllModals() {
+        document.querySelectorAll('.JO-modal, .Chat-image-modal').forEach(modal => {
+            modal.classList.remove('active');
+        });
+    }
+
+    /**
+     * Show image viewer modal
+     * @param {string} imageUrl - URL of the image to display
+     * @param {string} fileName - Name of the file for download
+     */
+    function showImageViewerModal(imageUrl, fileName) {
+        if (!imageUrl) return;
+
+        // Set the image source
+        const modalImage = document.getElementById('modal-image');
+        modalImage.src = imageUrl;
+
+        // Set download button data
+        const downloadBtn = document.getElementById('download-image-btn');
+        downloadBtn.setAttribute('data-url', imageUrl);
+        downloadBtn.setAttribute('data-filename', fileName || 'image');
+
+        // Show the modal
+        imageViewerModal.classList.add('active');
+    }
+
+    /**
+     * Load contacts for selection
+     */
+    function loadContacts() {
+        // Reset selection
+        directContactSelect.innerHTML = '<option value="">Select a contact</option>';
+        groupMembersSelection.innerHTML = '';
+
+        // Fetch contacts
+        fetch('/chat/api/contacts/')
+            .then(response => response.json())
+            .then(data => {
+                // Add options to select
+                data.forEach(contact => {
+                    const option = document.createElement('option');
+                    option.value = contact.id;
+                    option.textContent = contact.name;
+                    directContactSelect.appendChild(option);
+
+                    // Add checkbox for group members
+                    const memberOption = document.createElement('div');
+                    memberOption.className = 'Chat-member-option';
+                    memberOption.innerHTML = `
+                        <input type="checkbox" class="Chat-member-checkbox" value="${contact.id}">
+                        <img src="${contact.avatar_url || '../images/ryonan-drone.jpg'}" class="Chat-member-option-avatar">
+                        <div class="Chat-member-option-info">
+                            <div class="Chat-member-option-name">${contact.name}</div>
+                            <div class="Chat-member-option-details">
+                                ${contact.department || contact.title || ''}
+                            </div>
+                        </div>
+                    `;
+
+                    groupMembersSelection.appendChild(memberOption);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading contacts:', error);
+                showToast('Failed to load contacts', 'error');
+            });
+    }
+
+    /**
+     * Load contacts for group member addition
+     */
+    function loadContactsForGroupAdd() {
+        addMembersSelection.innerHTML = '<div class="Chat-loading"><i class="fas fa-spinner fa-spin"></i> Loading contacts...</div>';
+
+        console.log(`Loading available contacts for chat ${currentChatId}`);
+
+        fetch(`/chat/api/chats/${currentChatId}/available-contacts/`)
+            .then(response => {
+                console.log(`Response status: ${response.status}`);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to load contacts (Status: ${response.status})`);
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                console.log('Available contacts response:', data);
+                addMembersSelection.innerHTML = '';
+
+                if (!data.contacts || data.contacts.length === 0) {
+                    addMembersSelection.innerHTML = '<p class="Chat-no-results">All your contacts are already in this group.</p>';
+                    return;
+                }
+
+                data.contacts.forEach(contact => {
+                    const memberOption = document.createElement('div');
+                    memberOption.className = 'Chat-member-option';
+                    memberOption.innerHTML = `
+                        <input type="checkbox" class="Chat-member-checkbox" value="${contact.id}">
+                        <img src="${contact.avatar_url || '/static/images/default-avatar.png'}" class="Chat-member-option-avatar">
+                        <div class="Chat-member-option-info">
+                            <div class="Chat-member-option-name">${contact.name}</div>
+                            <div class="Chat-member-option-details">
+                                ${contact.department || contact.title || ''}
+                            </div>
+                        </div>
+                    `;
+
+                    addMembersSelection.appendChild(memberOption);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading available contacts:', error);
+                addMembersSelection.innerHTML = '<p class="Chat-error">Failed to load contacts. Please try again.</p>';
+                showToast('Failed to load contacts', 'error');
+            });
+    }
+
+    /**
+     * Search for contacts
+     */
+    function searchContacts() {
+        const query = contactSearchInput.value.trim();
+
+        // Show loading state
+        contactSearchResults.innerHTML = '<div class="Chat-loading"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+
+        // Search API - even with empty query, we'll get all users
+        fetch(`/chat/api/contacts/search/?query=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                contactSearchResults.innerHTML = '';
+
+                if (data.length === 0) {
+                    contactSearchResults.innerHTML = '<div class="Chat-no-results">No users found</div>';
+                    return;
+                }
+
+                data.forEach(user => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'Chat-search-result';
+                    resultItem.innerHTML = `
+                        <img src="${user.avatar_url || '../images/profile/avatar.png'}" class="Chat-search-result-avatar">
+                        <div class="Chat-search-result-info">
+                            <p class="Chat-search-result-name">${user.name || user.username}</p>
+                            <p class="Chat-search-result-details">${user.department || user.title || ''}</p>
+                        </div>
+                        <button class="Chat-search-add-btn" data-user-id="${user.id}">
+                            ${user.is_contact ? 'Message' : 'Add'}
+                        </button>
+                    `;
+
+                    contactSearchResults.appendChild(resultItem);
+
+                    // Add button click event
+                    resultItem.querySelector('.Chat-search-add-btn').addEventListener('click', function() {
+                        const userId = this.getAttribute('data-user-id');
+                        const isContact = this.textContent.trim() === 'Message';
+
+                        if (isContact) {
+                            // Start a conversation
+                            startDirectChat(userId);
+                        } else {
+                            // Add contact
+                            addContact(userId);
+                        }
+                    });
+                });
+            })
+            .catch(error => {
+                console.error('Error searching contacts:', error);
+                showToast('Failed to search users', 'error');
+                contactSearchResults.innerHTML = '<div class="Chat-error">Search failed. Please try again.</div>';
+            });
+    }
+
+    /**
+     * Add a new contact
+     * @param {string} userId - The ID of the user to add
+     */
+    function addContact(userId) {
+        if (!userId) return;
+
+        // Show loading state
+        const addBtn = document.querySelector(`.Chat-search-add-btn[data-user-id="${userId}"]`);
+        addBtn.textContent = 'Adding...';
+        addBtn.disabled = true;
+
+        // Send API request
+        fetch('/chat/api/contacts/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ user_id: userId })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to add contact');
+            }
+            return response.json();
+        })
+        .then(data => {
+            showToast('Contact added successfully', 'success');
+
+            // Update button
+            addBtn.textContent = 'Message';
+            addBtn.disabled = false;
+
+            // Refresh contacts list if needed
+            if (document.querySelector('#contacts-tab.active')) {
+                refreshContactsList();
+            }
+        })
+        .catch(error => {
+            console.error('Error adding contact:', error);
+            showToast('Failed to add contact. Please try again.', 'error');
+
+            // Reset button
+            addBtn.textContent = 'Add';
+            addBtn.disabled = false;
+        });
+    }
+
+    /**
+     * Start a direct chat with a user
+     * @param {string} userId - The ID of the user
+     */
+    function startDirectChat(userId) {
+        if (!userId) return;
+
+        // Close the modal
+        closeAllModals();
+
+        // Show loading state in main area
+        chatEmptyMain.innerHTML = '<div class="Chat-loading"><i class="fas fa-spinner fa-spin"></i> Loading conversation...</div>';
+        chatEmptyMain.style.display = 'flex';
+        chatActiveArea.style.display = 'none';
+
+        console.log(`Starting direct chat with user ${userId}`);
+
+        // Find or create a direct chat
+        fetch(`/chat/api/chats/direct/${userId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to start chat');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(`Direct chat created/found with ID: ${data.chat_id}`);
+
+            // Refresh the chat list to ensure the new chat appears
+            refreshChatList();
+
+            // Wait a moment for the chat list to update
+            setTimeout(() => {
+                // Load the chat
+                loadChat(data.chat_id, 'direct');
+            }, 500);
+        })
+        .catch(error => {
+            console.error('Error starting chat:', error);
+            showToast('Failed to start conversation. Please try again.', 'error');
+            chatEmptyMain.innerHTML = '<div class="Chat-error">Failed to start conversation. Please try again.</div>';
+        });
+    }
+
+    /**
+     * Create a new conversation (direct or group)
+     */
+    function createConversation() {
+        const activeTab = document.querySelector('.Chat-tab[data-modal-tab].active').getAttribute('data-modal-tab');
+
+        if (activeTab === 'direct-message') {
+            // Direct message
+            const contactId = directContactSelect.value;
+            const initialMessage = directMessageInput.value.trim();
+
+            if (!contactId) {
+                showToast('Please select a contact', 'warning');
+                return;
+            }
+
+            // Create direct chat
+            fetch(`/chat/api/chats/direct/${contactId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: initialMessage ? JSON.stringify({ message: initialMessage }) : null
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to create conversation');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(`Direct chat created with ID: ${data.chat_id}`);
+                closeAllModals();
+
+                // Refresh the chat list to ensure the new chat appears
+                refreshChatList();
+
+                // Wait a moment for the chat list to update
+                setTimeout(() => {
+                    // Load the chat
+                    loadChat(data.chat_id, 'direct');
+                }, 500);
+            })
+            .catch(error => {
+                console.error('Error creating conversation:', error);
+                showToast('Failed to create conversation. Please try again.', 'error');
+            });
+        } else {
+            // Group chat
+            const groupName = groupNameInput.value.trim();
+            const selectedMembers = Array.from(
+                groupMembersSelection.querySelectorAll('.Chat-member-checkbox:checked')
+            ).map(checkbox => checkbox.value);
+
+            if (!groupName) {
+                showToast('Please enter a group name', 'warning');
+                return;
+            }
+
+            if (selectedMembers.length === 0) {
+                showToast('Please select at least one member', 'warning');
+                return;
+            }
+
+            // Create group chat
+            fetch('/chat/api/chats/group/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    name: groupName,
+                    members: selectedMembers
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to create group');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(`Group chat created with ID: ${data.chat_id}`);
+                closeAllModals();
+
+                // Refresh the chat list to ensure the new chat appears
+                refreshChatList();
+
+                // Wait a moment for the chat list to update
+                setTimeout(() => {
+                    // Load the chat
+                    loadChat(data.chat_id, 'group');
+                }, 500);
+            })
+            .catch(error => {
+                console.error('Error creating group:', error);
+                showToast('Failed to create group. Please try again.', 'error');
+            });
+        }
+    }
+
+    /**
+     * Add members to a group chat
+     */
+    function addGroupMembers() {
+        if (!currentChatId || currentChatType !== 'group') return;
+
+        const selectedMembers = Array.from(
+            addMembersSelection.querySelectorAll('.Chat-member-checkbox:checked')
+        ).map(checkbox => checkbox.value);
+
+        if (selectedMembers.length === 0) {
+            showToast('Please select at least one member', 'warning');
+            return;
+        }
+
+        // Show loading state
+        confirmAddMembersBtn.classList.add('loading');
+        confirmAddMembersBtn.disabled = true;
+
+        console.log(`Adding ${selectedMembers.length} members to group ${currentChatId}`);
+        console.log('Selected members:', selectedMembers);
+
+        // Get a fresh CSRF token
+        const csrfToken = getCsrfToken();
+        console.log(`CSRF Token: ${csrfToken ? 'Found' : 'Not found'}`);
+
+        const requestData = {
+            members: selectedMembers
+        };
+
+        // Add members
+        fetch(`/chat/api/chats/${currentChatId}/members/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestData),
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log(`Response status: ${response.status}`);
+
+            // Try to parse the response as JSON regardless of status
+            return response.text().then(text => {
+                console.log(`Response text: ${text}`);
+
+                // Try to parse as JSON if possible
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(text);
+                    console.log('Parsed JSON response:', jsonData);
+                } catch (e) {
+                    console.log('Response is not valid JSON');
+                    jsonData = null;
+                }
+
+                // Handle based on response status
+                if (!response.ok) {
+                    if (jsonData && jsonData.error) {
+                        throw new Error(jsonData.error);
+                    } else {
+                        throw new Error(`Failed to add members (Status: ${response.status})`);
+                    }
+                }
+
+                return jsonData || { success: true };
+            });
+        })
+        .then(data => {
+            closeAllModals();
+            showToast(`${selectedMembers.length} member(s) added to the group`, 'success');
+
+            // Refresh chat info
+            if (data.chat) {
+                updateChatInfo(data.chat);
+            } else {
+                // If no chat data returned, refresh the current chat
+                refreshMessages(currentChatId);
+            }
+        })
+        .catch(error => {
+            console.error('Error adding members:', error);
+            showToast(error.message || 'Failed to add members. Please try again.', 'error');
+        })
+        .finally(() => {
+            confirmAddMembersBtn.classList.remove('loading');
+            confirmAddMembersBtn.disabled = false;
+        });
+    }
+
+    /**
+     * Show the leave group confirmation modal
+     */
+    function showLeaveGroupModal() {
+        if (!currentChatId || currentChatType !== 'group') return;
+        toggleModal(leaveGroupModal, true);
+    }
+
+    /**
+     * Show the chat settings modal with global notification settings
+     */
+    function showChatSettings() {
+        const chatSettingsModal = document.getElementById('chat-settings-modal');
+        toggleModal(chatSettingsModal, true);
+
+        // Update notification toggle state - this is a global setting for all chats
+        const notificationsToggle = document.getElementById('notifications-toggle');
+        if (notificationsToggle) {
+            notificationsToggle.checked = notificationsEnabled;
+            console.log(`Showing chat settings modal with notifications ${notificationsEnabled ? 'enabled' : 'disabled'}`);
+        }
+    }
+
+    /**
+     * Rename a group chat
+     */
+    function renameGroup() {
+        if (!currentChatId || currentChatType !== 'group') return;
+
+        const newName = document.getElementById('new-group-name').value.trim();
+        if (!newName) {
+            showToast('Please enter a group name', 'warning');
+            return;
+        }
+
+        // Show loading state
+        confirmRenameBtn.classList.add('loading');
+        confirmRenameBtn.disabled = true;
+
+        console.log(`Attempting to rename group ${currentChatId} to "${newName}"`);
+
+        // Get a fresh CSRF token
+        const csrfToken = getCsrfToken();
+        console.log(`CSRF Token: ${csrfToken ? 'Found' : 'Not found'}`);
+
+        const requestData = {
+            name: newName
+        };
+        console.log('Request data:', requestData);
+
+        // Rename group
+        fetch(`/chat/api/chats/${currentChatId}/rename/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestData),
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log(`Response status: ${response.status}`);
+            console.log(`Response headers:`, response.headers);
+
+            // Try to parse the response as JSON regardless of status
+            return response.text().then(text => {
+                console.log(`Response text: ${text}`);
+
+                // Try to parse as JSON if possible
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(text);
+                    console.log('Parsed JSON response:', jsonData);
+                } catch (e) {
+                    console.log('Response is not valid JSON');
+                    jsonData = null;
+                }
+
+                // Handle based on response status
+                if (!response.ok) {
+                    if (jsonData && jsonData.error) {
+                        throw new Error(jsonData.error);
+                    } else {
+                        throw new Error(`Failed to rename group (Status: ${response.status})`);
+                    }
+                }
+
+                return jsonData || { success: true, name: newName };
+            });
+        })
+        .then(data => {
+            console.log('Success response:', data);
+            closeAllModals();
+            showToast('Group renamed successfully', 'success');
+
+            // Update chat header
+            chatHeaderName.textContent = data.name || newName;
+
+            // Refresh chat list to update the name there too
+            refreshChatList();
+        })
+        .catch(error => {
+            console.error('Error renaming group:', error);
+            showToast(error.message || 'Failed to rename group. Please try again.', 'error');
+        })
+        .finally(() => {
+            confirmRenameBtn.classList.remove('loading');
+            confirmRenameBtn.disabled = false;
+        });
+    }
+
+    /**
+     * Leave a group chat
+     */
+    function leaveGroup() {
+        if (!currentChatId || currentChatType !== 'group') return;
+
+        // Show loading state
+        const confirmLeaveBtn = document.getElementById('confirm-leave-btn');
+        confirmLeaveBtn.classList.add('loading');
+        confirmLeaveBtn.disabled = true;
+
+        console.log(`Attempting to leave group ${currentChatId}`);
+
+        // Get a fresh CSRF token
+        const csrfToken = getCsrfToken();
+        console.log(`CSRF Token: ${csrfToken ? 'Found' : 'Not found'}`);
+
+        // Leave group
+        fetch(`/chat/api/chats/${currentChatId}/leave/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log(`Response status: ${response.status}`);
+            console.log(`Response headers:`, response.headers);
+
+            // Try to parse the response as JSON regardless of status
+            return response.text().then(text => {
+                console.log(`Response text: ${text}`);
+
+                // Try to parse as JSON if possible
+                let jsonData;
+                try {
+                    jsonData = JSON.parse(text);
+                    console.log('Parsed JSON response:', jsonData);
+                } catch (e) {
+                    console.log('Response is not valid JSON');
+                    jsonData = null;
+                }
+
+                // Handle based on response status
+                if (!response.ok) {
+                    if (jsonData && jsonData.error) {
+                        throw new Error(jsonData.error);
+                    } else {
+                        throw new Error(`Failed to leave group (Status: ${response.status})`);
+                    }
+                }
+
+                return jsonData || { success: true };
+            });
+        })
+        .then(data => {
+            console.log('Success response:', data);
+            toggleModal(leaveGroupModal, false);
+            showToast('You have left the group', 'success');
+
+            // Close chat info
+            toggleChatInfo(false);
+
+            // Go back to empty state
+            currentChatId = null;
+            currentChatType = null;
+
+            chatEmptyMain.style.display = 'flex';
+            chatActiveArea.style.display = 'none';
+
+            // Refresh chat list
+            refreshChatList();
+        })
+        .catch(error => {
+            console.error('Error leaving group:', error);
+            showToast(error.message || 'Failed to leave group. Please try again.', 'error');
+        })
+        .finally(() => {
+            confirmLeaveBtn.classList.remove('loading');
+            confirmLeaveBtn.disabled = false;
+        });
+    }
+
+    /**
+     * Legacy function for backward compatibility
+     * @deprecated Use showLeaveGroupModal instead
+     */
+    function confirmLeaveGroup() {
+        showLeaveGroupModal();
+    }
+
+    /**
+     * Handle a member being added to a group
+     * @param {Object} user - The user who was added
+     * @param {Object} addedBy - The user who added them
+     */
+    function memberAdded(user, addedBy) {
+        // Add system message
+        const systemMessage = {
+            id: 'system-' + Date.now(),
+            type: 'system',
+            content: `${addedBy.name} added ${user.name} to the group`,
+            timestamp: new Date().toISOString(),
+            sender: { id: 'system' }
+        };
+
+        receiveSystemMessage(systemMessage);
+
+        // Update members list if info sidebar is open
+        if (chatInfoSidebar.classList.contains('active')) {
+            fetch(`/chat/api/chats/${currentChatId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    updateChatInfo(data.chat);
+                })
+                .catch(error => {
+                    console.error('Error updating chat info:', error);
+                });
+        }
+
+        // Update participant count in header
+        const participantCount = parseInt(chatHeaderSubtitle.textContent) + 1;
+        chatHeaderSubtitle.textContent = `${participantCount} members`;
+    }
+
+    /**
+     * Handle a member being removed from a group
+     * @param {Object} user - The user who was removed
+     */
+    function memberRemoved(user) {
+        // Add system message
+        const systemMessage = {
+            id: 'system-' + Date.now(),
+            type: 'system',
+            content: `${user.name} left the group`,
+            timestamp: new Date().toISOString(),
+            sender: { id: 'system' }
+        };
+
+        receiveSystemMessage(systemMessage);
+
+        // Update members list if info sidebar is open
+        if (chatInfoSidebar.classList.contains('active')) {
+            fetch(`/chat/api/chats/${currentChatId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    updateChatInfo(data.chat);
+                })
+                .catch(error => {
+                    console.error('Error updating chat info:', error);
+                });
+        }
+
+        // Update participant count in header
+        const participantCount = parseInt(chatHeaderSubtitle.textContent) - 1;
+        chatHeaderSubtitle.textContent = `${participantCount} members`;
+    }
+
+    /**
+     * Handle a group being renamed
+     * @param {string} newName - The new group name
+     * @param {Object} renamedBy - The user who renamed the group
+     */
+    function groupRenamed(newName, renamedBy) {
+        // Add system message
+        const systemMessage = {
+            id: 'system-' + Date.now(),
+            type: 'system',
+            content: `${renamedBy.name} renamed the group to "${newName}"`,
+            timestamp: new Date().toISOString(),
+            sender: { id: 'system' }
+        };
+
+        receiveSystemMessage(systemMessage);
+
+        // Update chat header
+        chatHeaderName.textContent = newName;
+    }
+
+    /**
+     * Display a system message in the chat
+     * @param {Object} message - The system message
+     */
+    function receiveSystemMessage(message) {
+        console.log('Displaying system message:', message);
+
+        // Generate a unique ID for this system message based on its content and timestamp
+        const messageId = message.id || `system-${Date.now()}`;
+        const messageContent = message.content;
+        const messageKey = `${messageId}-${messageContent}`;
+
+        // Check if we've already displayed this system message
+        if (displayedSystemMessages.has(messageKey)) {
+            console.log('Skipping duplicate system message:', messageContent);
+            return;
+        }
+
+        // Check if this is a group event message (rename, add member, user left)
+        const isGroupEvent = isSystemMessage(message);
+
+        // IMPORTANT: We no longer filter out system messages from previous days
+        // This ensures all system messages are displayed regardless of when they occurred
+
+        // Add this message to our tracking set to prevent duplicates
+        displayedSystemMessages.add(messageKey);
+
+        // Create system message element
+        const systemMessageElement = document.createElement('div');
+        systemMessageElement.className = 'Chat-system-message';
+        systemMessageElement.setAttribute('data-system-message-key', messageKey);
+        systemMessageElement.innerHTML = `
+            <div class="Chat-system-message-content">
+                ${message.content}
+            </div>
+        `;
+
+        // Add to messages container
+        messagesContainer.appendChild(systemMessageElement);
+
+        // Only scroll to bottom if user was already at the bottom
+        if (isScrolledToBottom()) {
+            scrollToBottom();
+        } else {
+            // Show new message indicator
+            showNewMessageIndicator();
+        }
+    }
+
+    /**
+     * Check if a message is a system message
+     * @param {Object} message - The message to check
+     * @returns {boolean} - Whether the message is a system message
+     */
+    function isSystemMessage(message) {
+        // First check if the message has a type property set to 'system'
+        if (message.type === 'system') {
+            return true;
+        }
+
+        // If the sender ID is 'system', it's a system message
+        if (message.sender && message.sender.id === 'system') {
+            return true;
+        }
+
+        // Check if the message content looks like a system message
+        const systemMessagePatterns = [
+            /added .* to the group/,
+            /renamed the group/,
+            /left the group/,
+            /created the group/,
+            /changed the group icon/,
+            /changed the group description/,
+            /made .* an admin/,
+            /removed .* as admin/
+        ];
+
+        // Add our custom system messages
+        if (message.content && (
+            message.content.includes("renamed the group from") ||
+            message.content.includes("left the group") ||
+            message.content.includes("added") && message.content.includes("to the group")
+        )) {
+            return true;
+        }
+
+        return message.content && systemMessagePatterns.some(pattern => pattern.test(message.content));
+    }
+
+    /**
+     * Helper function to compare arrays
+     * @param {Array} a - First array
+     * @param {Array} b - Second array
+     * @returns {boolean} Whether the arrays are equal
+     */
+    function arraysEqual(a, b) {
+        if (a === b) return true;
+        if (a == null || b == null) return false;
+        if (a.length !== b.length) return false;
+
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Refresh the chats list without causing visual flicker
+     * This version uses incremental DOM updates to prevent flickering
+     * @param {boolean} force - Whether to force refresh even during transitions
+     */
+    function refreshChatList(force = false) {
+        console.log('Refreshing chat list, force =', force);
+
+        // CRITICAL: If we're in the middle of a chat selection or message sending, skip refresh
+        // unless force is true
+        if (!force && document.body.classList.contains('no-transition')) {
+            console.log('Skipping chat list refresh during transition to prevent flickering');
+            return;
+        }
+
+        // Get the chat tab content
+        const chatsTab = document.querySelector('#chats-tab');
+        if (!chatsTab) return;
+
+        // Get read chats from localStorage before making the request
+        let readChats = [];
+        try {
+            const storedChats = localStorage.getItem('chat_read_chats');
+            if (storedChats && storedChats.trim() !== '') {
+                readChats = JSON.parse(storedChats);
+            } else {
+                readChats = [];
+            }
+            console.log('Read chats from localStorage:', readChats);
+        } catch (e) {
+            console.error('Error reading chat_read_chats from localStorage:', e);
+            // Reset to empty array on error
+            readChats = [];
+            // Try to fix the localStorage value
+            try {
+                localStorage.setItem('chat_read_chats', '[]');
+            } catch (storageError) {
+                console.error('Error fixing chat_read_chats in localStorage:', storageError);
+            }
+        }
+
+        // Get the existing chat list
+        let existingChatList = chatsTab.querySelector('.Chat-list');
+
+        // If no existing chat list, create one
+        if (!existingChatList) {
+            existingChatList = document.createElement('div');
+            existingChatList.className = 'Chat-list smooth-update';
+            chatsTab.appendChild(existingChatList);
+        }
+
+        // Mark the list as updating - this adds a subtle opacity change
+        existingChatList.classList.add('updating');
+
+        // ANTI-FLICKER: Don't add no-transition to the entire body
+        // Only add it to the specific components being updated
+        existingChatList.classList.add('no-transition');
+
+        fetch('/chat/api/chats/')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch chat list: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received chat list data:', data);
+
+                // CRITICAL FIX: NEVER modify the server response to mark chats as read
+                // ALWAYS preserve the unread status from the server
+                console.log('CRITICAL DEBUG: Server response before processing:', JSON.stringify(data));
+
+                // DO NOT modify unread status at all - preserve exactly what the server sends
+                // This ensures unread counts are always displayed correctly
+
+                console.log('CRITICAL DEBUG: Server response after processing (unchanged):', JSON.stringify(data));
+
+                // Log the current chat ID for debugging
+                console.log(`CRITICAL DEBUG: Current chat ID: ${currentChatId}`);
+
+                // Log read chats from localStorage for debugging
+                console.log('CRITICAL DEBUG: Read chats from localStorage:', readChats);
+
+                // Handle empty state
+                if (data.length === 0) {
+                    existingChatList.innerHTML = `
+                        <div class="Chat-empty-state">
+                            <i class="fas fa-comments"></i>
+                            <p>No conversations yet</p>
+                        </div>
+                    `;
+
+                    // Remove updating class and add updated class
+                    existingChatList.classList.remove('updating');
+                    existingChatList.classList.add('updated');
+
+                    // Remove no-transition class after a short delay
+                    setTimeout(() => {
+                        existingChatList.classList.remove('no-transition');
+                        existingChatList.classList.remove('updated');
+                    }, 300);
+
+                    return;
+                }
+
+                // Get existing chat items
+                const existingChatItems = Array.from(existingChatList.querySelectorAll('.Chat-list-item'));
+                const existingChatIds = existingChatItems.map(item => item.getAttribute('data-chat-id'));
+
+                // Track which chats need to be added, updated, or removed
+                const chatIdsToAdd = [];
+                const chatIdsToUpdate = [];
+                const chatIdsToRemove = [];
+
+                // Determine which chats need to be added or updated
+                data.forEach(chat => {
+                    if (existingChatIds.includes(chat.id.toString())) {
+                        chatIdsToUpdate.push(chat.id);
+                    } else {
+                        chatIdsToAdd.push(chat.id);
+                    }
+                });
+
+                // Determine which chats need to be removed
+                existingChatIds.forEach(id => {
+                    if (!data.find(chat => chat.id.toString() === id)) {
+                        chatIdsToRemove.push(id);
+                    }
+                });
+
+                console.log('Chat IDs to add:', chatIdsToAdd);
+                console.log('Chat IDs to update:', chatIdsToUpdate);
+                console.log('Chat IDs to remove:', chatIdsToRemove);
+
+                // Remove chats that no longer exist
+                chatIdsToRemove.forEach(id => {
+                    const itemToRemove = existingChatList.querySelector(`.Chat-list-item[data-chat-id="${id}"]`);
+                    if (itemToRemove) {
+                        // Add a fade-out effect before removing
+                        itemToRemove.style.opacity = '0';
+                        itemToRemove.style.height = '0';
+                        itemToRemove.style.overflow = 'hidden';
+                        itemToRemove.style.transition = 'opacity 0.3s ease, height 0.3s ease';
+
+                        // Remove after transition
+                        setTimeout(() => {
+                            itemToRemove.remove();
+                        }, 300);
+                    }
+                });
+
+                // Update existing chats
+                chatIdsToUpdate.forEach(id => {
+                    const chat = data.find(c => c.id == id);
+                    const existingItem = existingChatList.querySelector(`.Chat-list-item[data-chat-id="${id}"]`);
+
+                    if (existingItem && chat) {
+                        // Update only what has changed to minimize DOM operations
+
+                        // Update unread status
+                        if (chat.unread || chat.unread_count > 0) {
+                            existingItem.classList.add('Chat-unread');
+                            existingItem.setAttribute('data-unread', 'true');
+
+                            // Update or add badge
+                            let badge = existingItem.querySelector('.Chat-unread-badge');
+                            const displayCount = chat.unread_count > 0 ? chat.unread_count : 1;
+
+                            if (badge) {
+                                // Update existing badge
+                                if (badge.textContent !== displayCount.toString()) {
+                                    badge.textContent = displayCount;
+                                    badge.classList.add('Chat-badge-highlight');
+                                    setTimeout(() => {
+                                        badge.classList.remove('Chat-badge-highlight');
+                                    }, 600);
+                                }
+                            } else {
+                                // Add new badge
+                                const listBody = existingItem.querySelector('.Chat-list-body');
+                                if (listBody) {
+                                    badge = document.createElement('span');
+                                    badge.className = 'Chat-unread-badge Chat-badge-highlight';
+                                    badge.textContent = displayCount;
+                                    listBody.appendChild(badge);
+
+                                    setTimeout(() => {
+                                        badge.classList.remove('Chat-badge-highlight');
+                                    }, 600);
+                                }
+                            }
+                        } else {
+                            // Remove unread status if server says it's read
+                            existingItem.classList.remove('Chat-unread');
+                            existingItem.setAttribute('data-unread', 'false');
+
+                            // Remove badge if it exists
+                            const badge = existingItem.querySelector('.Chat-unread-badge');
+                            if (badge) {
+                                badge.style.opacity = '0';
+                                badge.style.transform = 'scale(0)';
+                                badge.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+                                setTimeout(() => {
+                                    badge.remove();
+                                }, 300);
+                            }
+                        }
+
+                        // Update last message and time
+                        const lastMessageEl = existingItem.querySelector('.Chat-last-message');
+                        if (lastMessageEl) {
+                            const newLastMessage = `
+                                ${chat.last_message_is_file ? '<i class="fas fa-paperclip"></i> ' : ''}
+                                ${chat.last_message}
+                            `;
+
+                            if (lastMessageEl.innerHTML.trim() !== newLastMessage.trim()) {
+                                lastMessageEl.innerHTML = newLastMessage;
+                                lastMessageEl.classList.add('updated');
+
+                                setTimeout(() => {
+                                    lastMessageEl.classList.remove('updated');
+                                }, 500);
+                            }
+                        }
+
+                        const timeEl = existingItem.querySelector('.Chat-time');
+                        if (timeEl && timeEl.textContent !== chat.last_message_time) {
+                            timeEl.textContent = chat.last_message_time;
+                        }
+
+                        // Update online status for direct chats
+                        if (chat.type === 'direct') {
+                            const statusIndicator = existingItem.querySelector('.Chat-status-indicator');
+                            if (statusIndicator) {
+                                if (chat.online) {
+                                    statusIndicator.classList.add('Chat-online');
+                                } else {
+                                    statusIndicator.classList.remove('Chat-online');
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Add new chats
+                chatIdsToAdd.forEach(id => {
+                    const chat = data.find(c => c.id == id);
+                    if (chat) {
+                        // Create a new chat item
+                        const chatItem = document.createElement('div');
+                        chatItem.className = 'Chat-list-item smooth-update';
+                        chatItem.setAttribute('data-chat-id', chat.id);
+                        chatItem.setAttribute('data-chat-type', chat.type);
+                        chatItem.style.opacity = '0'; // Start invisible for fade-in
+
+                        // Set active class if this is the current chat
+                        if (chat.id === currentChatId) {
+                            chatItem.classList.add('Chat-active');
+                        }
+
+                        // Set unread status
+                        if (chat.unread || chat.unread_count > 0) {
+                            chatItem.classList.add('Chat-unread');
+                            chatItem.setAttribute('data-unread', 'true');
+                        } else {
+                            chatItem.setAttribute('data-unread', 'false');
+                        }
+
+                        const avatarHtml = chat.type === 'group'
+                            ? `<div class="Chat-group-avatar"><i class="fas fa-users"></i></div>`
+                            : `<img src="${chat.avatar_url || '../images/ryonan-drone.jpg'}" alt="${chat.name}" class="Chat-avatar">
+                               <span class="Chat-status-indicator ${chat.online ? 'Chat-online' : ''}"></span>`;
+
+                        // Create unread badge if needed
+                        let unreadBadge = '';
+                        if (chat.unread || chat.unread_count > 0) {
+                            const displayCount = chat.unread_count > 0 ? chat.unread_count : 1;
+                            unreadBadge = `<span class="Chat-unread-badge">${displayCount}</span>`;
+                        }
+
+                        // Set the HTML content
+                        chatItem.innerHTML = `
+                            <div class="Chat-avatar-container">
+                                ${avatarHtml}
+                            </div>
+                            <div class="Chat-list-content">
+                                <div class="Chat-list-header">
+                                    <h3 class="Chat-contact-name">${chat.name}</h3>
+                                    <span class="Chat-time">${chat.last_message_time}</span>
+                                </div>
+                                <div class="Chat-list-body">
+                                    <p class="Chat-last-message">
+                                        ${chat.last_message_is_file ? '<i class="fas fa-paperclip"></i> ' : ''}
+                                        ${chat.last_message}
+                                    </p>
+                                    ${unreadBadge}
+                                </div>
+                            </div>
+                        `;
+
+                        // Add click event
+                        chatItem.addEventListener('click', function(e) {
+                            e.preventDefault();
+
+                            // Add no-transition class only to this item
+                            this.classList.add('no-transition');
+
+                            // Update active state
+                            document.querySelectorAll('.Chat-list-item').forEach(item => {
+                                item.classList.remove('Chat-active');
+                            });
+                            this.classList.add('Chat-active');
+
+                            const chatId = this.getAttribute('data-chat-id');
+                            const chatType = this.getAttribute('data-chat-type');
+
+                            // Preserve unread status
+                            if (chat.unread || chat.unread_count > 0) {
+                                this.classList.add('Chat-unread');
+                                this.setAttribute('data-unread', 'true');
+
+                                // Ensure badge exists
+                                let badge = this.querySelector('.Chat-unread-badge');
+                                if (!badge) {
+                                    const listBody = this.querySelector('.Chat-list-body');
+                                    if (listBody) {
+                                        const displayCount = chat.unread_count > 0 ? chat.unread_count : 1;
+                                        badge = document.createElement('span');
+                                        badge.className = 'Chat-unread-badge';
+                                        badge.textContent = displayCount;
+                                        listBody.appendChild(badge);
+                                    }
+                                }
+                            }
+
+                            // Load the chat
+                            loadChat(chatId, chatType);
+
+                            // Remove no-transition class after a delay
+                            setTimeout(() => {
+                                this.classList.remove('no-transition');
+                            }, 300);
+                        });
+
+                        // Add to the list
+                        existingChatList.appendChild(chatItem);
+
+                        // Fade in the new item
+                        setTimeout(() => {
+                            chatItem.style.opacity = '1';
+                            chatItem.style.transition = 'opacity 0.3s ease';
+                        }, 50);
+                    }
+                });
+
+                // Sort the chat items by last message time (newest first)
+                const chatItems = Array.from(existingChatList.querySelectorAll('.Chat-list-item'));
+                chatItems.sort((a, b) => {
+                    const aChat = data.find(c => c.id == a.getAttribute('data-chat-id'));
+                    const bChat = data.find(c => c.id == b.getAttribute('data-chat-id'));
+
+                    if (!aChat || !bChat) return 0;
+
+                    // Compare timestamps (assuming they're in a format that can be compared)
+                    const aTime = new Date(aChat.last_message_timestamp || 0);
+                    const bTime = new Date(bChat.last_message_timestamp || 0);
+
+                    return bTime - aTime; // Newest first
+                });
+
+                // Reorder the DOM elements
+                chatItems.forEach(item => {
+                    existingChatList.appendChild(item);
+                });
+
+                // Remove updating class and add updated class
+                existingChatList.classList.remove('updating');
+                existingChatList.classList.add('updated');
+
+                // Remove no-transition class after a short delay
+                setTimeout(() => {
+                    existingChatList.classList.remove('no-transition');
+                    existingChatList.classList.remove('updated');
+                }, 300);
+
+                // If there are chats and no chat is currently selected, select the first one
+                if (data.length > 0 && !currentChatId) {
+                    const firstChat = existingChatList.querySelector('.Chat-list-item[data-chat-id]');
+                    if (firstChat) {
+                        const chatId = firstChat.getAttribute('data-chat-id');
+                        const chatType = firstChat.getAttribute('data-chat-type');
+                        loadChat(chatId, chatType);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing chat list:', error);
+
+                // Remove updating class
+                existingChatList.classList.remove('updating');
+                existingChatList.classList.remove('no-transition');
+
+                // Don't show error message in the chat list to avoid UI clutter
+                // Just log it to console and show a toast notification
+                console.log('Chat list refresh error:', error.message);
+
+                // Only show toast if this is a user-initiated refresh (force=true)
+                // This prevents constant error toasts during automatic refreshes
+                if (force) {
+                    showToast('Failed to refresh chat list. Please try again.', 'error');
+                }
+
+                // Don't modify the existing chat list - keep showing what we have
+                // This prevents the UI from breaking completely on error
+            });
+    }
+
+    /**
+     * Refresh the contacts list
+     */
+    function refreshContactsList() {
+        // CRITICAL: If we're in the middle of a chat selection or message sending, skip refresh
+        if (document.body.classList.contains('no-transition')) {
+            console.log('Skipping contacts list refresh during transition to prevent flickering');
+            return;
+        }
+
+        // Add a class to the entire chat container to prevent flickering
+        const chatContainer = document.querySelector('.Chat-container');
+        if (chatContainer) {
+            chatContainer.classList.add('no-transition');
+        }
+
+        // Add no-transition to the body to prevent page-wide flickering
+        document.body.classList.add('no-transition');
+
+        fetch('/chat/api/contacts/')
+            .then(response => response.json())
+            .then(data => {
+                // Get the contacts tab content
+                const contactsTab = document.querySelector('#contacts-tab');
+                if (!contactsTab) return;
+
+                // ANTI-FLICKER FIX: Create the new list off-screen and swap it in when ready
+                // Create a new contacts list with a special class for preparation
+                const newContactsList = document.createElement('div');
+                newContactsList.className = 'Chat-list Chat-list-preparing no-transition';
+
+                if (data.length === 0) {
+                    newContactsList.innerHTML = `
+                        <div class="Chat-empty-state">
+                            <i class="fas fa-address-book"></i>
+                            <p>No contacts added yet</p>
+                        </div>
+                    `;
+                } else {
+                    // Create a document fragment to hold all contacts
+                    const fragment = document.createDocumentFragment();
+
+                    data.forEach(contact => {
+                        const contactItem = document.createElement('div');
+                        contactItem.className = 'Chat-list-item';
+                        contactItem.setAttribute('data-user-id', contact.id);
+
+                        contactItem.innerHTML = `
+                            <div class="Chat-avatar-container">
+                                <img src="${contact.avatar_url || '../images/profile/avatar.png'}" alt="${contact.name}" class="Chat-avatar">
+                                <span class="Chat-status-indicator ${contact.online ? 'Chat-online' : ''}"></span>
+                            </div>
+                            <div class="Chat-list-content">
+                                <div class="Chat-list-header">
+                                    <h3 class="Chat-contact-name">${contact.name}</h3>
+                                    <div class="Chat-contact-actions">
+                                        <button class="Chat-icon-button Chat-start-chat" title="Start Chat">
+                                            <i class="fas fa-comment"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="Chat-list-body">
+                                    <p class="Chat-contact-title">${contact.title || contact.department || ''}</p>
+                                </div>
+                            </div>
+                        `;
+
+                        fragment.appendChild(contactItem);
+
+                        // Add chat button click event
+                        contactItem.querySelector('.Chat-start-chat').addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const userId = contactItem.getAttribute('data-user-id');
+                            startDirectChat(userId);
+                        });
+                    });
+
+                    // Append all contacts to the new contacts list
+                    newContactsList.appendChild(fragment);
+                }
+
+                // Add the new list to the DOM (still invisible)
+                contactsTab.appendChild(newContactsList);
+
+                // Force a reflow to ensure the browser processes the new list
+                // This is necessary for the swap to work properly
+                newContactsList.offsetHeight;
+
+                // Now remove the old list and make the new one visible
+                const oldContactsList = contactsTab.querySelector('.Chat-list:not(.Chat-list-preparing)');
+                if (oldContactsList) {
+                    oldContactsList.remove();
+                }
+
+                // Make the new list visible by removing the preparing class
+                newContactsList.classList.remove('Chat-list-preparing');
+
+                // Remove the no-transition class after a longer delay to ensure all rendering is complete
+                setTimeout(() => {
+                    newContactsList.classList.remove('no-transition');
+                    if (chatContainer) {
+                        chatContainer.classList.remove('no-transition');
+                    }
+                    // Remove no-transition from the body
+                    document.body.classList.remove('no-transition');
+                    console.log('Removed no-transition classes after contacts list refresh');
+                }, 300);
+            })
+            .catch(error => {
+                console.error('Error refreshing contacts list:', error);
+                // Remove the no-transition class even if there was an error
+                if (chatContainer) {
+                    chatContainer.classList.remove('no-transition');
+                }
+                // Remove no-transition from the body
+                document.body.classList.remove('no-transition');
+                console.log('Removed no-transition classes after contacts list refresh error');
+            });
+    }
+
+    /**
+     * Show a toast notification
+     * @param {string} message - The message to show
+     * @param {string} type - The type of toast (success, error, warning, info)
+     */
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+
+        let iconClass = 'fa-info-circle';
+        if (type === 'success') iconClass = 'fa-check-circle';
+        if (type === 'error') iconClass = 'fa-exclamation-circle';
+        if (type === 'warning') iconClass = 'fa-exclamation-triangle';
+
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas ${iconClass} toast-icon"></i>
+                <span>${message}</span>
+            </div>
+            <button class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        toastContainer.appendChild(toast);
+
+        // Animation
+        toast.style.animation = 'slideInRight 0.3s ease, fadeOut 0.3s ease 2.7s forwards';
+
+        // Close button
+        const closeBtn = toast.querySelector('.close-btn');
+        closeBtn.addEventListener('click', function() {
+            removeToast(toast);
+        });
+
+        // Auto remove after 3 seconds
+        setTimeout(() => {
+            removeToast(toast);
+        }, 3000);
+    }
+
+    /**
+     * Remove a toast notification with animation
+     * @param {HTMLElement} toast - The toast element to remove
+     */
+    function removeToast(toast) {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            toast.remove();
+        }, 300);
+    }
+
+    /**
+     * Get the CSRF token from the cookie or from the meta tag
+     * @returns {string} The CSRF token
+     */
+    function getCsrfToken() {
+        // First try to get from cookie
+        const name = 'csrftoken';
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                const token = decodeURIComponent(cookie.substring(name.length + 1));
+                console.log('CSRF token found in cookie:', token.substring(0, 5) + '...');
+                return token;
+            }
+        }
+
+        // If not found in cookie, try to get from meta tag
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        if (metaTag) {
+            const token = metaTag.getAttribute('content');
+            console.log('CSRF token found in meta tag:', token.substring(0, 5) + '...');
+            return token;
+        }
+
+        console.warn('CSRF token not found!');
+        return '';
+    }
+
+    /**
+     * Escapes special characters in a string to safely use in a RegExp.
+     * @param {string} string - The string to escape.
+     * @returns {string} Escaped string.
+     */
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    /**
+     * Get the appropriate Font Awesome icon class for a file type
+     * @param {string} fileType - The MIME type or file extension of the file
+     * @returns {string} The icon class
+     */
+    function getFileIcon(fileType) {
+        if (!fileType) return 'fas fa-file';
+
+        // Extract extension from filename if it's a filename
+        if (fileType.includes('.') && !fileType.startsWith('.') && !fileType.includes('/')) {
+            const ext = '.' + fileType.split('.').pop().toLowerCase();
+            fileType = ext;
+        }
+
+        // Handle file extensions (starting with dot)
+        if (fileType.startsWith('.')) {
+            const ext = fileType.toLowerCase();
+            if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'].includes(ext)) {
+                return 'fas fa-file-image';
+            } else if (ext === '.pdf') {
+                return 'fas fa-file-pdf';
+            } else if (['.doc', '.docx', '.odt', '.rtf'].includes(ext)) {
+                return 'fas fa-file-word';
+            } else if (['.txt', '.md', '.html', '.css', '.js', '.json', '.xml', '.csv'].includes(ext)) {
+                return 'fas fa-file-alt';
+            } else if (['.zip', '.rar', '.7z', '.tar', '.gz', '.bz2'].includes(ext)) {
+                return 'fas fa-file-archive';
+            } else if (['.xls', '.xlsx', '.ods', '.numbers'].includes(ext)) {
+                return 'fas fa-file-excel';
+            } else if (['.ppt', '.pptx', '.odp', '.key'].includes(ext)) {
+                return 'fas fa-file-powerpoint';
+            } else if (['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a'].includes(ext)) {
+                return 'fas fa-file-audio';
+            } else if (['.mp4', '.avi', '.mov', '.wmv', '.mkv', '.flv', '.webm'].includes(ext)) {
+                return 'fas fa-file-video';
+            } else if (['.psd', '.ai', '.eps', '.indd'].includes(ext)) {
+                return 'fas fa-file-image';
+            } else if (['.exe', '.msi', '.bat', '.sh', '.app'].includes(ext)) {
+                return 'fas fa-file-code';
+            } else {
+                return 'fas fa-file';
+            }
+        }
+
+        // Handle MIME types
+        if (fileType.startsWith('image/')) {
+            return 'fas fa-file-image';
+        } else if (fileType.startsWith('application/pdf')) {
+            return 'fas fa-file-pdf';
+        } else if (fileType.startsWith('application/vnd.ms-excel') ||
+                  fileType.startsWith('application/vnd.openxmlformats-officedocument.spreadsheetml') ||
+                  fileType.includes('sheet')) {
+            return 'fas fa-file-excel';
+        } else if (fileType.startsWith('application/vnd.ms-powerpoint') ||
+                  fileType.startsWith('application/vnd.openxmlformats-officedocument.presentationml') ||
+                  fileType.includes('presentation')) {
+            return 'fas fa-file-powerpoint';
+        } else if (fileType.startsWith('application/msword') ||
+                  fileType.startsWith('application/vnd.openxmlformats-officedocument.wordprocessingml') ||
+                  fileType.includes('document')) {
+            return 'fas fa-file-word';
+        } else if (fileType.startsWith('text/')) {
+            return 'fas fa-file-alt';
+        } else if (fileType.startsWith('application/zip') ||
+                  fileType.startsWith('application/x-rar-compressed') ||
+                  fileType.startsWith('application/x-7z-compressed') ||
+                  fileType.includes('compressed') ||
+                  fileType.includes('archive')) {
+            return 'fas fa-file-archive';
+        } else if (fileType.startsWith('audio/') || fileType.includes('audio')) {
+            return 'fas fa-file-audio';
+        } else if (fileType.startsWith('video/') || fileType.includes('video')) {
+            return 'fas fa-file-video';
+        } else if (fileType.startsWith('application/x-executable') ||
+                  fileType.includes('executable') ||
+                  fileType.includes('application')) {
+            return 'fas fa-file-code';
+        } else {
+            return 'fas fa-file';
+        }
+    }
+
+    /**
+     * Format file size in human-readable format
+     * @param {number} bytes - The file size in bytes
+     * @returns {string} Formatted file size
+     */
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    /**
+     * Check if a message contains only emojis
+     * @param {string} text - The message text to check
+     * @returns {boolean} Whether the message contains only emojis
+     */
+    function isEmojiOnlyMessage(text) {
+        if (!text || text.trim() === '') return false;
+
+        // Remove whitespace
+        const trimmedText = text.trim();
+
+        // Regex to match emoji characters
+        // This regex matches most common emoji including skin tone modifiers and ZWJ sequences
+        const emojiRegex = /^(\p{Emoji}|\p{Emoji_Presentation}|\p{Emoji_Modifier}|\p{Emoji_Modifier_Base}|\p{Emoji_Component}|\s)+$/u;
+
+        return emojiRegex.test(trimmedText);
+    }
+
+    /**
+     * Count the number of emojis in a message
+     * @param {string} text - The message text
+     * @returns {number} The number of emojis
+     */
+    function countEmojis(text) {
+        if (!text) return 0;
+
+        // Simple approach: count emoji-like sequences
+        // This is a simplified approach and may not be 100% accurate for all emoji combinations
+        const emojiRegex = /(\p{Emoji_Presentation}|\p{Emoji}\uFE0F)/gu;
+        const matches = text.match(emojiRegex);
+
+        return matches ? matches.length : 0;
+    }
+
+    // State variables
+    let currentUserId = null;
+    let uploadedFileId = null;
+    let lastTypingNotification = 0;
+    let typingTimeouts = {};
+
+    // Get current user ID from meta tag or API
+    function getCurrentUser() {
+        const userIdMeta = document.querySelector('meta[name="user-id"]');
+        if (userIdMeta) {
+            currentUserId = userIdMeta.getAttribute('content');
+        } else {
+            // Fetch from API if not in meta
+            fetch('/chat/api/user/current/')
+                .then(response => response.json())
+                .then(data => {
+                    currentUserId = data.id;
+                })
+                .catch(error => {
+                    console.error('Error getting current user:', error);
+                });
+        }
+    }
+
+    // Initialize the chat module
+    getCurrentUser();
+    init();
+});/*  */

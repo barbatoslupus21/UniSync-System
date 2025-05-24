@@ -1,0 +1,136 @@
+<!-- DCF Approval Modal Content -->
+<div class="DCF-details-grid">
+    <!-- DCF Header Information -->
+    <div class="DCF-details-header">
+        <div class="DCF-details-id">
+            <h3 id="detail-dcf-number">{{ dcf.dcf_number }}</h3>
+            <span class="DCF-status DCF-status-{{ dcf.status }}">
+                {{ dcf.get_status_display }}
+            </span>
+        </div>
+        <div class="DCF-details-date">
+            Filed on {{ dcf.date_filed|date:"F d, Y" }}
+        </div>
+    </div>
+
+    <!-- DCF Basic Information -->
+    <div class="DCF-details-section">
+        <h4>Document Information</h4>
+        <div class="DCF-details-row">
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Document Code</span>
+                <span class="DCF-details-value">{{ dcf.document_code }}</span>
+            </div>
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Document Title</span>
+                <span class="DCF-details-value">{{ dcf.document_title }}</span>
+            </div>
+        </div>
+        <div class="DCF-details-row">
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Revision Number</span>
+                <span class="DCF-details-value">{{ dcf.revision_number }}</span>
+            </div>
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Nature</span>
+                <span class="DCF-details-value">{{ dcf.get_nature_display }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Requisitioner Information -->
+    <div class="DCF-details-section">
+        <h4>Requisitioner Information</h4>
+        <div class="DCF-details-row">
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Requisitioner</span>
+                <span class="DCF-details-value">{{ dcf.requisitioner.name }}</span>
+            </div>
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Prepared By</span>
+                <span class="DCF-details-value">{{ dcf.prepared_by|default:dcf.requisitioner.name }}</span>
+            </div>
+        </div>
+        <div class="DCF-details-row">
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Effectivity Date</span>
+                <span class="DCF-details-value">{{ dcf.effectivity_date|date:"F d, Y" }}</span>
+            </div>
+            <div class="DCF-details-item">
+                <span class="DCF-details-label">Date Filed</span>
+                <span class="DCF-details-value">{{ dcf.date_filed|date:"F d, Y" }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DCF Details -->
+    <div class="DCF-details-section">
+        <h4>Change Details</h4>
+        <div class="DCF-details-row">
+            <div class="DCF-details-item DCF-full-width">
+                <div class="DCF-details-text">{{ dcf.details|linebreaks }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Timeline -->
+    <div class="DCF-details-section">
+        <h4>Approval Timeline</h4>
+        <div class="DCF-approval-timeline">
+            <!-- Filed Step -->
+            <div class="DCF-timeline-item DCF-timeline-complete">
+                <div class="DCF-timeline-icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div class="DCF-timeline-content">
+                    <h5>Document Filed</h5>
+                    <p>{{ dcf.date_filed|date:"F d, Y" }} by {{ dcf.requisitioner.name }}</p>
+                </div>
+            </div>
+
+            <!-- QSD Supervisor Approval -->
+            <div class="DCF-timeline-item {% if dcf.status == 'on_process' %}DCF-timeline-active{% elif dcf.status == 'approved' %}DCF-timeline-complete{% elif dcf.status == 'rejected' %}DCF-timeline-rejected{% endif %}">
+                <div class="DCF-timeline-icon">
+                    <i class="fas {% if dcf.status == 'on_process' %}fa-clock{% elif dcf.status == 'approved' %}fa-check{% elif dcf.status == 'rejected' %}fa-times{% endif %}"></i>
+                </div>
+                <div class="DCF-timeline-content">
+                    <h5>QSD Supervisor Approval</h5>
+                    {% if dcf.status == 'on_process' %}
+                    <p>Awaiting approval</p>
+                    {% elif dcf.status == 'approved' or dcf.status == 'rejected' %}
+                    {% for approval in approval_timeline %}
+                    <p>{{ approval.date_acted|date:"F d, Y" }} by {{ approval.approver.name }}</p>
+                    {% if approval.remarks %}
+                    <div class="DCF-timeline-remarks">
+                        {{ approval.remarks }}
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden status value for JavaScript -->
+    <input type="hidden" id="dcf-status-value" value="{{ dcf.status }}">
+
+    <!-- Approval Actions -->
+    {% if dcf.status == 'on_process' %}
+    <div class="DCF-details-section">
+        <h4>Approval Actions</h4>
+        <div class="DCF-form-group">
+            <label for="approval-remarks">Remarks (Optional for approval, required for rejection)</label>
+            <textarea id="approval-remarks" class="DCF-textarea" rows="3" placeholder="Enter any comments or feedback..."></textarea>
+        </div>
+        <div class="DCF-approval-actions">
+            <button id="reject-dcf-btn" class="DCF-button DCF-danger-button">
+                <i class="fas fa-times-circle"></i> Reject
+            </button>
+            <button id="approve-dcf-btn" class="DCF-button DCF-approved-button">
+                <i class="fas fa-check-circle"></i> Approve
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>

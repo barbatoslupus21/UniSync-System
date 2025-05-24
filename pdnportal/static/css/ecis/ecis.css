@@ -1,0 +1,1856 @@
+:root {
+    /* Main colors */
+    --ecis-primary: #3366ff;
+    --ecis-primary-light: #e0e8ff;
+    --ecis-primary-dark: #2952cc;
+    --ecis-text: #333333;
+    --ecis-text-light: #666666;
+    --ecis-bg-color: #f8f9fa;
+    --ecis-card-bg: #ffffff;
+    --ecis-border: #e6e6e6;
+
+    /* Category colors */
+    --ecis-cat-OR: #ff5722;
+    --ecis-cat-OR-light: #fbe9e7;
+    --ecis-cat-YE: #ffc107;
+    --ecis-cat-YE-light: #fff8e1;
+    --ecis-cat-PN: #e91e63;
+    --ecis-cat-PN-light: #fce4ec;
+    --ecis-cat-LG: #8bc34a;
+    --ecis-cat-LG-light: #f1f8e9;
+    --ecis-cat-GR: #4caf50;
+    --ecis-cat-GR-light: #e8f5e9;
+    --ecis-cat-BL: #2196f3;
+    --ecis-cat-BL-light: #e3f2fd;
+    --ecis-cat-GY: #9e9e9e;
+    --ecis-cat-GY-light: #eeeeee;
+
+    /* Status colors */
+    --ecis-status-approved: #4caf50;
+    --ecis-status-onhold: #ff9800;
+    --ecis-status-review: #2196f3;
+    --ecis-status-canceled: #f44336;
+
+    /* Shadows and effects */
+    --ecis-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --ecis-shadow-hover: 0 5px 15px rgba(0, 0, 0, 0.15);
+    --ecis-transition: all 0.3s ease;
+}
+
+/* ==========================================================================
+   General Layout & Typography
+   ========================================================================== */
+
+.ecis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    animation: ecis-slide-down 0.5s ease-out;
+}
+
+.ecis-title-section {
+    flex: 1;
+}
+
+.ecis-page-title {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--ecis-text);
+    margin: 0;
+}
+
+.ecis-subtitle {
+    font-size: 1rem;
+    color: var(--ecis-text-light);
+    margin: 5px 0 0;
+}
+
+/* ==========================================================================
+   Cards & Containers
+   ========================================================================== */
+
+.ecis-card {
+    background: var(--ecis-card-bg);
+    border-radius: 12px;
+    box-shadow: var(--ecis-shadow);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: var(--ecis-transition);
+    animation: ecis-fade-in 0.5s ease-out;
+}
+
+/* Removed hover effect */
+
+.ecis-card-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--ecis-border);
+    position: sticky;
+    top: 0;
+    background: var(--ecis-card-bg);
+    z-index: 10;
+}
+
+.ecis-card-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ecis-text);
+}
+
+.ecis-card-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* ==========================================================================
+   Stats Cards
+   ========================================================================== */
+
+.ecis-stats-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.ecis-stats-card {
+    background-color: var(--ecis-card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    box-shadow: var(--ecis-shadow);
+    transition: var(--ecis-transition);
+    position: relative;
+    overflow: hidden;
+    transform: translateY(20px);
+    opacity: 0;
+    animation: ecis-stats-appear 0.6s ease forwards;
+}
+
+/* Removed hover effect */
+
+.ecis-stats-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.ecis-stats-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.ecis-stats-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.ecis-stats-card:nth-child(4) {
+    animation-delay: 0.4s;
+}
+
+.ecis-stats-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    margin-right: 16px;
+    transition: var(--ecis-transition);
+}
+
+/* Removed hover effect */
+
+.ecis-total .ecis-stats-icon {
+    color: var(--ecis-primary);
+    background-color: var(--ecis-primary-light);
+}
+
+.ecis-approved .ecis-stats-icon {
+    color: var(--ecis-status-approved);
+    background-color: var(--ecis-cat-GR-light);
+}
+
+.ecis-pending .ecis-stats-icon {
+    color: var(--ecis-status-onhold);
+    background-color: var(--ecis-cat-YE-light);
+}
+
+.ecis-review .ecis-stats-icon {
+    color: var(--ecis-status-review);
+    background-color: var(--ecis-cat-BL-light);
+}
+
+.ecis-stats-content {
+    flex: 1;
+}
+
+.ecis-stats-content h3 {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--ecis-text-light);
+    margin: 0 0 5px;
+}
+
+.ecis-stats-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--ecis-text);
+    margin: 0 0 5px;
+}
+
+.ecis-stats-content p {
+    font-size: 0.8rem;
+    color: var(--ecis-text-light);
+    margin: 0;
+}
+
+/* ==========================================================================
+   Main Content Grid
+   ========================================================================== */
+
+.ecis-main-content-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+    align-items: stretch; /* Ensure both cards stretch to the same height */
+}
+
+/* Chart Container */
+.ecis-chart-container, .ecis-notifications-card {
+    height: 450px;
+    min-height: 450px;
+    max-height: 450px;
+    overflow: hidden;
+}
+
+.ecis-chart-wrapper {
+    padding: 20px;
+    height: 85% !important;
+    animation: ecis-chart-appear 0.8s ease-out forwards;
+    opacity: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+#ecis-stats-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Chart legend styling */
+.ecis-chart-container .chartjs-legend {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+}
+
+.ecis-chart-container .chartjs-legend li {
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.ecis-chart-container .chartjs-legend li.hidden {
+    opacity: 0.5;
+}
+
+.ecis-chart-container .chartjs-legend li span {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-right: 4px;
+    border-radius: 50%;
+}
+
+
+
+@keyframes ecis-chart-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(30px) scale(0.9);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Category Breakdown */
+.ecis-category-breakdown {
+    min-height: 450px;
+    max-height: 450px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.ecis-category-list {
+    padding: 0;
+}
+
+.ecis-category-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--ecis-border);
+    display: flex;
+    align-items: center;
+    transition: var(--ecis-transition);
+    animation: ecis-fade-in 0.5s ease-out;
+}
+
+.ecis-category-item:last-child {
+    border-bottom: none;
+}
+
+/* Removed hover effect */
+
+.ecis-category-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 12px;
+}
+
+.ecis-cat-OR {
+    background-color: var(--ecis-cat-OR);
+}
+
+.ecis-cat-YE {
+    background-color: var(--ecis-cat-YE);
+}
+
+.ecis-cat-PN {
+    background-color: var(--ecis-cat-PN);
+}
+
+.ecis-cat-LG {
+    background-color: var(--ecis-cat-LG);
+}
+
+.ecis-cat-GR {
+    background-color: var(--ecis-cat-GR);
+}
+
+.ecis-cat-L {
+    background-color: var(--ecis-cat-BL);
+}
+
+.ecis-cat-GY {
+    background-color: var(--ecis-cat-GY);
+}
+
+.ecis-category-details {
+    flex: 1;
+    margin-right: 12px;
+}
+
+.ecis-category-name {
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: block;
+    color: var(--ecis-text);
+}
+
+.ecis-category-code {
+    font-size: 0.8rem;
+    color: var(--ecis-text-light);
+}
+
+.ecis-category-count {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--ecis-text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+}
+
+/* ==========================================================================
+   Category Pills and Status Tags
+   ========================================================================== */
+
+.ecis-category-pill {
+    display: inline-flex;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.ecis-category-label {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid transparent;
+}
+
+.ecis-category-label.ecis-cat-OR {
+    background-color: var(--ecis-cat-OR-light);
+    color: var(--ecis-cat-OR);
+}
+
+.ecis-category-label.ecis-cat-YE {
+    background-color: var(--ecis-cat-YE-light);
+    color: var(--ecis-cat-YE);
+}
+
+.ecis-category-label.ecis-cat-PN {
+    background-color: var(--ecis-cat-PN-light);
+    color: var(--ecis-cat-PN);
+}
+
+.ecis-category-label.ecis-cat-LG {
+    background-color: var(--ecis-cat-LG-light);
+    color: var(--ecis-cat-LG);
+}
+
+.ecis-category-label.ecis-cat-GR {
+    background-color: var(--ecis-cat-GR-light);
+    color: var(--ecis-cat-GR);
+}
+
+.ecis-category-label.ecis-cat-L {
+    background-color: var(--ecis-cat-BL-light);
+    color: var(--ecis-cat-BL);
+}
+
+.ecis-category-label.ecis-cat-GY {
+    background-color: var(--ecis-cat-GY-light);
+    color: var(--ecis-cat-GY);
+}
+
+.ecis-category-pill.ecis-cat-OR {
+    background-color: var(--ecis-cat-OR-light);
+    color: var(--ecis-cat-OR);
+}
+
+.ecis-category-pill.ecis-cat-YE {
+    background-color: var(--ecis-cat-YE-light);
+    color: var(--ecis-cat-YE);
+}
+
+.ecis-category-pill.ecis-cat-PN {
+    background-color: var(--ecis-cat-PN-light);
+    color: var(--ecis-cat-PN);
+}
+
+.ecis-category-pill.ecis-cat-LG {
+    background-color: var(--ecis-cat-LG-light);
+    color: var(--ecis-cat-LG);
+}
+
+.ecis-category-pill.ecis-cat-GR {
+    background-color: var(--ecis-cat-GR-light);
+    color: var(--ecis-cat-GR);
+}
+
+.ecis-category-pill.ecis-cat-L {
+    background-color: var(--ecis-cat-BL-light);
+    color: var(--ecis-cat-BL);
+}
+
+.ecis-category-pill.ecis-cat-GY {
+    background-color: var(--ecis-cat-GY-light);
+    color: var(--ecis-cat-GY);
+}
+
+/* All status pills with consistent design */
+.ecis-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.ecis-status-approved {
+    background-color: var(--ecis-cat-GR-light);
+    color: var(--ecis-status-approved);
+    border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.ecis-status-onhold {
+    background-color: var(--ecis-cat-YE-light);
+    color: var(--ecis-status-onhold);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.ecis-status-canceled {
+    background-color: var(--ecis-cat-OR-light);
+    color: var(--ecis-status-canceled);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.ecis-status-review, .ecis-status-forreview {
+    background-color: var(--ecis-cat-BL-light);
+    color: var(--ecis-status-review);
+    border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.ecis-status-revision, .ecis-status-needsrevision {
+    background-color: #fff3e0;
+    color: #ff9800;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+/* All ECIS Table */
+.ecis-table-container {
+    padding: 0 20px;
+    max-height: 450px;
+    overflow-y: auto;
+}
+
+.ecis-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.ecis-table th {
+    text-align: left;
+    padding: 12px 15px;
+    background-color: var(--ecis-bg-color);
+    color: var(--ecis-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--ecis-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.ecis-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--ecis-border);
+    color: var(--ecis-text);
+    transition: var(--ecis-transition);
+}
+
+.ecis-table tr {
+    transition: var(--ecis-transition);
+}
+
+/* Removed hover effect */
+
+.ecis-table tbody tr {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: ecis-row-appear 0.5s ease forwards;
+}
+
+.ecis-warning-row {
+    background-color: rgba(255, 152, 0, 0.05);
+}
+
+/* Removed hover effect */
+
+@keyframes ecis-row-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.ecis-table tbody tr:nth-child(1) { animation-delay: 0.1s; }
+.ecis-table tbody tr:nth-child(2) { animation-delay: 0.2s; }
+.ecis-table tbody tr:nth-child(3) { animation-delay: 0.3s; }
+.ecis-table tbody tr:nth-child(4) { animation-delay: 0.4s; }
+.ecis-table tbody tr:nth-child(5) { animation-delay: 0.5s; }
+
+/* Pagination */
+.ecis-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--ecis-border);
+}
+
+.ecis-pagination-info {
+    font-size: 0.9rem;
+    color: var(--ecis-text-light);
+}
+
+.ecis-pagination-info span {
+    font-weight: 500;
+    color: var(--ecis-text);
+}
+
+.ecis-pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ecis-page-numbers {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ecis-pagination-page {
+    min-width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--ecis-border);
+    background-color: var(--ecis-card-bg);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--ecis-transition);
+}
+
+/* Removed hover effect */
+
+.ecis-pagination-page.active {
+    background-color: var(--ecis-primary);
+    border-color: var(--ecis-primary);
+    color: white;
+}
+
+.ecis-pagination-ellipsis {
+    margin: 0 5px;
+    color: var(--ecis-text-light);
+}
+
+.ecis-pagination-btn {
+    background-color: var(--ecis-card-bg);
+    border: 1px solid var(--ecis-border);
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.9rem;
+    transition: var(--ecis-transition);
+}
+
+/* Removed hover effect */
+
+.ecis-pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Buttons & Form Elements
+   ========================================================================== */
+.ecis-input, .ecis-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ecis-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--ecis-transition);
+    font-family: 'Poppins', sans-serif;
+}
+
+.ecis-input:focus, .ecis-textarea:focus {
+    border-color: var(--ecis-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.ecis-textarea {
+    resize: vertical;
+}
+
+.ecis-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--ecis-transition);
+    border: none;
+    font-size: 0.9rem;
+}
+
+.ecis-primary-button {
+    background-color: var(--ecis-primary);
+    color: white;
+}
+
+/* Removed hover effect */
+
+.ecis-secondary-button {
+    background-color: var(--ecis-bg-color);
+    color: var(--ecis-text);
+    border: 1px solid var(--ecis-border);
+}
+
+/* Removed hover effect */
+
+.ecis-danger-button {
+    background-color: #f44336;
+    color: white;
+}
+
+/* Removed hover effect */
+
+.ecis-text-button {
+    background: none;
+    color: var(--ecis-text);
+    padding: 5px 10px;
+}
+
+/* Removed hover effect */
+
+.ecis-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--ecis-text-light);
+    cursor: pointer;
+    transition: var(--ecis-transition);
+}
+
+/* Removed hover effect */
+
+.ecis-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--ecis-border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: var(--ecis-transition);
+}
+
+.ecis-search-container:focus-within {
+    border-color: var(--ecis-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.ecis-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    width: 250px;
+    transition: var(--ecis-transition);
+}
+
+.ecis-search-input.has-text {
+    background-color: rgba(51, 102, 255, 0.05);
+}
+
+.ecis-search-button {
+    background: none;
+    border: none;
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ecis-text-light);
+}
+
+/* Removed hover effect */
+
+/* Search highlight */
+.ecis-search-highlight {
+    background-color: rgba(255, 193, 7, 0.3);
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+.ecis-select {
+    border: 1px solid var(--ecis-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    background-color: white;
+    cursor: pointer;
+    transition: var(--ecis-transition);
+}
+
+.ecis-select:focus {
+    border-color: var(--ecis-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.ecis-filter-container {
+    display: flex;
+    align-items: center;
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.ecis-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center; /* Center vertically */
+    justify-content: center; /* Center horizontally */
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 0; /* Remove padding to ensure perfect centering */
+    overflow-y: auto;
+}
+
+.ecis-modal.active {
+    opacity: 1;
+    display: flex !important;
+    align-items: center !important; /* Ensure vertical centering when active */
+    justify-content: center !important; /* Ensure horizontal centering when active */
+}
+
+.ecis-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(0); /* Remove vertical offset for centering */
+    transition: transform 0.3s ease;
+    overflow: hidden;
+    position: relative;
+    margin: auto; /* Center horizontally */
+}
+
+.ecis-modal.active .ecis-modal-content {
+    transform: translateY(0);
+    animation: ecis-modal-center-appear 0.3s ease-out;
+}
+
+/* Specific styles for details modal */
+#ecis-details-modal .ecis-modal-content {
+    width: 95%;
+    max-width: 800px; /* Slightly wider for details */
+}
+
+.ecis-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ecis-border);
+    background-color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.ecis-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ecis-text);
+}
+
+.ecis-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--ecis-transition);
+}
+
+/* Removed hover effect */
+
+.ecis-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    max-height: calc(80vh - 130px); /* Adjusted height for proper scrolling */
+    display: block !important; /* Ensure content is displayed */
+}
+
+.ecis-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--ecis-border);
+    background-color: white;
+    position: sticky;
+    bottom: 0;
+}
+
+/* Loading state */
+.ecis-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.ecis-loading-state i {
+    color: var(--ecis-primary);
+    margin-bottom: 15px;
+}
+
+.ecis-loading-state p {
+    color: var(--ecis-text-light);
+    font-size: 1rem;
+}
+
+/* Error state */
+.ecis-error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.ecis-error-state i {
+    color: var(--ecis-status-rejected);
+    font-size: 3rem;
+    margin-bottom: 15px;
+}
+
+.ecis-error-state p {
+    color: var(--ecis-text);
+    font-size: 1rem;
+}
+
+/* Form Styles */
+#ecis-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: 100%;
+}
+
+.ecis-form-section {
+    margin-bottom: 24px;
+}
+
+.ecis-form-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--ecis-text);
+}
+
+.ecis-form-group {
+    margin-bottom: 16px;
+}
+
+/* Hide inline validation messages */
+.ecis-form-error {
+    display: none !important;
+}
+
+/* Hide browser's native validation popup */
+input:invalid,
+textarea:invalid,
+select:invalid {
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Hide only validation messages */
+.ecis-modal-body div[role="alert"],
+.ecis-modal-body div.validation-message {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
+}
+
+/* Disable browser validation popup */
+::-webkit-validation-bubble-message {
+    display: none;
+}
+
+::-moz-validation-bubble-message {
+    display: none;
+}
+
+::-o-validation-bubble-message {
+    display: none;
+}
+
+::-ms-validation-bubble-message {
+    display: none;
+}
+
+::validation-bubble-message {
+    display: none;
+}
+
+.ecis-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--ecis-text);
+    font-size: 0.9rem;
+}
+
+.ecis-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.ecis-category-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* Hide actual radio buttons and checkboxes */
+.ecis-checkbox-container {
+    position: relative;
+}
+
+.ecis-checkbox-container input[type="checkbox"],
+.ecis-checkbox-container input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.ecis-checkbox-label {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: var(--ecis-transition);
+    background-color: var(--ecis-bg-color);
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+/* Removed hover effect */
+
+/* Selected checkboxes and radio buttons */
+.ecis-checkbox-container input:checked + .ecis-checkbox-label {
+    background-color: var(--ecis-primary-light);
+    color: var(--ecis-primary);
+    border: 1px solid var(--ecis-primary);
+    font-weight: 500;
+}
+
+/* Confirmation Modal */
+.ecis-confirmation-modal .ecis-modal-content {
+    max-width: 450px;
+}
+
+/* Center the ECIS Submission Success modal */
+/* All modals are now centered */
+
+#ecis-confirmation-modal .ecis-modal-content {
+    margin: auto; /* Center horizontally */
+    transform: translateY(0) !important; /* Override any transform */
+    max-height: fit-content; /* Adjust height to content */
+    animation: ecis-modal-center-appear 0.3s ease-out !important; /* Custom animation for centered modal */
+    position: relative; /* Ensure proper positioning */
+    top: 0; /* Reset any top positioning */
+}
+
+/* Custom animation for centered modals */
+@keyframes ecis-modal-center-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.95) !important;
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) !important;
+    }
+}
+
+/* ==========================================================================
+   ECIS Notifications
+   ========================================================================== */
+
+.ecis-notifications-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.ecis-notifications-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 16px;
+    max-height: 370px; /* Allow space for header */
+}
+
+.ecis-notification-section {
+    margin-bottom: 20px;
+}
+
+.ecis-notification-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 16px 0 12px;
+    color: var(--ecis-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ecis-notification-title i {
+    color: var(--ecis-text-light);
+}
+
+.ecis-notification-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ecis-notification-item {
+    background-color: var(--ecis-card-bg);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    border: 1px solid var(--ecis-border);
+}
+
+.ecis-onhold-item {
+    border-left: 4px solid var(--ecis-status-onhold);
+}
+
+.ecis-review-item {
+    border-left: 4px solid var(--ecis-status-review);
+}
+
+.ecis-revision-item {
+    border-left: 4px solid #ff9800;
+}
+
+.ecis-notification-content {
+    flex: 1;
+}
+
+.ecis-notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.ecis-notification-number {
+    font-weight: 600;
+    color: var(--ecis-text);
+}
+
+.ecis-notification-message {
+    font-size: 0.9rem;
+    color: var(--ecis-text);
+    margin: 8px 0;
+    line-height: 1.4;
+}
+
+.ecis-notification-date {
+    font-size: 0.8rem;
+    color: var(--ecis-text-light);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.ecis-view-notification {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+}
+
+.ecis-empty-notifications {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--ecis-text-light);
+    height: 100%;
+}
+
+.ecis-empty-notifications i {
+    font-size: 3rem;
+    color: var(--ecis-status-approved);
+    margin-bottom: 16px;
+}
+
+.ecis-empty-notifications p {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0 0 8px;
+    color: var(--ecis-text);
+}
+
+.ecis-empty-notifications span {
+    font-size: 0.9rem;
+}
+
+/* Replace the old animation with the centered one */
+@keyframes ecis-modal-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.95) !important;
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) !important;
+    }
+}
+
+.ecis-confirmation-container {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.ecis-confirmation-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    color: var(--ecis-status-approved);
+    animation: ecis-icon-pulse 1.5s infinite alternate;
+    display: inline-block;
+}
+
+.ecis-confirmation-icon.ecis-danger {
+    color: var(--ecis-status-canceled);
+}
+
+.ecis-confirmation-message {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    color: var(--ecis-text);
+}
+
+.ecis-confirmation-submessage {
+    color: var(--ecis-text-light);
+    margin-bottom: 20px;
+}
+
+.ecis-ecis-number {
+    margin: 15px 0;
+    padding: 15px;
+    background-color: var(--ecis-primary-light);
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.ecis-ecis-number h3 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 5px;
+    color: var(--ecis-text);
+}
+
+.ecis-ecis-number span {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--ecis-primary);
+}
+
+/* Details Modal Styles */
+.ecis-details-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    padding: 0 10px;
+    width: 100%;
+}
+
+.ecis-details-id {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ecis-details-id h3 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ecis-text);
+}
+
+.ecis-details-date {
+    font-size: 0.9rem;
+    color: var(--ecis-text-light);
+}
+
+.ecis-details-date p {
+    margin: 0 0 5px;
+}
+
+.ecis-details-section {
+    margin-bottom: 24px;
+    padding: 0 10px;
+    display: block !important; /* Ensure content is displayed */
+    width: 100%;
+}
+
+.ecis-details-section h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--ecis-text);
+    border-bottom: 1px solid var(--ecis-border);
+    padding-bottom: 8px;
+}
+
+.ecis-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+.ecis-details-item {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 12px;
+}
+
+.ecis-details-label {
+    font-size: 0.85rem;
+    color: var(--ecis-text-light);
+    margin-bottom: 4px;
+}
+
+.ecis-details-value {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--ecis-text);
+}
+
+.ecis-details-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--ecis-text);
+    white-space: pre-line; /* Preserve line breaks in text */
+}
+
+.ecis-facilitator-remarks {
+    background-color: var(--ecis-bg-color);
+    border-radius: 8px;
+    padding: 15px;
+    font-style: italic;
+    color: var(--ecis-text-light);
+    white-space: pre-line; /* Preserve line breaks */
+    word-wrap: break-word; /* Ensure long words don't overflow */
+    max-width: 100%;
+}
+
+/* Timeline */
+.ecis-approval-timeline {
+    position: relative;
+    margin-left: 8px;
+}
+
+.ecis-approval-timeline::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 10px;
+    width: 2px;
+    background-color: var(--ecis-border);
+}
+
+.ecis-timeline-item {
+    position: relative;
+    padding-left: 40px;
+    padding-bottom: 20px;
+}
+
+.ecis-timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.ecis-timeline-icon {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background-color: var(--ecis-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    color: white;
+    z-index: 2;
+}
+
+.ecis-timeline-item.ecis-timeline-complete .ecis-timeline-icon {
+    background-color: var(--ecis-status-approved);
+}
+
+.ecis-timeline-item.ecis-timeline-active .ecis-timeline-icon {
+    background-color: var(--ecis-status-review);
+    animation: ecis-pulse 1.5s infinite;
+}
+
+.ecis-timeline-item.ecis-timeline-inactive .ecis-timeline-icon {
+    background-color: #e0e0e0;
+    color: #999;
+}
+
+.ecis-timeline-content h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin: 0 0 5px;
+    color: var(--ecis-text);
+}
+
+.ecis-timeline-content p {
+    font-size: 0.85rem;
+    color: var(--ecis-text-light);
+    margin: 0;
+}
+
+/* Facilitator-specific styles */
+.ecis-facilitator-badge {
+    background: var(--ecis-primary);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 12px;
+}
+
+.ecis-remark-field {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.ecis-remark-field textarea {
+    border: 1px solid #e6e6e6;
+}
+
+.ecis-timeline-item.ecis-timeline-pending .ecis-timeline-icon {
+    background-color: var(--ecis-status-onhold);
+    animation: ecis-pulse 1.5s infinite;
+}
+
+.ecis-empty-pending {
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--ecis-text-light);
+}
+
+.ecis-review-list {
+    max-height: 390px;
+    overflow-y: auto;
+    border: 1px solid var(--ecis-border);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Removed hover effect */
+
+.ecis-pending-item {
+    background-color: white;
+    border-radius: 0;
+    padding: 16px;
+    margin-bottom: 0;
+    border: none;
+    border-bottom: 2px solid #e0e0e0;
+    transition: var(--ecis-transition);
+}
+
+.ecis-pending-item:hover {
+    background-color: rgba(51, 102, 255, 0.03);
+}
+
+.ecis-pending-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ecis-pending-id {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--ecis-text);
+    margin-right: 10px;
+}
+
+.ecis-pending-details {
+    margin-bottom: 12px;
+}
+
+.ecis-pending-details p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    color: var(--ecis-text);
+}
+
+.ecis-pending-left {
+    display: flex;
+    align-items: center;
+}
+
+.ecis-pending-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
+.ecis-pending-actions .ecis-button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.ecis-view-details-btn {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #e6e6e6;
+}
+
+.ecis-review-pending-btn {
+    background-color: var(--ecis-primary);
+    color: white;
+}
+
+.ecis-date {
+    font-size: 0.8rem;
+    color: var(--ecis-text-light);
+}
+
+/* ==========================================================================
+   Animations
+   ========================================================================== */
+
+@keyframes ecis-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes ecis-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ecis-stats-appear {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes ecis-modal-appear {
+    from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes ecis-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(33, 150, 243, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(33, 150, 243, 0);
+    }
+}
+
+@keyframes ecis-icon-pulse {
+    from {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+    to {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+@keyframes ecis-button-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(51, 102, 255, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(51, 102, 255, 0);
+    }
+}
+
+.ecis-button-pulse {
+    animation: ecis-button-pulse 0.8s ease-out;
+}
+
+@keyframes ecis-shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-5px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(5px);
+    }
+}
+
+@keyframes ecis-row-highlight {
+    0% {
+        background-color: rgba(51, 102, 255, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* ==========================================================================
+   Responsive Styles
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .ecis-stats-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ecis-main-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ecis-chart-container,
+    .ecis-category-breakdown {
+        min-height: auto;
+        max-height: none;
+    }
+
+    .ecis-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .ecis-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ecis-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ecis-card-actions {
+        width: 100%;
+    }
+
+    .ecis-search-container {
+        width: 100%;
+    }
+
+    .ecis-search-input {
+        width: 100%;
+    }
+
+    .ecis-details-header {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .ecis-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ecis-pagination {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .ecis-pagination-pages {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .ecis-modal-content {
+        width: 95%;
+        max-height: 95vh;
+    }
+
+    .ecis-modal-body {
+        max-height: calc(95vh - 130px);
+        padding: 15px;
+    }
+
+    .ecis-table-container {
+        overflow-x: auto;
+    }
+
+    .ecis-table {
+        min-width: 800px;
+    }
+}
+
+@media (max-width: 480px) {
+    .ecis-stats-container {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .ecis-pagination-pages {
+        flex-wrap: wrap;
+    }
+
+    .ecis-page-numbers {
+        order: 2;
+        margin-top: 10px;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .ecis-modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .ecis-modal-body {
+        max-height: calc(100vh - 120px);
+        padding: 12px;
+    }
+
+    .ecis-modal-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .ecis-modal-footer button {
+        width: 100%;
+    }
+
+    .ecis-details-id {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .ecis-form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Empty table styles */
+.ecis-empty-table {
+    text-align: center;
+    padding: 30px 0;
+    color: var(--ecis-text-light);
+    font-style: italic;
+}
+
+/* No data message styling */
+.ecis-no-data-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 0;
+}
+
+.ecis-no-data-message i {
+    color: var(--ecis-text-light);
+    margin-bottom: 15px;
+    opacity: 0.7;
+}
+
+.ecis-no-data-message p {
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--ecis-text);
+    margin: 0 0 8px;
+    font-style: normal;
+}
+
+.ecis-no-data-message span {
+    font-size: 0.9rem;
+    color: var(--ecis-text-light);
+    font-style: normal;
+}

@@ -1,0 +1,469 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - DCF Filing{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/dcf/dcf-requestor.css' %}">
+<link rel="stylesheet" href="{% static 'css/dcf/dcf-no-results.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title and action button -->
+    <div class="DCF-header">
+        <div class="DCF-title-section">
+            <h1 class="DCF-page-title">Document Change Form</h1>
+            <p class="DCF-subtitle">Create, manage and track document change requests</p>
+        </div>
+        <button id="new-dcf-btn" class="DCF-button DCF-primary-button">
+            <i class="fas fa-plus"></i> File New DCF
+        </button>
+    </div>
+
+    <!-- Stats cards -->
+    <div class="DCF-stats-container">
+        <div class="DCF-stats-card DCF-total">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Total Filed</h3>
+                <h2 class="DCF-stats-number">{{ total_dcfs }}</h2>
+                <p>All time</p>
+            </div>
+        </div>
+
+        <div class="DCF-stats-card DCF-process">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-spinner"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>On Process</h3>
+                <h2 class="DCF-stats-number">{{ on_process_dcfs }}</h2>
+                <p>Awaiting approval</p>
+            </div>
+        </div>
+
+        <div class="DCF-stats-card DCF-approved">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Approved</h3>
+                <h2 class="DCF-stats-number">{{ approved_dcfs }}</h2>
+                <p>Successfully completed</p>
+            </div>
+        </div>
+
+        <div class="DCF-stats-card DCF-rejected">
+            <div class="DCF-stats-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="DCF-stats-content">
+                <h3>Rejected</h3>
+                <h2 class="DCF-stats-number">{{ rejected_dcfs }}</h2>
+                <p>Requires revision</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart and Recent DCFs -->
+    <div class="DCF-main-content-grid">
+        <!-- Chart section -->
+        <div class="DCF-card DCF-chart-container">
+            <div class="DCF-card-header">
+                <h2>DCF Status Distribution</h2>
+                <div class="DCF-card-actions">
+                    <select id="chart-period-selector" class="DCF-select">
+                        <option value="this_week" selected>This Week</option>
+                        <option value="this_month">This Month</option>
+                        <option value="quarterly">Quarterly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="DCF-chart-wrapper">
+                <canvas id="dcf-status-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Recent DCFs section -->
+        <div class="DCF-card DCF-recent-dcfs">
+            <div class="DCF-card-header">
+                <h2>Recent DCF Submissions</h2>
+                <div class="DCF-card-actions">
+                    <button class="DCF-button DCF-text-button DCF-refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="DCF-recent-list">
+                {% if recent_dcfs %}
+                    {% for dcf in recent_dcfs %}
+                    <div class="DCF-recent-item">
+                        <div class="DCF-recent-header">
+                            <span class="DCF-recent-id">{{ dcf.dcf_number }}</span>
+                            <span class="DCF-status DCF-status-{{ dcf.status }}">
+                                {{ dcf.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="DCF-recent-details">
+                            <p class="DCF-document-title">{{ dcf.document_title }}</p>
+                            <p class="DCF-document-code">{{ dcf.document_code }}</p>
+                        </div>
+                        <div class="DCF-recent-footer">
+                            <span class="DCF-date">Filed: {{ dcf.date_filed|date:"M d, Y" }}</span>
+                            <button class="DCF-button DCF-view-details-btn" data-id="{{ dcf.id }}">
+                                View Details
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="DCF-recent-item">
+                        <div class="DCF-recent-details">
+                            <p class="DCF-document-title">No recent DCF submissions</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- All DCFs Table Section -->
+    <div class="DCF-card DCF-all-dcfs">
+        <div class="DCF-card-header">
+            <h2>All Document Change Forms</h2>
+            <div class="DCF-card-actions">
+                <div class="DCF-search-container">
+                    <input type="text" class="DCF-search-input" placeholder="Search by DCF Number, title, document code...">
+                    <button class="DCF-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div class="DCF-filter-container">
+                    <select class="DCF-select DCF-filter-select">
+                        <option value="all">All Statuses</option>
+                        <option value="on_process">On Process</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="DCF-table-container">
+            <table class="DCF-table">
+                <thead>
+                    <tr>
+                        <th>DCF Number</th>
+                        <th>Document Title</th>
+                        <th>Document Code</th>
+                        <th>Nature of Changes</th>
+                        <th>Status</th>
+                        <th>Date Filed</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="dcf-table-body">
+                    {% if all_dcfs %}
+                        {% for dcf in all_dcfs %}
+                        <tr>
+                            <td data-label="DCF Number">{{ dcf.dcf_number }}</td>
+                            <td data-label="Document Title">{{ dcf.document_title }}</td>
+                            <td data-label="Document Code">{{ dcf.document_code }}</td>
+                            <td data-label="Nature">{{ dcf.get_nature_display }}</td>
+                            <td data-label="Status">
+                                <span class="DCF-status DCF-status-{{ dcf.status }}">
+                                    {{ dcf.get_status_display }}
+                                </span>
+                            </td>
+                            <td data-label="Date">{{ dcf.date_filed|date:"M d, Y" }}</td>
+                            <td data-label="Actions">
+                                <div class="DCF-action-buttons">
+                                    <button class="DCF-icon-button" title="View Details" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if dcf.is_editable %}
+                                    <button class="DCF-icon-button DCF-edit-btn" title="Edit DCF" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="DCF-icon-button DCF-delete-btn" title="Delete DCF" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="DCF-empty-table">No document change forms found.</td>
+                        </tr>
+                    {% endif %}
+                    <!-- No results message - inside the table -->
+                    <tr id="no-results-row" style="display: none;">
+                        <td colspan="7" class="DCF-empty-table">
+                            <div class="DCF-no-data-message">
+                                <i class="fas fa-search fa-2x"></i>
+                                <p>No matching DCF requests found</p>
+                                <span>Try adjusting your search criteria</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="DCF-pagination" id="dcf-pagination">
+            <span class="DCF-pagination-info">
+                Showing {{ all_dcfs.start_index }}-{{ all_dcfs.end_index }} of {{ all_dcfs.paginator.count }} entries
+            </span>
+            <div class="DCF-pagination-pages">
+                {% if all_dcfs.has_previous %}
+                <button class="DCF-pagination-btn DCF-pagination-prev" data-page="{{ all_dcfs.previous_page_number }}">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                {% else %}
+                <button class="DCF-pagination-btn DCF-pagination-prev disabled">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                {% endif %}
+
+                <div class="DCF-pagination-numbers">
+                    {% for i in all_dcfs.paginator.page_range %}
+                        {% if all_dcfs.number == i %}
+                            <button class="DCF-pagination-page active">{{ i }}</button>
+                        {% elif i > all_dcfs.number|add:'-3' and i < all_dcfs.number|add:'3' %}
+                            <button class="DCF-pagination-page" data-page="{{ i }}">{{ i }}</button>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                {% if all_dcfs.has_next %}
+                <button class="DCF-pagination-btn DCF-pagination-next" data-page="{{ all_dcfs.next_page_number }}">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+                {% else %}
+                <button class="DCF-pagination-btn DCF-pagination-next disabled">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- New DCF Form Modal -->
+<div class="DCF-modal" id="new-dcf-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>File New Document Change Form</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'create_dcf' %}" id="dcf-form">
+            {% csrf_token %}
+            <div class="DCF-modal-body">
+                <div class="DCF-form-group">
+                    <label for="prepared-by">Prepared By</label>
+                    <input type="text" id="prepared-by" name="prepared_by" class="DCF-input" value="{{ request.user.name }}">
+                    <!-- Hidden input to store the actual requisitioner ID -->
+                    <input type="hidden" name="requisitioner_id" value="{{ request.user.id }}">
+                </div>
+
+                <div class="DCF-form-row">
+                    <div class="DCF-form-group">
+                        <label for="document-code">Document Code</label>
+                        <input type="text" id="document-code" name="document_code" class="DCF-input" required>
+                    </div>
+
+                    <div class="DCF-form-group">
+                        <label for="revision-number">Revision Number</label>
+                        <input type="text" id="revision-number" name="revision_number" class="DCF-input" required>
+                    </div>
+                </div>
+
+                <div class="DCF-form-group">
+                    <label for="document-title">Document Title</label>
+                    <input type="text" id="document-title" name="document_title" class="DCF-input" required>
+                </div>
+
+                <div class="DCF-form-row">
+                    <div class="DCF-form-group">
+                        <label for="nature-of-changes">Nature of Changes</label>
+                        <select id="nature-of-changes" name="nature" class="DCF-select" required>
+                            <option value="" disabled selected>Select nature of changes</option>
+                            <option value="APQP">APQP</option>
+                            <option value="ECC">ECC</option>
+                            <option value="ECIS">ECIS</option>
+                            <option value="ICC">ICC</option>
+                            <option value="Others-PDN">Others-PDN</option>
+                            <option value="Other-QAD">Other-QAD</option>
+                        </select>
+                    </div>
+
+                    <div class="DCF-form-group">
+                        <label for="effectivity-date">Effectivity Date</label>
+                        <input type="date" id="effectivity-date" name="effectivity_date" class="DCF-input" required>
+                    </div>
+                </div>
+
+                <div class="DCF-form-group">
+                    <label for="details-input">Details of Changes</label>
+                    <textarea id="details-input" name="details" rows="4" class="DCF-textarea" required placeholder="Provide detailed description of the changes required..."></textarea>
+                </div>
+            </div>
+
+            <div class="DCF-modal-footer">
+                <button type="button" class="DCF-button DCF-secondary-button" id="cancel-dcf-btn">Cancel</button>
+                <button type="submit" class="DCF-button DCF-primary-button" id="submit-dcf-btn">
+                    Submit DCF
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit DCF Modal -->
+<div class="DCF-modal" id="edit-dcf-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Edit Document Change Form</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="" id="edit-dcf-form">
+            {% csrf_token %}
+            <input type="hidden" id="edit-dcf-id" name="dcf_id">
+            <div class="DCF-modal-body">
+                <!-- Same fields as new DCF form but populated with existing data via JavaScript -->
+                <div class="DCF-form-group">
+                    <label for="edit-prepared-by">Prepared By</label>
+                    <input type="text" id="edit-prepared-by" name="prepared_by" class="DCF-input">
+                    <!-- Hidden input to store the actual requisitioner ID -->
+                    <input type="hidden" id="edit-requisitioner-id" name="requisitioner_id" value="{{ request.user.id }}">
+                </div>
+
+                <div class="DCF-form-row">
+                    <div class="DCF-form-group">
+                        <label for="edit-document-code">Document Code</label>
+                        <input type="text" id="edit-document-code" name="document_code" class="DCF-input" required>
+                    </div>
+
+                    <div class="DCF-form-group">
+                        <label for="edit-revision-number">Revision Number</label>
+                        <input type="text" id="edit-revision-number" name="revision_number" class="DCF-input" required>
+                    </div>
+                </div>
+
+                <div class="DCF-form-group">
+                    <label for="edit-document-title">Document Title</label>
+                    <input type="text" id="edit-document-title" name="document_title" class="DCF-input" required>
+                </div>
+
+                <div class="DCF-form-row">
+                    <div class="DCF-form-group">
+                        <label for="edit-nature-of-changes">Nature of Changes</label>
+                        <select id="edit-nature-of-changes" name="nature" class="DCF-select" required>
+                            <option value="" disabled>Select nature of changes</option>
+                            <option value="APQP">APQP</option>
+                            <option value="ECC">ECC</option>
+                            <option value="ECIS">ECIS</option>
+                            <option value="ICC">ICC</option>
+                            <option value="Others-PDN">Others-PDN</option>
+                            <option value="Other-QAD">Other-QAD</option>
+                        </select>
+                    </div>
+
+                    <div class="DCF-form-group">
+                        <label for="edit-effectivity-date">Effectivity Date</label>
+                        <input type="date" id="edit-effectivity-date" name="effectivity_date" class="DCF-input" required>
+                    </div>
+                </div>
+
+                <div class="DCF-form-group">
+                    <label for="edit-details-input">Details of Changes</label>
+                    <textarea id="edit-details-input" name="details" rows="4" class="DCF-textarea" required></textarea>
+                </div>
+            </div>
+
+            <div class="DCF-modal-footer">
+                <button type="button" class="DCF-button DCF-secondary-button" id="cancel-edit-btn">Cancel</button>
+                <button type="submit" class="DCF-button DCF-primary-button" id="update-dcf-btn">
+                    Update DCF
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- DCF Details Modal -->
+<div class="DCF-modal" id="dcf-details-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Document Change Form Details</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="DCF-modal-body" id="dcf-details-content">
+            <div class="DCF-loading">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading DCF details...</p>
+            </div>
+        </div>
+        <div class="DCF-modal-footer">
+            <button class="DCF-button DCF-secondary-button close-details-modal">Close</button>
+            <!-- Edit button added dynamically if DCF is editable -->
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="DCF-modal DCF-confirmation-modal" id="delete-dcf-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Confirm Deletion</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="DCF-modal-body">
+            <div class="DCF-confirmation-content">
+                <div class="DCF-confirmation-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <p class="DCF-confirmation-message">Are you sure you want to delete <strong id="delete-dcf-number"></strong>?</p>
+                <p class="DCF-confirmation-submessage">This action cannot be undone. The document change form will be permanently deleted from the system.</p>
+            </div>
+        </div>
+        <div class="DCF-modal-footer">
+            <button class="DCF-button DCF-secondary-button" id="cancel-delete-btn">Cancel</button>
+            <form method="POST" id="delete-dcf-form" action="">
+                {% csrf_token %}
+                <button type="submit" class="DCF-button DCF-danger-button" id="confirm-delete-btn">
+                    <i class="fas fa-trash-alt"></i> Delete DCF
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container for notifications -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/dcf/dcf-requestor.js' %}"></script>
+<script src="{% static 'js/dcf/dcf-no-results.js' %}"></script>
+{% endblock %}
+
+
+
+

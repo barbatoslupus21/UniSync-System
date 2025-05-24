@@ -1,5 +1,6 @@
 from django.db import models
 from portalusers.models import Users, UserApprovers
+from settings.models import Line
 
 class GreenControlNumber(models.Model):
     prepared_by = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, related_name='greenJoPreparer')
@@ -40,6 +41,7 @@ class JOLogsheet(models.Model):
     jo_type = models.CharField(max_length=100, null=True)
     jo_tools = models.CharField(max_length=100, null=True)
     jo_color = models.CharField(max_length=100, null=True)
+    line = models.ForeignKey(Line, on_delete=models.SET_NULL, null=True, related_name='joLine')
     details = models.TextField(null=True)
     status = models.CharField(max_length=50, choices=STATUS_CHOICES ,default='Routing')
     action_taken = models.TextField(null=True)

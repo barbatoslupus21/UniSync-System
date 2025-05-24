@@ -1,0 +1,363 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Overtime Management{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/overtime/overtime.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- Header with page title and action button -->
+    <div class="OT-header">
+        <div class="OT-title-section">
+            <h1 class="OT-page-title">Overtime Management</h1>
+            <p class="OT-subtitle">Track, monitor and manage employee overtime requests</p>
+        </div>
+        <!-- Role-based action buttons -->
+        {% if request.user.overtime_requestor %}
+        <div class="OT-header-actions">
+            <button id="create-group-btn" class="OT-button OT-secondary-button">
+                <i class="fas fa-users"></i> Create Group
+            </button>
+            <button id="new-ot-request-btn" class="OT-button OT-primary-button">
+                <i class="fas fa-plus"></i> New OT Request
+            </button>
+        </div>
+        {% elif request.user.overtime_allocator %}
+        <button id="import-shuttle-btn" class="OT-button OT-primary-button">
+            <i class="fas fa-upload"></i> Import Shuttle Data
+        </button>
+        {% elif request.user.overtime_importer %}
+        <button id="import-employees-btn" class="OT-button OT-primary-button">
+            <i class="fas fa-user-plus"></i> Import Employees
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Tab buttons removed -->
+
+    <!-- Stats overview cards -->
+    <div class="OT-stats-container">
+        <div class="OT-stats-card OT-total">
+            <div class="OT-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Total OT Hours</h3>
+                <h2 class="OT-stats-number">{{ total_ot_hours|default:"0" }}</h2>
+                <p>This Month</p>
+            </div>
+        </div>
+
+        <div class="OT-stats-card OT-approved">
+            <div class="OT-stats-icon">
+                <i class="fas fa-user-clock"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Employees on OT</h3>
+                <h2 class="OT-stats-number">{{ employees_on_ot_today|default:"0" }}</h2>
+                <p>Today</p>
+            </div>
+        </div>
+
+        <div class="OT-stats-card OT-pending">
+            <div class="OT-stats-icon">
+                <i class="fas fa-user-slash"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Employees Not on OT</h3>
+                <h2 class="OT-stats-number">{{ employees_not_ot_today|default:"0" }}</h2>
+                <p>Today</p>
+            </div>
+        </div>
+
+        <div class="OT-stats-card OT-approval">
+            <div class="OT-stats-icon">
+                <i class="fas fa-user-times"></i>
+            </div>
+            <div class="OT-stats-content">
+                <h3>Absent Employees</h3>
+                <h2 class="OT-stats-number">{{ absent_employees_today|default:"0" }}</h2>
+                <p>Today</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Role-specific content containers -->
+    <div id="requestor-tab" class="OT-tab-content active">
+        {% include 'overtime/requestor.html' %}
+    </div>
+
+    <div id="supervisor-tab" class="OT-tab-content">
+        {% include 'overtime/supervisor.html' %}
+    </div>
+
+    <div id="shuttle-tab" class="OT-tab-content">
+        {% include 'overtime/shuttle_allocator.html' %}
+    </div>
+
+    <div id="employees-tab" class="OT-tab-content">
+        {% include 'overtime/employee_importer.html' %}
+    </div>
+
+    <div id="facilitator-tab" class="OT-tab-content">
+        {% include 'overtime/facilitator.html' %}
+    </div>
+</main>
+
+<!-- OT Selection Modal -->
+<div class="OT-modal" id="ot-selection-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Select Overtime Type</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-selection-options">
+                <div class="OT-selection-option" data-type="shifting">
+                    <div class="OT-selection-icon OT-type-shifting-light">
+                        <i class="fas fa-calendar-alt"></i>
+                    </div>
+                    <div class="OT-selection-info">
+                        <h3>Shifting OT</h3>
+                        <p>Schedule overtime for shift-based employees</p>
+                    </div>
+                </div>
+
+                <div class="OT-selection-option" data-type="daily">
+                    <div class="OT-selection-icon OT-type-daily-light">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="OT-selection-info">
+                        <h3>Daily OT</h3>
+                        <p>Schedule overtime for specific dates and times</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Shifting OT Filing Modal -->
+<div class="OT-modal" id="shifting-ot-modal">
+    <div class="OT-modal-content OT-large-modal">
+        <div class="OT-modal-header">
+            <h2>Shifting Overtime Filing</h2>
+            <button class="OT-modal-close" id="shifting-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <form id="shifting-ot-form-modal" class="OT-form OT-shifting-form">
+                {% comment %} <div class="OT-form-header">
+                    <h3>Filing Details</h3>
+                </div> {% endcomment %}
+
+                <div class="OT-form-grid OT-form-grid-single-row">
+                    <div class="OT-form-group">
+                        <label for="shifting-group-modal">Employee Group</label>
+                        <div class="OT-select-container">
+                            <select id="shifting-group-modal" class="OT-select" required>
+                                <option value="">Select a group</option>
+                                {% for group in employee_groups %}
+                                    <option value="{{ group.id }}">{{ group.name }}</option>
+                                {% endfor %}
+                                <option value="new-group">+ Create New Group</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="OT-form-group">
+                        <label for="shifting-date-range-modal">Date Range</label>
+                        <div class="OT-date-range">
+                            <input type="date" id="shifting-start-date-modal" class="OT-input" required>
+                            <span class="OT-date-separator">to</span>
+                            <input type="date" id="shifting-end-date-modal" class="OT-input" required>
+                        </div>
+                    </div>
+
+                    <div class="OT-form-group">
+                        <label>Shift Type</label>
+                        <div class="OT-shift-options">
+                            <label class="OT-radio-container">
+                                <input type="radio" name="shift-type-modal" value="AM" checked>
+                                <span class="OT-radio-label">AM Shift</span>
+                            </label>
+                            <label class="OT-radio-container">
+                                <input type="radio" name="shift-type-modal" value="PM">
+                                <span class="OT-radio-label">PM Shift</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- Employee Selection Preview -->
+                <div class="OT-employee-preview">
+                    <div class="OT-preview-header">
+                        <h3>Group Members <span id="shifting-employee-count-modal" class="OT-count-badge">0</span></h3>
+                        <button type="button" class="OT-button OT-text-button" id="shifting-set-status-modal">
+                            <i class="fas fa-sliders-h"></i> Set Status
+                        </button>
+                    </div>
+                    <div id="shifting-employees-container-modal" class="OT-employees-container OT-employees-container-fixed">
+                        <div class="OT-empty-selection">
+                            <i class="fas fa-users"></i>
+                            <p>No employees selected. Please choose a group or create a new one.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="shifting-edit-group-modal">
+                <i class="fas fa-edit"></i> Edit Group
+            </button>
+            <button type="button" class="OT-button OT-primary-button" id="shifting-submit-modal">
+                <i class="fas fa-check"></i> Submit
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Daily OT Filing Modal -->
+<div class="OT-modal" id="daily-ot-modal">
+    <div class="OT-modal-content OT-large-modal">
+        <div class="OT-modal-header">
+            <h2>Daily Overtime Filing</h2>
+            <button class="OT-modal-close" id="daily-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <form id="daily-ot-form-modal" class="OT-form OT-daily-form">
+                <div class="OT-form-grid OT-form-grid-single-row">
+                    <div class="OT-form-group">
+                        <label for="daily-group-modal">Employee Group</label>
+                        <div class="OT-select-container">
+                            <select id="daily-group-modal" class="OT-select" required>
+                                <option value="">Select a group</option>
+                                {% for group in employee_groups %}
+                                    <option value="{{ group.id }}">{{ group.name }}</option>
+                                {% endfor %}
+                                <option value="new-group">+ Create New Group</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="OT-form-group">
+                        <label for="daily-date-modal">Date</label>
+                        <input type="date" id="daily-date-modal" class="OT-input" required>
+                    </div>
+
+                    <div class="OT-form-group">
+                        <label for="daily-schedule-modal">Schedule Type</label>
+                        <div class="OT-select-container">
+                            <select id="daily-schedule-modal" class="OT-select" required>
+                                <option value="WEEKDAY">Weekday</option>
+                                <option value="SATURDAY">Saturday</option>
+                                <option value="SUNDAY">Sunday</option>
+                                <option value="HOLIDAY">Holiday</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="OT-form-grid">
+                    <div class="OT-form-group">
+                        <label for="daily-time-modal">Overtime Hours</label>
+                        <div class="OT-time-inputs">
+                            <div class="OT-time-input">
+                                <label>Start</label>
+                                <input type="time" id="daily-start-time-modal" class="OT-input" required>
+                            </div>
+                            <div class="OT-time-input">
+                                <label>End</label>
+                                <input type="time" id="daily-end-time-modal" class="OT-input" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="OT-form-group">
+                        <label for="daily-reason-modal">Reason for Overtime</label>
+                        <div class="OT-reason-container">
+                            <div class="OT-reason-suggestions">
+                                <select id="daily-reason-suggestions" class="OT-select">
+                                    <option value="">-- Select a common reason --</option>
+                                    <option value="As Per Schedule">As Per Schedule</option>
+                                    <option value="Align with Production">Align with Production</option>
+                                    <option value="As Per Plan">As Per Plan</option>
+                                </select>
+                            </div>
+                            <textarea id="daily-reason-modal" class="OT-textarea" rows="1" placeholder="Provide a reason for the overtime" required></textarea>
+                            <div class="OT-reason-helper">Select from common reasons above or type your own reason</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Employee Selection Preview -->
+                <div class="OT-employee-preview">
+                    <div class="OT-preview-header">
+                        <h3>Group Members <span id="daily-employee-count-modal" class="OT-count-badge">0</span></h3>
+                        <button type="button" class="OT-button OT-text-button" id="daily-set-status-modal">
+                            <i class="fas fa-sliders-h"></i> Set Status
+                        </button>
+                    </div>
+                    <div id="daily-employees-container-modal" class="OT-employees-container OT-employees-container-fixed">
+                        <div class="OT-empty-selection">
+                            <i class="fas fa-users"></i>
+                            <p>No employees selected. Please choose a group or create a new one.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="daily-edit-group-modal">
+                <i class="fas fa-edit"></i> Edit Group
+            </button>
+            <button type="button" class="OT-button OT-primary-button" id="daily-submit-modal">
+                <i class="fas fa-check"></i> Submit
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- OT Review Modal -->
+<div class="OT-modal" id="ot-review-modal">
+    <div class="OT-modal-content OT-large-modal">
+        <div class="OT-modal-header">
+            <h2 id="review-modal-title">Review Overtime Request</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div id="review-content">
+                <!-- Content will be populated dynamically -->
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-review">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="confirm-ot-submission">Confirm Submission</button>
+        </div>
+    </div>
+</div>
+
+<!-- Include Default Status Modal -->
+{% include 'overtime/modals/default_status_modal.html' %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+<script src="{% static 'js/overtime/overtime.js' %}"></script>
+{% endblock %}

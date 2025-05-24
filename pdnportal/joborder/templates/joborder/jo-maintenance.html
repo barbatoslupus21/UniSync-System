@@ -31,7 +31,7 @@
                 <p>This Month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-pending">
             <div class="JO-stats-icon">
                 <i class="fas fa-clock"></i>
@@ -42,7 +42,7 @@
                 <p>Awaiting Processing</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-approval" style="--stats-color: #ff6b6b; --stats-bg: rgba(255, 107, 107, 0.1);">
             <div class="JO-stats-icon">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -53,7 +53,7 @@
                 <p>Past Target Date</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-approved">
             <div class="JO-stats-icon">
                 <i class="fas fa-check-circle"></i>
@@ -118,9 +118,9 @@
                 </div>
             </div>
         </div>
-        
+
         <div class="JO-table-container">
-            <table class="JO-table">
+            <table class="JO-table" id="workload-table">
                 <thead>
                     <tr>
                         <th>JO Number</th>
@@ -132,9 +132,9 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="workload-table-body">
                     {% for job in overallJO %}
-                    <tr>
+                    <tr data-jo-id="{{ job.id }}" data-jo-number="{{ job.jo_number }}" data-jo-category="{{ job.jo_color|lower }}" data-jo-status="{{ job.status|lower }}">
                         <td data-label="JO Number">{{ job.jo_number }}</td>
                         <td data-label="Category"><span class="JO-category-pill JO-category-{{ job.jo_color|lower }}">{{ job.jo_color }}</span></td>
                         <td data-label="Tool">{{ job.jo_tools }}</td>
@@ -181,6 +181,22 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="JO-pagination" id="workload-pagination">
+                <div class="JO-pagination-info">
+                    Showing <span id="pagination-start">1</span> to <span id="pagination-end">10</span> of <span id="pagination-total">0</span> entries
+                </div>
+                <div class="JO-pagination-controls">
+                    <div class="JO-pagination-nav-container">
+                        <button class="JO-pagination-btn" id="pagination-prev" disabled>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <div class="JO-pagination-pages" id="pagination-numbers"></div>
+                        <button class="JO-pagination-btn" id="pagination-next">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -196,9 +212,9 @@
             </button>
         </div>
         <div class="JO-modal-body" id="jo-details-content">
-            <div class="JO-loading text-center p-5">
-                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                <p>Loading job order details...</p>
+            <div class="JO-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
+                <p style="font-size: 16px; color: #666;">Loading job order details...</p>
             </div>
         </div>
         <div class="JO-modal-footer">
@@ -221,7 +237,7 @@
             <form id="target-date-form" method="POST" action="{% url "set_target_date" %}">
                 {% csrf_token %}
                 <input type="hidden" name="job_id" id="hidden-target-job-id" value="">
-                
+
                 <div class="JO-details-header">
                     <div class="JO-details-id">
                         <h3 id="target-jo-number"></h3>
@@ -234,13 +250,13 @@
                         <span class="JO-details-value" id="target-submission-date"></span>
                     </div>
                 </div>
-        
+
                 <div class="JO-form-group">
                     <label for="target-date-input">Target Completion Date</label>
                     <input type="date" id="target-date-input" name="target_date" class="JO-input" required>
                     <small class="JO-date-guidance"></small>
                 </div>
-        
+
                 <div class="JO-form-group" id="delay-reason-container" style="display: none;">
                     <label for="delay-reason-input">Reason for Extended Timeline</label>
                     <textarea id="delay-reason-input" name="target_date_reason" rows="3" class="JO-textarea" placeholder="Please explain why this job order requires an extended timeline..."></textarea>
@@ -282,7 +298,7 @@
                     </div>
                 </div>
             </div>
-    
+
             <form id="complete-job-form" method="POST" action="/joborder/complete-request/">
                 {% csrf_token %}
                 <input type="hidden" name="job_id" id="hidden-job-id" value="">
@@ -291,7 +307,7 @@
                     <label for="action-taken-input">Action Taken</label>
                     <textarea id="action-taken-input" name="action_taken" rows="4" class="JO-textarea" placeholder="Describe the actions taken to complete this job order..." required></textarea>
                 </div>
-                
+
                 <div class="JO-form-group">
                     <label for="completion-remarks">Suggestions (Optional)</label>
                     <textarea id="completion-remarks" name="completion_remarks" rows="3" class="JO-textarea" placeholder="Any additional information or remarks..."></textarea>

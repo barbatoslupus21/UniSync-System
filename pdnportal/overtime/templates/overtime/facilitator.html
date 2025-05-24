@@ -1,0 +1,385 @@
+<!-- Facilitator Tab Content -->
+<div class="OT-facilitator-container">
+    <!-- Export Options Card -->
+    <div class="OT-card OT-export-options">
+        <div class="OT-card-header">
+            <h2>Export Data</h2>
+        </div>
+        
+        <div class="OT-export-types">
+            <div class="OT-export-option" id="shifting-export">
+                <div class="OT-export-icon">
+                    <i class="fas fa-calendar-alt"></i>
+                </div>
+                <div class="OT-export-info">
+                    <h3>Shifting OT Export</h3>
+                    <p>Export shifting overtime data with employee details and shuttle information.</p>
+                </div>
+                <button class="OT-button OT-primary-button">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+            </div>
+            
+            <div class="OT-export-option" id="daily-export">
+                <div class="OT-export-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="OT-export-info">
+                    <h3>Daily OT Export</h3>
+                    <p>Export daily overtime records with schedule and status information.</p>
+                </div>
+                <button class="OT-button OT-primary-button">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+            </div>
+            
+            <div class="OT-export-option" id="masterlist-export">
+                <div class="OT-export-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="OT-export-info">
+                    <h3>Employee Masterlist</h3>
+                    <p>Export complete employee list with shuttle allocation status.</p>
+                </div>
+                <button class="OT-button OT-primary-button">
+                    <i class="fas fa-file-export"></i> Export
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Password Management Card -->
+    <div class="OT-card OT-password-management">
+        <div class="OT-card-header">
+            <h2>Late Filing Password Management</h2>
+            <div class="OT-card-actions">
+                <button class="OT-button OT-secondary-button" id="reset-passwords">
+                    <i class="fas fa-sync-alt"></i> Reset All Passwords
+                </button>
+            </div>
+        </div>
+        
+        <div class="OT-password-grid">
+            <div class="OT-password-item">
+                <div class="OT-password-header">
+                    <h3>Shifting OT Password</h3>
+                    <span class="OT-password-condition">After Thursday</span>
+                </div>
+                <div class="OT-password-content">
+                    <div class="OT-password-display">
+                        <input type="password" id="shifting-password" class="OT-input" value="{{ shifting_password }}" readonly>
+                        <button class="OT-button OT-icon-button OT-toggle-password" title="Show/Hide Password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <button class="OT-button OT-text-button OT-edit-password" data-type="shifting">
+                        <i class="fas fa-edit"></i> Change Password
+                    </button>
+                </div>
+            </div>
+            
+            <div class="OT-password-item">
+                <div class="OT-password-header">
+                    <h3>Daily OT Password</h3>
+                    <span class="OT-password-condition">After 10:00 AM</span>
+                </div>
+                <div class="OT-password-content">
+                    <div class="OT-password-display">
+                        <input type="password" id="daily-password" class="OT-input" value="{{ daily_password }}" readonly>
+                        <button class="OT-button OT-icon-button OT-toggle-password" title="Show/Hide Password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <button class="OT-button OT-text-button OT-edit-password" data-type="daily">
+                        <i class="fas fa-edit"></i> Change Password
+                    </button>
+                </div>
+            </div>
+            
+            <div class="OT-password-item">
+                <div class="OT-password-header">
+                    <h3>Weekend/Holiday Password</h3>
+                    <span class="OT-password-condition">After Friday</span>
+                </div>
+                <div class="OT-password-content">
+                    <div class="OT-password-display">
+                        <input type="password" id="weekend-password" class="OT-input" value="{{ weekend_password }}" readonly>
+                        <button class="OT-button OT-icon-button OT-toggle-password" title="Show/Hide Password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <button class="OT-button OT-text-button OT-edit-password" data-type="weekend">
+                        <i class="fas fa-edit"></i> Change Password
+                    </button>
+                </div>
+            </div>
+            
+            <div class="OT-password-item">
+                <div class="OT-password-header">
+                    <h3>Holiday Filing Password</h3>
+                    <span class="OT-password-condition">Filed 1 day late</span>
+                </div>
+                <div class="OT-password-content">
+                    <div class="OT-password-display">
+                        <input type="password" id="holiday-password" class="OT-input" value="{{ holiday_password }}" readonly>
+                        <button class="OT-button OT-icon-button OT-toggle-password" title="Show/Hide Password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <button class="OT-button OT-text-button OT-edit-password" data-type="holiday">
+                        <i class="fas fa-edit"></i> Change Password
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Activity Card -->
+    <div class="OT-card OT-activity-log">
+        <div class="OT-card-header">
+            <h2>System Activity</h2>
+            <div class="OT-card-actions">
+                <button class="OT-button OT-text-button OT-refresh-btn">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <div class="OT-filter-container">
+                    <select class="OT-select OT-filter-select" id="activity-filter">
+                        <option value="all">All Activities</option>
+                        <option value="export">Exports</option>
+                        <option value="password">Password Changes</option>
+                        <option value="login">Login/Logout</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="OT-activity-list">
+            {% for activity in activities %}
+            <div class="OT-activity-item" data-type="{{ activity.type }}">
+                <div class="OT-activity-icon OT-activity-{{ activity.type }}">
+                    {% if activity.type == 'export' %}
+                    <i class="fas fa-file-export"></i>
+                    {% elif activity.type == 'password' %}
+                    <i class="fas fa-key"></i>
+                    {% elif activity.type == 'login' %}
+                    <i class="fas fa-sign-in-alt"></i>
+                    {% else %}
+                    <i class="fas fa-cog"></i>
+                    {% endif %}
+                </div>
+                <div class="OT-activity-details">
+                    <p class="OT-activity-description">{{ activity.description }}</p>
+                    <div class="OT-activity-meta">
+                        <span class="OT-activity-user">{{ activity.user }}</span>
+                        <span class="OT-activity-time">{{ activity.timestamp|date:"M d, Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="OT-empty-activity">
+                <i class="fas fa-history"></i>
+                <p>No activity records found.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Export Configuration Modal -->
+<div class="OT-modal" id="export-config-modal">
+    <div class="OT-modal-content">
+        <div class="OT-modal-header">
+            <h2 id="export-config-title">Configure Export</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <!-- Shifting Export Configuration -->
+            <div id="shifting-export-config" class="OT-export-config">
+                <div class="OT-form-group">
+                    <label for="shifting-start-date-export">Start Date</label>
+                    <input type="date" id="shifting-start-date-export" class="OT-input" required>
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="shifting-end-date-export">End Date</label>
+                    <input type="date" id="shifting-end-date-export" class="OT-input" required>
+                </div>
+                
+                <div class="OT-checkbox-container">
+                    <label class="OT-checkbox-label">
+                        <input type="checkbox" id="highlight-empty-shuttle" checked>
+                        <span class="OT-checkbox-text">Highlight empty shuttle service</span>
+                    </label>
+                </div>
+                
+                <div class="OT-export-preview">
+                    <h4>Export will include:</h4>
+                    <ul class="OT-export-details">
+                        <li><i class="fas fa-check"></i> ID Number</li>
+                        <li><i class="fas fa-check"></i> Employee Name</li>
+                        <li><i class="fas fa-check"></i> Department</li>
+                        <li><i class="fas fa-check"></i> Line</li>
+                        <li><i class="fas fa-check"></i> Time</li>
+                        <li><i class="fas fa-check"></i> Status</li>
+                        <li><i class="fas fa-check"></i> Shift</li>
+                        <li><i class="fas fa-check"></i> Shuttle Service</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Daily Export Configuration -->
+            <div id="daily-export-config" class="OT-export-config" style="display: none;">
+                <div class="OT-form-group">
+                    <label for="schedule-type">Schedule Type</label>
+                    <select id="schedule-type" class="OT-select" required>
+                        <option value="WEEKDAY">Weekday</option>
+                        <option value="SATURDAY">Saturday</option>
+                        <option value="SUNDAY">Sunday</option>
+                        <option value="HOLIDAY">Holiday</option>
+                    </select>
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="daily-export-status">Status to Export</label>
+                    <select id="daily-export-status" class="OT-select" required>
+                        <option value="NOT-OT">Not OT (for Weekday/Daily)</option>
+                        <option value="OT">OT (for Sunday/Holiday/Saturday)</option>
+                    </select>
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="daily-date-range">Date Range</label>
+                    <div class="OT-date-range">
+                        <input type="date" id="daily-start-date-export" class="OT-input" required>
+                        <span class="OT-date-separator">to</span>
+                        <input type="date" id="daily-end-date-export" class="OT-input" required>
+                    </div>
+                </div>
+                
+                <div class="OT-export-preview">
+                    <h4>Export will include:</h4>
+                    <ul class="OT-export-details">
+                        <li><i class="fas fa-check"></i> ID Number</li>
+                        <li><i class="fas fa-check"></i> Employee Name</li>
+                        <li><i class="fas fa-check"></i> Department</li>
+                        <li><i class="fas fa-check"></i> Line</li>
+                        <li><i class="fas fa-check"></i> Time</li>
+                        <li><i class="fas fa-check"></i> Status</li>
+                        <li><i class="fas fa-check"></i> Shuttle Service</li>
+                        <li><i class="fas fa-check"></i> Reason</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Masterlist Export Configuration -->
+            <div id="masterlist-export-config" class="OT-export-config" style="display: none;">
+                <div class="OT-checkbox-container">
+                    <label class="OT-checkbox-label">
+                        <input type="checkbox" id="highlight-missing-shuttle" checked>
+                        <span class="OT-checkbox-text">Highlight missing shuttle service</span>
+                    </label>
+                </div>
+                
+                <div class="OT-checkbox-container">
+                    <label class="OT-checkbox-label">
+                        <input type="checkbox" id="include-inactive" checked>
+                        <span class="OT-checkbox-text">Include inactive employees</span>
+                    </label>
+                </div>
+                
+                <div class="OT-form-group">
+                    <label for="department-filter-export">Filter by Department</label>
+                    <select id="department-filter-export" class="OT-select">
+                        <option value="all">All Departments</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept }}">{{ dept }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="OT-export-preview">
+                    <h4>Export will include:</h4>
+                    <ul class="OT-export-details">
+                        <li><i class="fas fa-check"></i> ID Number</li>
+                        <li><i class="fas fa-check"></i> Employee Name</li>
+                        <li><i class="fas fa-check"></i> Department</li>
+                        <li><i class="fas fa-check"></i> Line</li>
+                        <li><i class="fas fa-check"></i> Shuttle Service</li>
+                        <li><i class="fas fa-check"></i> Status</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-export">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="confirm-export">Export</button>
+        </div>
+    </div>
+</div>
+
+<!-- Change Password Modal -->
+<div class="OT-modal" id="change-password-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Change Password</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-password-type-info">
+                <h3 id="password-type-label">Shifting OT Password</h3>
+                <p id="password-type-description">Required for overtime filing after Thursday.</p>
+            </div>
+            
+            <div class="OT-form-group">
+                <label for="new-password">New Password</label>
+                <input type="password" id="new-password" class="OT-input" placeholder="Enter new password" required>
+            </div>
+            
+            <div class="OT-form-group">
+                <label for="confirm-new-password">Confirm Password</label>
+                <input type="password" id="confirm-new-password" class="OT-input" placeholder="Confirm new password" required>
+            </div>
+            
+            <div class="OT-password-requirements">
+                <p><i class="fas fa-info-circle"></i> Password requirements:</p>
+                <ul>
+                    <li>Minimum 6 characters</li>
+                    <li>At least one letter and one number</li>
+                </ul>
+            </div>
+            
+            <input type="hidden" id="password-type" value="">
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-password-change">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="save-password">Save Password</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Confirmation Modal -->
+<div class="OT-modal OT-confirmation-modal" id="reset-confirm-modal">
+    <div class="OT-modal-content OT-small-modal">
+        <div class="OT-modal-header">
+            <h2>Confirm Reset</h2>
+            <button class="OT-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="OT-modal-body">
+            <div class="OT-confirmation-content">
+                <i class="fas fa-exclamation-triangle OT-confirmation-icon OT-icon-warning"></i>
+                <p>Are you sure you want to reset all passwords to their default values?</p>
+                <p class="OT-warning-text">This action will reset all late filing passwords. You should notify all users of the new passwords.</p>
+            </div>
+        </div>
+        <div class="OT-modal-footer">
+            <button type="button" class="OT-button OT-secondary-button" id="cancel-reset">Cancel</button>
+            <button type="button" class="OT-button OT-primary-button" id="confirm-reset">Reset All Passwords</button>
+        </div>
+    </div>
+</div>

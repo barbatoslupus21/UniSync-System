@@ -1,0 +1,27 @@
+/* Common styles for Job Order items */
+
+/* Completed item styles in pending list */
+.JO-pending-item .JO-status-completed {
+    background-color: rgba(72, 199, 116, 0.15);
+}
+
+.JO-pending-item.has-completed-status {
+    background-color: rgba(72, 199, 116, 0.15);
+    position: relative;
+    animation: JO-complete-pulse 2s infinite alternate;
+}
+
+@keyframes JO-complete-pulse {
+    0% {
+        background-color: rgba(72, 199, 116, 0.15);
+    }
+    100% {
+        background-color: rgba(72, 199, 116, 0.3);
+    }
+}
+
+/* Timeline status colors */
+.JO-timeline-item.JO-timeline-complete {
+    background-color: rgba(76, 175, 80, 0.1);
+    animation: pulse-complete 2s infinite ease-in-out;
+}

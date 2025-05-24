@@ -1,0 +1,409 @@
+/* DCF Approver-specific Styles */
+
+/* Empty state styles */
+.DCF-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    height: 200px;
+}
+
+.DCF-empty-icon {
+    font-size: 3rem;
+    color: #e0e0e0;
+    margin-bottom: 15px;
+    background-color: #f5f5f5;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.DCF-empty-text {
+    font-size: 1rem;
+    color: #9e9e9e;
+    margin: 0;
+}
+
+/* Tooltip styles */
+.DCF-tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.DCF-tooltip .DCF-tooltip-text {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 100;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+}
+
+.DCF-tooltip .DCF-tooltip-text::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #333 transparent transparent transparent;
+}
+
+.DCF-tooltip:hover .DCF-tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Warning icon styles */
+.DCF-warning-icon {
+    color: #ff9800;
+    margin-left: 8px;
+    animation: DCF-pulse 1.5s infinite;
+}
+
+/* Special positioning for warning tooltip */
+.DCF-activity-text .DCF-tooltip {
+    position: relative;
+}
+
+.DCF-activity-text .DCF-tooltip .DCF-tooltip-text {
+    top: -30px;
+    left: 0;
+    bottom: auto;
+    transform: none;
+}
+
+@keyframes DCF-pulse {
+    0% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.5;
+    }
+}
+
+/* Urgent DCF row style */
+.DCF-urgent-row {
+    background-color: rgba(255, 200, 200, 0.3) !important;
+}
+
+/* ==========================================================================
+   Activity Feed
+   ========================================================================== */
+
+.DCF-recent-activity {
+    min-height: 400px;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.DCF-activity-list {
+    padding: 0;
+}
+
+.DCF-activity-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--dcf-border);
+    transition: var(--dcf-transition);
+    animation: DCF-fade-in 0.5s ease-out;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.DCF-activity-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.DCF-activity-item:hover {
+    background-color: var(--dcf-bg-color);
+    transform: translateX(5px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+}
+
+.DCF-activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    margin-right: 16px;
+    flex-shrink: 0;
+    color: white;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.DCF-activity-item:hover .DCF-activity-icon {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.DCF-icon-new {
+    background-color: #3366ff;
+}
+
+.DCF-icon-pending {
+    background-color: #FFC107;
+}
+
+.DCF-icon-approved {
+    background-color: #4caf50;
+}
+
+.DCF-icon-rejected {
+    background-color: #f44336;
+}
+
+.DCF-icon-edit {
+    background-color: #ff9800;
+}
+
+.DCF-activity-content {
+    flex: 1;
+}
+
+.DCF-activity-text {
+    margin: 0 0 5px;
+    font-size: 0.9rem;
+    color: var(--dcf-text);
+    line-height: 1.4;
+}
+
+.DCF-activity-details {
+    margin: 0 0 5px;
+    font-size: 0.85rem;
+    color: var(--dcf-text);
+    line-height: 1.4;
+}
+
+.DCF-activity-doc-code {
+    font-weight: 500;
+}
+
+.DCF-activity-doc-title {
+    color: var(--dcf-text);
+    font-style: italic;
+}
+
+.DCF-activity-effectivity {
+    margin: 0 0 5px;
+    font-size: 0.85rem;
+    color: var(--dcf-text-light);
+    line-height: 1.4;
+}
+
+.DCF-activity-effectivity i {
+    margin-right: 4px;
+    color: #ff9800;
+}
+
+.DCF-effectivity-date {
+    font-weight: 500;
+}
+
+.DCF-activity-dcf {
+    font-weight: 500;
+    color: var(--dcf-primary);
+    cursor: pointer;
+    transition: var(--dcf-transition);
+}
+
+.DCF-activity-dcf:hover {
+    text-decoration: underline;
+}
+
+.DCF-activity-time {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--dcf-text-light);
+}
+
+/* Approval Table and Buttons */
+.DCF-view-approval-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.DCF-view-approval-btn:hover {
+    background-color: var(--dcf-primary-light);
+    color: var(--dcf-primary);
+    animation: DCF-pulse-scale 1s infinite alternate;
+}
+
+@keyframes DCF-pulse-scale {
+    from {
+        transform: scale(1);
+    }
+    to {
+        transform: scale(1.15);
+    }
+}
+
+.DCF-view-approval-btn:after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(51, 102, 255, 0.5);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%);
+    transform-origin: 50% 50%;
+}
+
+.DCF-view-approval-btn:focus:not(:active)::after {
+    animation: DCF-ripple 1s ease-out;
+}
+
+@keyframes DCF-ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 0.5;
+    }
+    20% {
+        transform: scale(25, 25);
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40, 40);
+    }
+}
+
+/* DCF Approval Modal */
+.DCF-approval-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 15px;
+}
+
+.DCF-approved-button {
+    background-color: #4caf50;
+    color: white;
+    flex: 1;
+}
+
+.DCF-approved-button:hover {
+    background-color: #3d9140;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+/* Confirmation Modals */
+.DCF-confirmation-icon.DCF-approved-icon {
+    color: #4caf50;
+}
+
+.DCF-confirmation-icon.DCF-rejected-icon {
+    color: #f44336;
+}
+
+/* Animation for timeline */
+.DCF-timeline-item.DCF-timeline-active .DCF-timeline-icon {
+    animation: DCF-pulse-scale 1.5s infinite alternate;
+}
+
+/* Enhanced hover effects for the approver actions */
+.DCF-table tbody tr:hover {
+    background-color: var(--dcf-bg-color);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Animation for approval buttons */
+#approve-dcf-btn, #confirm-approve-btn {
+    transition: all 0.3s ease;
+}
+
+#approve-dcf-btn:hover, #confirm-approve-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(76, 175, 80, 0.4);
+}
+
+#reject-dcf-btn, #confirm-reject-btn {
+    transition: all 0.3s ease;
+}
+
+#reject-dcf-btn:hover, #confirm-reject-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(244, 67, 54, 0.4);
+}
+
+/* Approval effect animations */
+.DCF-approve-animation, .DCF-reject-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: DCF-pop-in 0.5s ease-out forwards;
+}
+
+@keyframes DCF-pop-in {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+
+
+/* Responsive Design for Approver Page */
+@media (max-width: 768px) {
+    .DCF-approval-actions {
+        flex-direction: column;
+    }
+
+    .DCF-activity-item {
+        padding: 12px 15px;
+    }
+
+    .DCF-activity-icon {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+        margin-right: 12px;
+    }
+
+    .DCF-table td[data-label="Actions"] .DCF-action-buttons {
+        display: flex;
+        justify-content: center;
+    }
+}

@@ -6,6 +6,99 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
 <link rel="stylesheet" href="{% static 'css/jo-facilitator.css' %}">
+<style>
+    /* Custom styles for full-height table */
+    .JO-all-requests {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 600px;
+    }
+
+    .JO-all-requests .JO-card-header {
+        flex-shrink: 0;
+    }
+
+    .JO-all-requests .JO-table-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        max-height: none;
+    }
+
+    .JO-all-requests .JO-table-container .JO-table {
+        flex: 1;
+    }
+
+    .JO-all-requests .JO-table-container {
+        overflow-y: auto;
+    }
+
+    /* Ensure the main content grid items have equal height */
+    .JO-main-content-grid {
+        align-items: stretch;
+    }
+
+    /* Make the assignment section match the height of the all requests section */
+    .JO-assignment-section {
+        height: 100%;
+        min-height: 600px;
+    }
+
+    /* Style for empty table state */
+    .empty-table-row td {
+        padding: 0;
+        height: 300px;
+    }
+
+    .JO-no-results {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 0;
+        height: 100%;
+    }
+
+    .JO-no-results-icon {
+        font-size: 3rem;
+        color: #e0e0e0;
+        margin-bottom: 20px;
+    }
+
+    .JO-no-results-message {
+        font-size: 1.2rem;
+        font-weight: 500;
+        color: #666;
+        margin: 0 0 5px 0;
+    }
+
+    /* Ensure the table fills the container properly */
+    .full-height-table {
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .full-height-table .JO-table {
+        margin: 0;
+        border-spacing: 0;
+    }
+
+    .full-height-table .JO-table th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 1024px) {
+        .JO-all-requests, .JO-assignment-section {
+            min-height: 500px;
+        }
+    }
+</style>
 {% endblock %}
 
 
@@ -34,7 +127,7 @@
                 <p>this month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-assigned">
             <div class="JO-stats-icon">
                 <i class="fas fa-user-check"></i>
@@ -45,7 +138,7 @@
                 <p>this month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-pending">
             <div class="JO-stats-icon">
                 <i class="fas fa-clock"></i>
@@ -56,7 +149,7 @@
                 <p>this month</p>
             </div>
         </div>
-        
+
         <div class="JO-stats-card JO-overdue">
             <div class="JO-stats-icon">
                 <i class="fas fa-exclamation-circle"></i>
@@ -122,8 +215,8 @@
                     </button>
                 </div>
             </div>
-            
-            <div class="JO-table-container">
+
+            <div class="JO-table-container full-height-table">
                 <table class="JO-table">
                     <thead>
                         <tr>
@@ -131,6 +224,7 @@
                             <th>Category</th>
                             <th>Tool</th>
                             <th>Nature</th>
+                            <th>Requestor</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
@@ -142,6 +236,7 @@
                             <td><span class="JO-category-pill JO-category-{{ jo.jo_color|lower }}">{{ jo.jo_color }}</span></td>
                             <td>{{ jo.jo_tools }}</td>
                             <td>{{ jo.jo_type }}</td>
+                            <td>{{ jo.requestor }}</td>
                             <td><span class="JO-status JO-status-{{ jo.status|lower }}">{{ jo.status }}</span></td>
                             <td>
                                 <button class="JO-icon-button view-details-btn" title="View Details" data-id="{{ jo.id }}" data-number="{{ jo.jo_number }}">
@@ -150,8 +245,15 @@
                             </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="6" style="text-align: center;">No job orders found</td>
+                        <tr class="empty-table-row">
+                            <td colspan="7">
+                                <div class="JO-no-results">
+                                    <div class="JO-no-results-icon">
+                                        <i class="fas fa-search"></i>
+                                    </div>
+                                    <p class="JO-no-results-message">No job orders found</p>
+                                </div>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -165,7 +267,7 @@
             </div>
             <div class="JO-assignment-list" id="assignment-list">
                 {% for jo in pending_assignments_list %}
-                <div class="JO-assignment-item {% if jo.is_overdue_critical %}overdue-critical{% elif jo.is_overdue_warning %}overdue-warning{% endif %}" 
+                <div class="JO-assignment-item {% if jo.is_overdue_critical %}overdue-critical{% elif jo.is_overdue_warning %}overdue-warning{% endif %}"
                 data-id="{{ jo.jo_number.id }}" data-number="{{ jo.jo_number.jo_number }}">
                     <div class="JO-assignment-header">
                         <span class="JO-assignment-id">{{ jo.jo_number.jo_number}}</span>
@@ -177,7 +279,7 @@
                         <p><strong>Submitted:</strong> {{ jo.jo_number.date_created|date:"M d, Y" }}</p>
                         {% if jo.is_overdue_warning %}
                         <p class="JO-overdue-indicator">
-                            <i class="fas fa-exclamation-circle"></i> 
+                            <i class="fas fa-exclamation-circle"></i>
                             Overdue: {{ jo.jo_number.date_created|date:"M d, Y" }}
                         </p>
                         {% endif %}
@@ -195,12 +297,12 @@
                     </div>
                 </div>
                 {% empty %}
-                <div class="JO-empty-assignments">
+                <div class="JO-assignment-empty">
                     <div class="JO-empty-icon">
-                        <i class="fas fa-clipboard-check"></i>
+                        <i class="fas fa-check"></i>
                     </div>
-                    <p>No pending requests for assigning personnel</p>
-                    <p class="JO-empty-subtitle">All job orders have been assigned to maintenance personnel</p>
+                    <h3>All caught up!</h3>
+                    <p>There are no pending requests that require your approval at this time.</p>
                 </div>
                 {% endfor %}
             </div>
@@ -218,9 +320,9 @@
             </button>
         </div>
         <div class="JO-modal-body" id="jo-details-content">
-            <div class="JO-loading" style="text-align: center; padding: 2rem;">
-                <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                <p>Loading job order details...</p>
+            <div class="JO-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
+                <p style="font-size: 16px; color: #666;">Loading job order details...</p>
             </div>
         </div>
         <div class="JO-modal-footer">
@@ -243,7 +345,7 @@
                 <i class="fas fa-user-check JO-confirmation-icon success"></i>
                 <p class="JO-confirmation-message">Are you sure you want to assign <strong id="assignee-name"></strong> to job order <strong id="assign-jo-number"></strong>?</p>
                 <p class="JO-confirmation-submessage">This will notify the person and update the job order status.</p>
-                
+
                 <form id="assignment-form" method="POST" action="{% url 'assign-incharge' %}">
                     {% csrf_token %}
                     <input type="hidden" name="jo_id" id="assign-jo-id">
@@ -287,7 +389,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="JO-export-columns">
                     <div class="JO-export-column">
                         <div class="JO-export-section">
@@ -317,7 +419,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="JO-export-column">
                         <div class="JO-export-section">
                             <h5>Category</h5>
@@ -341,7 +443,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="JO-export-actions">
                     <button type="submit" class="JO-button JO-primary-button JO-export-submit">
                         <i class="fas fa-download"></i> Export to Excel

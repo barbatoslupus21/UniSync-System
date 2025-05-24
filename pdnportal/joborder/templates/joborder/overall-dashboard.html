@@ -10,8 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static "css/style-ver2.css" %}">
-    <link rel="stylesheet" href="{% static 'css/job-order.css' %}"> 
-    <link rel="stylesheet" href="{% static 'css/jo-overall.css' %}"> 
+    <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jo-overall.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -24,7 +24,7 @@
                 <p class="JO-subtitle">Real-time overview of maintenance activities and performance metrics</p>
             </div>
         </div>
-    
+
         <!-- KPI Summary Cards -->
         <div class="JO-stats-container">
             <div class="JO-stats-card JO-total-jobs">
@@ -37,7 +37,7 @@
                     <p><span class="up"><i class="fas fa-arrow-up"></i> {{ active_jo_percentage }}%</span> vs last period</p>
                 </div>
             </div>
-            
+
             <div class="JO-stats-card JO-completion-rate">
                 <div class="JO-stats-icon">
                     <i class="fas fa-tasks"></i>
@@ -48,7 +48,7 @@
                     <p><span class="up"><i class="fas fa-arrow-up"></i> {{ completion_rate_change }}%</span> vs last period</p>
                 </div>
             </div>
-            
+
             <div class="JO-stats-card JO-resolution-time">
                 <div class="JO-stats-icon">
                     <i class="fas fa-hourglass-half"></i>
@@ -59,7 +59,7 @@
                     <p><span class="{% if resolution_time_improved %}down{% else %}up{% endif %}"><i class="fas fa-arrow-{% if resolution_time_improved %}down{% else %}up{% endif %}"></i> {{ resolution_time_change }}%</span> vs last period</p>
                 </div>
             </div>
-            
+
             <div class="JO-stats-card JO-overdue-tasks">
                 <div class="JO-stats-icon">
                     <i class="fas fa-exclamation-circle"></i>
@@ -71,7 +71,7 @@
                 </div>
             </div>
         </div>
-    
+
         <!-- Job Order Timeline and Upcoming Deadlines -->
         <div class="JO-main-content-grid">
             <!-- Job Order Timeline -->
@@ -101,10 +101,10 @@
                                 </div>
                             </div>
                             <div class="JO-timeline-events">
-                                
+
                             </div>
                         </div>
-                        
+
                         <!-- Week View (Hidden by default) -->
                         <div class="JO-horizontal-timeline" id="timeline-week-view" style="display: none;">
                             <div class="JO-timeline-days">
@@ -117,8 +117,8 @@
                             </div>
                             <div class="JO-timeline-events">
                                 {% for event in week_events %}
-                                <div class="JO-timeline-event {% if event.status == 'completed' %}completed{% elif event.status == 'delayed' %}delayed{% elif event.status == 'upcoming' %}upcoming{% endif %}" 
-                                     style="grid-column: {{ event.day_column }}; grid-row: {{ event.row }};" 
+                                <div class="JO-timeline-event {% if event.status == 'completed' %}completed{% elif event.status == 'delayed' %}delayed{% elif event.status == 'upcoming' %}upcoming{% endif %}"
+                                     style="grid-column: {{ event.day_column }}; grid-row: {{ event.row }};"
                                      data-jo-id="{{ event.jo_number }}">
                                     <div class="JO-event-content">
                                         <span class="JO-event-time">{{ event.time }}</span>
@@ -127,12 +127,14 @@
                                 </div>
                                 {% empty %}
                                 <div class="JO-empty-timeline">
+                                    <i class="fas fa-calendar-week"></i>
                                     <p>No events for this week</p>
+                                    <p class="JO-empty-subtitle">All pending job orders will appear here</p>
                                 </div>
                                 {% endfor %}
                             </div>
                         </div>
-                        
+
                         <!-- Month View (Hidden by default) -->
                         <div class="JO-horizontal-timeline" id="timeline-month-view" style="display: none;">
                             <div class="JO-timeline-days">
@@ -145,8 +147,8 @@
                             </div>
                             <div class="JO-timeline-events">
                                 {% for event in month_events %}
-                                <div class="JO-timeline-event {% if event.status == 'completed' %}completed{% elif event.status == 'delayed' %}delayed{% elif event.status == 'upcoming' %}upcoming{% endif %}" 
-                                     style="grid-column: {{ event.week_column }}; grid-row: {{ event.row }};" 
+                                <div class="JO-timeline-event {% if event.status == 'completed' %}completed{% elif event.status == 'delayed' %}delayed{% elif event.status == 'upcoming' %}upcoming{% endif %}"
+                                     style="grid-column: {{ event.week_column }}; grid-row: {{ event.row }};"
                                      data-jo-id="{{ event.jo_number }}">
                                     <div class="JO-event-content">
                                         <span class="JO-event-time">{{ event.time }}</span>
@@ -155,7 +157,9 @@
                                 </div>
                                 {% empty %}
                                 <div class="JO-empty-timeline">
+                                    <i class="fas fa-calendar-alt"></i>
                                     <p>No events for this month</p>
+                                    <p class="JO-empty-subtitle">All pending job orders will appear here</p>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -163,7 +167,7 @@
                     </div>
                 </div>
             </div>
-    
+
             <!-- Right Side Column (Upcoming Deadlines and Critical Alerts) -->
             <div class="JO-right-column">
                 <!-- Upcoming Deadlines -->
@@ -187,7 +191,7 @@
                         </div>
                     </div>
                 </div>
-    
+
                 <!-- Critical Alerts -->
                 <div class="JO-card JO-alerts-section">
                     <div class="JO-card-header">
@@ -207,12 +211,12 @@
                         </div>
                     </div>
                     <div class="JO-alerts-container JO-grid-lines">
-                        
+
                     </div>
                 </div>
             </div>
         </div>
-                                
+
         <!-- Toast Container -->
         <div class="toast-container" id="toast-container"></div>
     </main>

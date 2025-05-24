@@ -1,0 +1,102 @@
+/* Message options menu styles */
+.Chat-message-options {
+    position: absolute;
+    top: 4px;
+    right: -30px; /* Position outside the bubble */
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 5;
+}
+
+.Chat-message:hover .Chat-message-options,
+.Chat-file-message:hover .Chat-message-options,
+.Chat-image-message:hover .Chat-message-options {
+    opacity: 1;
+}
+
+/* Make the message container position relative for proper options positioning */
+.Chat-message-container {
+    position: relative;
+}
+
+/* Remove hover effect on message containers */
+
+.Chat-message-options-btn {
+    background: none;
+    border: none;
+    color: var(--chat-text-light);
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease;
+}
+
+.Chat-message-options-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.Chat-message-options-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    min-width: 150px;
+    z-index: 10;
+    display: none;
+    animation: fadeIn 0.2s ease;
+}
+
+.Chat-message-options-menu.active {
+    display: block;
+}
+
+.Chat-message-option-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.2s ease;
+}
+
+.Chat-message-option-item:hover {
+    background-color: var(--chat-bg);
+}
+
+.Chat-message-option-item i {
+    margin-right: 8px;
+    width: 16px;
+    text-align: center;
+}
+
+/* Delete Message Modal */
+.Chat-delete-message-preview {
+    background-color: #f5f5f5;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+    margin-bottom: 16px;
+    max-height: 100px;
+    overflow-y: auto;
+    border-left: 3px solid #dc3545;
+}
+
+.JO-danger-button {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+}
+
+.JO-danger-button:hover {
+    background-color: #c82333;
+}
