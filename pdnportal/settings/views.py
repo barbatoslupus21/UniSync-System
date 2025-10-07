@@ -22,7 +22,8 @@ def user_management(request):
 
     lines = Line.objects.all().order_by('line_name')
 
-    approvers = Users.objects.filter(position__in=['Supervisor', 'Manager'], is_active=True).all()
+    # Get potential approvers - any active user can be an approver
+    approvers = Users.objects.filter(is_active=True).order_by('name').all()
 
     paginator = Paginator(users_list, 10)
     page = request.GET.get('page', 1)
@@ -41,6 +42,94 @@ def user_management(request):
         'role_choices': UserApprovers.ROLES,
     }
     return render(request, 'settings/account-register.html', context)
+
+@login_required(login_url="user-login")
+@user_passes_test(is_admin)
+def search_users(request):
+    if request.method == 'GET':
+        search_query = request.GET.get('q', '').strip()
+        permission_filter = request.GET.get('filter', 'all')
+        page_number = request.GET.get('page', 1)
+        
+        # Start with all users
+        users_list = Users.objects.all()
+        
+        # Apply search filter if query exists
+        if search_query:
+            from django.db.models import Q
+            users_list = users_list.filter(
+                Q(name__icontains=search_query) |
+                Q(id_number__icontains=search_query) |
+                Q(username__icontains=search_query) |
+                Q(position__icontains=search_query) |
+                Q(line__line_name__icontains=search_query)
+            )
+        
+        # Apply permission filter
+        if permission_filter != 'all':
+            if permission_filter == 'admin':
+                users_list = users_list.filter(is_admin=True)
+            elif permission_filter == 'job_order':
+                users_list = users_list.filter(job_order_user=True)
+            elif permission_filter == 'manhours':
+                users_list = users_list.filter(manhours_user=True)
+            elif permission_filter == 'monitoring':
+                users_list = users_list.filter(monitoring_user=True)
+            elif permission_filter == 'dcf':
+                users_list = users_list.filter(dcf_user=True)
+            elif permission_filter == 'ecis':
+                users_list = users_list.filter(ecis_user=True)
+        
+        # Paginate results
+        paginator = Paginator(users_list, 10)
+        users = paginator.get_page(page_number)
+        
+        # Prepare user data for JSON response
+        users_data = []
+        for user in users:
+            permissions = []
+            if user.is_admin:
+                permissions.append({'type': 'admin', 'label': 'Admin'})
+            if user.job_order_user:
+                permissions.append({'type': 'job_order', 'label': 'Job Order'})
+            if user.manhours_user:
+                permissions.append({'type': 'manhours', 'label': 'Manhours'})
+            if user.monitoring_user:
+                permissions.append({'type': 'monitoring', 'label': 'Monitoring'})
+            if user.dcf_user:
+                permissions.append({'type': 'dcf', 'label': 'DCF'})
+            if user.ecis_user:
+                permissions.append({'type': 'ecis', 'label': 'ECIS'})
+            
+            users_data.append({
+                'id': user.id,
+                'avatar_url': user.avatar.url if user.avatar else '',
+                'id_number': user.id_number,
+                'name': user.name,
+                'position': user.position,
+                'line_name': user.line.line_name if user.line else '',
+                'permissions': permissions,
+                'is_active': user.is_active,
+            })
+        
+        # Return JSON response
+        return JsonResponse({
+            'success': True,
+            'users': users_data,
+            'pagination': {
+                'current_page': users.number,
+                'total_pages': paginator.num_pages,
+                'has_previous': users.has_previous(),
+                'has_next': users.has_next(),
+                'previous_page': users.previous_page_number() if users.has_previous() else None,
+                'next_page': users.next_page_number() if users.has_next() else None,
+                'start_index': users.start_index(),
+                'end_index': users.end_index(),
+                'total_count': paginator.count,
+            }
+        })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=400)
 
 @login_required(login_url="user-login")
 @user_passes_test(is_admin)
@@ -143,6 +232,34 @@ def create_user(request):
                 elif ecis_role == 'facilitator':
                     user.ecis_facilitator = True
 
+            # Quality Control permissions
+            quality_control_user = request.POST.get('quality_control_user') == 'on'
+            user.quality_control_user = quality_control_user
+
+            if quality_control_user:
+                quality_control_role = request.POST.get('quality_control_role')
+                if quality_control_role == 'warehouse':
+                    user.quality_control_warehouse = True
+                elif quality_control_role == 'engineering':
+                    user.quality_control_engineering = True
+                elif quality_control_role == 'production':
+                    user.quality_control_production = True
+                elif quality_control_role == 'qa':
+                    user.quality_control_qa = True
+
+            # Stock Declaration permissions
+            stock_declaration_user = request.POST.get('stock_declaration_user') == 'on'
+            user.stock_declaration_user = stock_declaration_user
+
+            if stock_declaration_user:
+                stock_declaration_role = request.POST.get('stock_declaration_role')
+                if stock_declaration_role == 'production':
+                    user.stock_declaration_production = True
+                elif stock_declaration_role == 'warehouse':
+                    user.stock_declaration_warehouse = True
+                elif stock_declaration_role == 'purchasing':
+                    user.stock_declaration_purchasing = True
+
             user.set_password(password)
             user.save()
 
@@ -229,6 +346,19 @@ def edit_user(request, user_id):
             user.ecis_requestor = False
             user.ecis_facilitator = False
 
+            # Reset Quality Control permissions
+            user.quality_control_user = False
+            user.quality_control_warehouse = False
+            user.quality_control_engineering = False
+            user.quality_control_production = False
+            user.quality_control_qa = False
+
+            # Reset Stock Declaration permissions
+            user.stock_declaration_user = False
+            user.stock_declaration_production = False
+            user.stock_declaration_warehouse = False
+            user.stock_declaration_purchasing = False
+
             job_order_user = request.POST.get('job_order_user') == 'on'
             user.job_order_user = job_order_user
 
@@ -292,6 +422,34 @@ def edit_user(request, user_id):
                     user.ecis_requestor = True
                 elif ecis_role == 'facilitator':
                     user.ecis_facilitator = True
+
+            # Quality Control permissions
+            quality_control_user = request.POST.get('quality_control_user') == 'on'
+            user.quality_control_user = quality_control_user
+
+            if quality_control_user:
+                quality_control_role = request.POST.get('quality_control_role')
+                if quality_control_role == 'warehouse':
+                    user.quality_control_warehouse = True
+                elif quality_control_role == 'engineering':
+                    user.quality_control_engineering = True
+                elif quality_control_role == 'production':
+                    user.quality_control_production = True
+                elif quality_control_role == 'qa':
+                    user.quality_control_qa = True
+
+            # Stock Declaration permissions
+            stock_declaration_user = request.POST.get('stock_declaration_user') == 'on'
+            user.stock_declaration_user = stock_declaration_user
+
+            if stock_declaration_user:
+                stock_declaration_role = request.POST.get('stock_declaration_role')
+                if stock_declaration_role == 'production':
+                    user.stock_declaration_production = True
+                elif stock_declaration_role == 'warehouse':
+                    user.stock_declaration_warehouse = True
+                elif stock_declaration_role == 'purchasing':
+                    user.stock_declaration_purchasing = True
 
             user.save()
 
@@ -384,6 +542,26 @@ def get_user_data(request, user_id):
         elif user.ecis_facilitator:
             ecis_role = 'facilitator'
 
+        # Determine Quality Control role
+        quality_control_role = None
+        if user.quality_control_warehouse:
+            quality_control_role = 'warehouse'
+        elif user.quality_control_engineering:
+            quality_control_role = 'engineering'
+        elif user.quality_control_production:
+            quality_control_role = 'production'
+        elif user.quality_control_qa:
+            quality_control_role = 'qa'
+
+        # Determine Stock Declaration role
+        stock_declaration_role = None
+        if user.stock_declaration_production:
+            stock_declaration_role = 'production'
+        elif user.stock_declaration_warehouse:
+            stock_declaration_role = 'warehouse'
+        elif user.stock_declaration_purchasing:
+            stock_declaration_role = 'purchasing'
+
         user_data = {
             'id': user.id,
             'id_number': user.id_number,
@@ -408,6 +586,17 @@ def get_user_data(request, user_id):
             'ecis_role': ecis_role,
             'ecis_requestor': user.ecis_requestor,
             'ecis_facilitator': user.ecis_facilitator,
+            'quality_control_user': user.quality_control_user,
+            'quality_control_role': quality_control_role,
+            'quality_control_warehouse': user.quality_control_warehouse,
+            'quality_control_engineering': user.quality_control_engineering,
+            'quality_control_production': user.quality_control_production,
+            'quality_control_qa': user.quality_control_qa,
+            'stock_declaration_user': user.stock_declaration_user,
+            'stock_declaration_role': stock_declaration_role,
+            'stock_declaration_production': user.stock_declaration_production,
+            'stock_declaration_warehouse': user.stock_declaration_warehouse,
+            'stock_declaration_purchasing': user.stock_declaration_purchasing,
             'approvers': approvers_data
         }
 
@@ -470,9 +659,9 @@ def toggle_user_status(request, user_id):
 
 @require_http_methods(["GET"])
 def get_potential_approvers(request):
+    # Get all active users as potential approvers
     approvers = Users.objects.filter(
-        position__in=['Supervisor', 'Manager'],
         is_active=True
-    ).values('id', 'name', 'position')
+    ).order_by('name').values('id', 'name', 'position')
     approvers_list = list(approvers)
     return JsonResponse(approvers_list, safe=False)

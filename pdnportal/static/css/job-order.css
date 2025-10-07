@@ -24,6 +24,7 @@
     --jo-status-approved: #4caf50;
     --jo-status-rejected: #f44336;
     --jo-status-completed: #3366ff;
+    --jo-status-filed: #ff9800;
 
     /* Shadows and effects */
     --jo-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -35,11 +36,74 @@
     --jo-success-light: rgba(72, 199, 116, 0.15);
     --jo-danger: #f14668;
     --jo-danger-light: rgba(241, 70, 104, 0.15);
+
+    --primary-color: #3366ff;
+    --primary-hover: #2952cc;
+    --primary-light: #e0e8ff;
+    --secondary-color: #64748b;
+    --accent-color: #06b6d4;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8fafc;
+    --bg-tertiary: #f1f5f9;
+    --surface: #ffffff;
+    --surface-hover: #f8fafc;
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #a3a3a3;
+    --text-inverse: #ffffff;
+    
+    --border-color: #e2e8f0;
+    --border-hover: #cbd5e1;
+    
+    --shadow-sm: 0 2px 8px 0 rgba(0, 0, 0, 0.066);
+    --shadow-md: 0 4px 16px 0 rgba(0, 0, 0, 0.10);
+    --shadow-lg: 0 8px 24px 0 rgba(0, 0, 0, 0.13);
+    --shadow-xl: 0 16px 32px 0 rgba(0, 0, 0, 0.16);
+    
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    
+    --space-xs: 0.25rem;
+    --space-sm: 0.5rem;
+    --space-md: 1rem;
+    --space-lg: 1.5rem;
+    --space-xl: 2rem;
+    --space-2xl: 3rem;
+    
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+    
+    --transition-fast: 150ms ease-in-out;
+    --transition-normal: 250ms ease-in-out;
+    --transition-slow: 350ms ease-in-out;
+    --transition-speed: 0.7s;
+    
+    --sidebar-width-expanded: 250px;
+    --sidebar-width-minimized: 70px;
+    --header-height: 60px;
+    --badge-bg: #ff3860;
 }
 
 /* ==========================================================================
    General Layout & Typography
    ========================================================================== */
+*{
+    font-family: 'Poppins', sans-serif;
+}
+
 .JO-success-button {
     background-color: #48c774;
     color: white;
@@ -233,17 +297,30 @@
 }
 
 .JO-chart-wrapper {
-    padding: 20px;
-    height: 85% !important;
-    animation: JO-chart-appear 0.8s ease-out forwards;
-    opacity: 0;
-    display: flex;
-    align-items: end;
+    width: 100%;
+    height: 400px;
+    box-sizing: border-box;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 #jo-stats-chart {
     width: 100% !important;
     height: 100% !important;
+    display: block;
+}
+
+/* Status Chart Styles */
+.JO-status-chart-wrapper {
+    padding: 20px;
+    height: 300px;
+    position: relative;
+}
+
+#jo-status-chart {
+    width: 100% !important;
+    height: 100% !important;
+    animation: JO-chart-appear 0.8s ease-out;
 }
 
 @keyframes JO-chart-appear {
@@ -399,6 +476,8 @@
     justify-content: center;
 }
 
+
+
 .JO-pagination-nav-container {
     display: flex;
     align-items: center;
@@ -514,6 +593,8 @@
 
 .JO-status {
     display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
     padding: 3px 8px;
     border-radius: 4px;
     font-size: 0.8rem;
@@ -542,6 +623,11 @@
 .JO-status-checked {
     background-color: var(--jo-primary-light);
     color: var(--jo-status-completed);
+}
+
+.JO-status-filed {
+    background-color: #fff3e0;
+    color: var(--jo-status-filed);
 }
 
 /* ==========================================================================
@@ -668,16 +754,22 @@
     justify-content: center;
     cursor: pointer;
     color: var(--jo-text-light);
+    transition: var(--jo-transition);
+}
+
+.JO-search-button:hover {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
 }
 
 .JO-select {
+    width: 100%;
+    padding: 11px 12px !important;
     border: 1px solid var(--jo-border);
     border-radius: 6px;
-    padding: 8px 12px;
-    outline: none;
     font-size: 0.9rem;
-    background-color: white;
     cursor: pointer;
+    outline: none;
     transition: var(--jo-transition);
 }
 
@@ -761,7 +853,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid var(--jo-border);
+    border-bottom: 0.5px solid var(--jo-border);
 }
 
 .JO-modal-header h2 {
@@ -791,17 +883,37 @@
 }
 
 .JO-modal-body {
-    padding: 20px;
+    padding: var(--space-lg);
     overflow-y: auto;
     flex: 1;
+    max-height: calc(90vh - 140px);
 }
 
 .JO-modal-footer {
     padding: 16px 20px;
     display: flex;
     justify-content: flex-end;
-    gap: 12px;
-    border-top: 1px solid var(--jo-border);
+    gap: var(--space-sm);
+    border-top: 0.5px solid var(--jo-border);
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+}
+
+.modal-sm .JO-modal-content {
+    max-width: 400px;
+}
+
+.modal-md .JO-modal-content {
+    max-width: 600px;
+}
+
+.modal-lg .JO-modal-content {
+    max-width: 800px;
+}
+
+.modal-xl .JO-modal-content {
+    max-width: 1000px;
 }
 
 /* ==========================================================================
@@ -1001,10 +1113,14 @@
     flex-direction: column;
 }
 
+.JO-details-item-full {
+    grid-column: span 2;
+}
+
 .JO-details-label {
-    font-size: 0.85rem;
-    color: var(--jo-text-light);
-    margin-bottom: 4px;
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: 500;
 }
 
 .JO-details-value {
@@ -1155,40 +1271,28 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
     text-align: center;
     width: 100%;
-    min-height: 300px;
-    position: relative;
-    margin: 20px 0;
+    min-height: 200px;
+    padding: 40px 0;
 }
 
 .JO-no-results-icon {
-    color: #888;
-    font-size: 24px;
-    margin-bottom: 15px;
-    width: 50px;
-    height: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background-color: #f5f5f5;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-bottom: 10px;
+    font-size: 2.5rem;
+    color: var(--jo-primary);
 }
 
 .JO-no-results-message {
-    font-size: 16px;
+    font-size: 1.1rem;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 8px;
+    color: var(--jo-text);
+    margin-bottom: 4px;
 }
 
 .JO-no-results-hint {
-    font-size: 14px;
-    color: #666;
-    max-width: 80%;
-    margin: 0 auto;
+    font-size: 0.95rem;
+    color: var(--jo-text-light);
 }
 
 /* Loading state */
@@ -1503,4 +1607,345 @@
         flex-direction: column;
         gap: 8px;
     }
+}
+
+/* ==========================================================================
+   Status Chart Styles (New)
+   ========================================================================== */
+.JO-status-chart-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 430px;
+    box-sizing: border-box;
+    padding: 20px;
+}
+
+#jo-status-chart {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* ==========================================================================
+   Job Order Details Modal Styles (New)
+   ========================================================================== */
+.JO-details-container {
+    padding: 0;
+}
+
+.JO-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.JO-details-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: var(--jo-text);
+}
+
+.JO-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.JO-details-section {
+    margin-bottom: 20px;
+}
+
+.JO-details-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--jo-text);
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--jo-primary-light);
+}
+
+.JO-details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.JO-details-row:last-child {
+    border-bottom: none;
+}
+
+.JO-details-description {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid var(--jo-primary);
+    margin: 0;
+    line-height: 1.6;
+    color: var(--jo-text);
+}
+
+/* ==========================================================================
+   Routing History Styles (New)
+   ========================================================================== */
+.JO-routing-history {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.JO-routing-item {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--jo-primary);
+}
+
+.JO-routing-item:last-child {
+    margin-bottom: 0;
+}
+
+.JO-routing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.JO-routing-approver {
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.JO-routing-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.JO-routing-remarks {
+    background-color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-style: italic;
+    color: var(--jo-text-light);
+    border-left: 3px solid var(--jo-primary);
+}
+
+.JO-routing-dates {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+}
+
+.JO-routing-dates span {
+    display: flex;
+    align-items: center;
+}
+
+.JO-routing-dates span:before {
+    content: '📅';
+    margin-right: 4px;
+}
+
+/* ==========================================================================
+   Responsive Styles for Status Chart (New)
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .JO-status-chart-wrapper {
+        height: 250px;
+        padding: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .JO-status-chart-wrapper {
+        height: 200px;
+        padding: 10px;
+    }
+    
+    .JO-details-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .JO-status-chart-wrapper {
+        height: 180px;
+        padding: 8px;
+    }
+}
+
+/* ==========================================================================
+   Stock Declaration Notification Modal Styles
+   ========================================================================== */
+
+.stock-notif-info-card {
+    margin-bottom: 12px;
+    padding: 16px;
+    background-color: var(--jo-primary-light);
+    border-radius: 8px;
+}
+
+.stock-notif-info-card p {
+    margin: 0;
+    color: var(--jo-text);
+    font-size: 0.95rem;
+}
+
+.stock-notif-info-card i {
+    margin-right: 6px;
+    color: #527dff
+}
+
+.stock-notif-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.stock-notif-card {
+    background-color: #fff;
+    border: 1px solid var(--jo-border);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: var(--jo-transition);
+    cursor: pointer;
+}
+
+.stock-notif-card:hover {
+    background-color: var(--jo-bg-color);
+}
+
+.stock-notif-checkbox {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--jo-border);
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.stock-notif-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stock-notif-title {
+    margin: 0 0 4px 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.stock-notif-subtitle {
+    margin: 0 0 8px 0;
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+}
+
+.stock-notif-subtitle i {
+    margin-right: 4px;
+}
+
+.stock-notif-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.stock-notif-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.stock-notif-badge-outofstock {
+    /* Out of stock: red */
+    background-color: #ffecec;
+    color: #d32f2f;
+}
+
+.stock-notif-badge-critical {
+    /* Critical stock: orange */
+    background-color: #fff4e6;
+    color: #ef6c00;
+}
+
+.stock-notif-badge-overstock {
+    /* Overstock: yellow */
+    background-color: #fffde7;
+    color: #fbc02d;
+}
+
+.stock-notif-badge-default {
+    background-color: #f5f5f5;
+    color: #757575;
+}
+
+.stock-notif-badge-quantity {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
+}
+
+.stock-notif-badge-status {
+    background-color: #f5f5f5;
+    color: #757575;
+}
+
+.stock-notif-time {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.stock-notif-time-display {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--jo-text-light);
+    font-size: 0.8rem;
+}
+
+.stock-notif-play-icon {
+    margin-top: 4px;
+    color: var(--jo-text-light);
+    font-size: 0.75rem;
+}
+
+/* Scrollbar styling for stock notification list */
+.stock-notif-list-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.stock-notif-list-container::-webkit-scrollbar-track {
+    background: var(--jo-bg-color);
+    border-radius: 10px;
+}
+
+.stock-notif-list-container::-webkit-scrollbar-thumb {
+    background: var(--jo-border);
+    border-radius: 10px;
+}
+
+.stock-notif-list-container::-webkit-scrollbar-thumb:hover {
+    background: var(--jo-text-light);
 }

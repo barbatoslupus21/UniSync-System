@@ -20,8 +20,4 @@
     }
 }
 
-/* Timeline status colors */
-.JO-timeline-item.JO-timeline-complete {
-    background-color: rgba(76, 175, 80, 0.1);
-    animation: pulse-complete 2s infinite ease-in-out;
-}
+

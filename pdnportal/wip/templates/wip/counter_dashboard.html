@@ -1,0 +1,250 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - WIP Counter Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/wip/wip.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">WIP Inventory Counter</h1>
+            <p class="JO-subtitle">Manage your WIP inventory counting sessions</p>
+        </div>
+        <button id="new-session-btn" class="JO-button JO-primary-button">
+            <i class="fas fa-plus"></i> New Session
+        </button>
+    </div>
+
+    <div class="JO-stats-container">
+        <div class="JO-stats-card JO-total">
+            <div class="JO-stats-icon">
+                <i class="fas fa-list"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Total Sessions</h3>
+                <h2 class="JO-stats-number">{{ total_sessions }}</h2>
+                <p>Created by you</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-approved">
+            <div class="JO-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Items Counted</h3>
+                <h2 class="JO-stats-number">{{ total_items }}</h2>
+                <p>Total entries</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-pending">
+            <div class="JO-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Pending Check</h3>
+                <h2 class="JO-stats-number">{{ pending_sessions }}</h2>
+                <p>Awaiting verification</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-approval">
+            <div class="JO-stats-icon">
+                <i class="fas fa-clipboard-check"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Checked Sessions</h3>
+                <h2 class="JO-stats-number">{{ checked_sessions }}</h2>
+                <p>Completed</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="JO-card JO-all-requests">
+        <div class="JO-card-header">
+            <h2>My WIP Sessions</h2>
+            <div class="JO-card-actions">
+                <div class="JO-search-container">
+                    <input type="text" class="JO-search-input" placeholder="Search by line, person responsible...">
+                    <button class="JO-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="JO-table-container">
+            <table class="JO-table">
+                <thead>
+                    <tr>
+                        <th>Session ID</th>
+                        <th>Line</th>
+                        <th>Person Responsible</th>
+                        <th>Status</th>
+                        <th>Entries</th>
+                        <th>Created</th>
+                        <th>Checked By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if sessions %}
+                        {% for session in sessions %}
+                        <tr>
+                            <td data-label="Session ID">WIP-{{ session.id }}</td>
+                            <td data-label="Line">{{ session.line.line_name }}</td>
+                            <td data-label="Person Responsible">{{ session.person_responsible }}</td>
+                            <td data-label="Status">
+                                {% if session.status == 'FOR_CHECKING' %}
+                                    <span class="JO-status JO-status-pending">For Checking</span>
+                                {% elif session.status == 'CHECKED' %}
+                                    <span class="JO-status JO-status-approved">Checked</span>
+                                {% else %}
+                                <span class="JO-status JO-status-rejected">Locked</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Entries">{{ session.entry_count }}</td>
+                            <td data-label="Created">{{ session.created_at|date:"M d, Y" }}</td>
+                            <td data-label="Checked By">{{ session.checked_by.name }}</td>
+                            <td data-label="Actions">
+                                <div class="action-col">
+                                    <button class="JO-icon-button" title="View Details" onclick="window.location.href='{% url 'session_details' session.id %}'">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if session.can_edit %}
+                                    <button class="JO-icon-button WIP-edit-btn" title="Edit Session" data-id="{{ session.id }}" data-line="{{ session.line.id }}" data-person="{{ session.person_responsible }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="JO-icon-button WIP-delete-btn" title="Delete Session" data-id="{{ session.id }}" data-number="WIP-{{ session.id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="JO-empty-table no-data-row" style="display:none">
+                            <td colspan="8">
+                                <div class="no-data-message">
+                                    <div class="no-data-icon"><i class="fas fa-search"></i></div>
+                                    <div class="no-data-title">No matching WIP sessions found</div>
+                                    <div class="no-data-sub">Try adjusting your search criteria</div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr class="JO-empty-table no-session-row">
+                            <td colspan="8">
+                                <div class="no-data-message">
+                                    <div class="no-data-icon"><i class="fas fa-search"></i></div>
+                                    <div class="no-data-title">No WIP sessions found</div>
+                                    <div class="no-data-sub">Create your first session to get started!</div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<div class="JO-modal" id="new-session-modal">
+    <div class="JO-modal-content normal-modal">
+        <div class="JO-modal-header">
+            <h2>Create New WIP Session</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'wip_create_session' %}" id="session-form">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="id_line">Line</label>
+                    <select name="line" id="id_line" class="WIP-select" required>
+                        <option value="">Select Line</option>
+                        {% for line in lines %}
+                        <option value="{{ line.id }}">{{ line.line_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="JO-form-group">
+                    <label for="id_person_responsible">Person Responsible</label>
+                    <input type="text" name="person_responsible" id="id_person_responsible" class="WIP-input" placeholder="Enter name of person responsible" required>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-session">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Create Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal " id="edit-session-modal">
+    <div class="JO-modal-content normal-modal">
+        <div class="JO-modal-header">
+            <h2>Edit WIP Session</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" id="edit-session-form">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="edit_line">Line</label>
+                    <select name="line" id="edit_line" class="WIP-select" required>
+                        <option value="">Select Line</option>
+                        {% for line in lines %}
+                        <option value="{{ line.id }}">{{ line.line_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="JO-form-group">
+                    <label for="edit_person_responsible">Person Responsible</label>
+                    <input type="text" name="person_responsible" id="edit_person_responsible" class="WIP-input" placeholder="Enter name of person responsible" required>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button close-edit-modal">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Update Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal JO-confirmation-modal" id="delete-session-modal">
+    <div class="JO-modal-content normal-modal">
+        <div class="JO-modal-header">
+            <h2>Confirm Deletion</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div style="text-align: center;">
+                <i class="fas fa-exclamation-triangle JO-confirmation-icon danger"></i>
+                <p class="JO-confirmation-message">Are you sure you want to delete session <strong id="delete-session-number"></strong>?</p>
+                <p class="JO-confirmation-submessage">This action cannot be undone. All entries in this session will be permanently deleted.</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-delete">Cancel</button>
+            <button class="JO-button JO-danger-button" id="confirm-delete">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/wip/wip-counter.js' %}"></script>
+{% endblock %}

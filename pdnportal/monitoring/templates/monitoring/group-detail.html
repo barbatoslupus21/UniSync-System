@@ -1,0 +1,705 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Group Detail{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/monitoring/group-detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="FGD-header">
+        <div class="FGD-nav">
+            <button id="back-btn" class="FGD-back-btn">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </button>
+        </div>
+        <div class="FGD-title-section">
+            <div class="FGD-title-status-row">
+                <h1 class="FGD-page-title">{{ monitoring.title }}</h1>
+                <span class="FGD-status-badge {{ monitoring.status|lower }}">{{ monitoring.status }}</span>
+            </div>
+            <div class="FGD-actions">
+                <button id="export-data-btn" class="JO-button JO-secondary-button">
+                    <i class="fas fa-download"></i> Export Data
+                </button>
+                <a class="JO-button JO-primary-button" href="{% url 'group_dashboard' monitoring.id %}" target="_blank" rel="noopener">
+                    <i class="fa-solid fa-chart-simple"></i> Group Overview
+                </a>
+            </div>
+        </div>
+        
+    </div>
+
+    <div class="FGD-stats-grid">
+        <div class="FGD-stat-card">
+            <div class="FGD-stat-icon planned">
+                <i class="fas fa-bullseye"></i>
+            </div>
+            <div class="FGD-stat-content">
+                <h3>Planned Today</h3>
+                <h2 class="FGD-stat-number">{{ total_planned|floatformat:0 }}</h2>
+                <p>Target production</p>
+            </div>
+        </div>
+        
+        <div class="FGD-stat-card">
+            <div class="FGD-stat-icon produced">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="FGD-stat-content">
+                <h3>Produced Today</h3>
+                <h2 class="FGD-stat-number">{{ total_produced|floatformat:0 }}</h2>
+                <p>Actual output</p>
+            </div>
+        </div>
+        
+        <div class="FGD-stat-card">
+            <div class="FGD-stat-icon efficiency">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="FGD-stat-content">
+                <h3>Efficiency</h3>
+                <h2 class="FGD-stat-number">{{ efficiency_percentage }}%</h2>
+                <p>Performance rate</p>
+            </div>
+        </div>
+        
+        <div class="FGD-stat-card">
+            <div class="FGD-stat-icon products">
+                <i class="fas fa-cube"></i>
+            </div>
+            <div class="FGD-stat-content">
+                <h3>Products</h3>
+                <h2 class="FGD-stat-number">{{ products.count }}</h2>
+                <p>Active products</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="FGD-chart-section">
+        <div class="JO-card">
+            <div class="JO-card-header">
+                <h2>Output Performance</h2>
+                <div class="FGD-chart-filters">
+                    <input type="date" id="date-filter" class="JO-input FGD-date-filter" value="{{ today_date }}">
+                    <select id="line-filter" class="JO-select">
+                        <option value="all">All Lines</option>
+                        {% for line in available_lines %}
+                        <option value="{{ line.id }}">{{ line.line_name }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="shift-filter" class="JO-select">
+                        <option value="all">All Shifts</option>
+                        <option value="AM">AM Shift</option>
+                        <option value="PM">PM Shift</option>
+                    </select>
+                </div>
+            </div>
+            <div class="FGD-chart-container">
+                <canvas id="output-chart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="FGD-content-tabs">
+        <div class="FGD-tab-nav">
+            <button class="FGD-tab-btn active" data-tab="products">Products</button>
+            <button class="FGD-tab-btn" data-tab="schedules">Schedule Plans</button>
+        </div>
+
+        <div class="FGD-tab-content active" id="products-tab">
+            <div class="JO-card">
+                <div class="JO-card-header">
+                    <h2>Product Management</h2>
+                    <div class="FGD-product-actions-col">
+                        <div class="FGD-product-search-row">
+                            <input type="text" id="products-search" class="JO-search-input" placeholder="Search products...">
+                        </div>
+                        <div class="FGD-product-controls-row">
+                            <select id="products-line-filter" class="JO-select JO-product-line-filter">
+                                <option value="">All Lines</option>
+                                {% for line in available_lines %}
+                                <option value="{{ line.line_name }}">{{ line.line_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="import-products-btn" class="JO-button JO-secondary-button">
+                                <i class="fas fa-upload"></i> Import
+                            </button>
+                            <button id="add-product-btn" class="JO-button JO-primary-button">
+                                <i class="fas fa-plus"></i> Add Product
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="JO-table-container">
+                    <table class="JO-table" id="products-table">
+                        <thead>
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Description</th>
+                                <th>Line</th>
+                                <th>Qty/Box</th>
+                                <th>Qty/Hour</th>
+                                <th>Created</th>
+                                <th class="JO-actions-header">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-tbody">
+                            {% for product in products %}
+                            <tr data-product-name="{{ product.product_name|lower }}" data-line="{{ product.line.line_name|lower }}">
+                                <td data-label="Product Name">{{ product.product_name }}</td>
+                                <td data-label="Description">{{ product.description|truncatechars:50 }}</td>
+                                <td data-label="Line">{{ product.line.line_name }}</td>
+                                <td data-label="Qty/Box">{{ product.qty_per_box }}</td>
+                                <td data-label="Qty/Hour">{{ product.qty_per_hour }}</td>
+                                <td data-label="Created">{{ product.created_at|date:"M d, Y" }}</td>
+                                <td data-label="Actions">
+                                    <div class="JO-action-buttons JO-action-buttons-row">
+                                        <button class="JO-action-btn edit-product-btn" data-product-id="{{ product.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                            <span class="sr-only">Edit</span>
+                                        </button>
+                                        <button class="JO-action-btn delete-product-btn" data-product-id="{{ product.id }}" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                            <span class="sr-only">Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="JO-empty-table">
+                                    <div class="FGD-empty-state">
+                                        <i class="fas fa-cube"></i>
+                                        <p>No products found</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="FGD-tab-content" id="schedules-tab">
+            <div class="JO-card">
+                <div class="JO-card-header">
+                    <h2>Schedule Management</h2>
+                    <div class="FGD-schedule-actions-col">
+                        <div class="FGD-schedule-search-row">
+                            <input type="text" id="schedules-search" class="JO-search-input" placeholder="Search schedules...">
+                        </div>
+                        <div class="FGD-schedule-filters-row">
+                            <input type="date" id="schedules-date-filter" class="JO-input">
+                            <select id="schedules-shift-filter" class="JO-select">
+                                <option value="">All Shifts</option>
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                            <select id="schedules-status-filter" class="JO-select">
+                                <option value="">All Status</option>
+                                <option value="Planned">Planned</option>
+                                <option value="Change Load">Change Load</option>
+                                <option value="Backlog">Backlog</option>
+                            </select>
+                        </div>
+                        <div class="FGD-schedule-buttons-row">
+                            <button id="import-schedules-btn" class="JO-button JO-secondary-button">
+                                <i class="fas fa-upload"></i> Import
+                            </button>
+                            <button id="add-schedule-btn" class="JO-button JO-primary-button" style="white-space: nowrap;">
+                                <i class="fas fa-plus"></i> Add Schedule
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="JO-table-container">
+                    <table class="JO-table" id="schedules-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th>Line</th>
+                                <th>Shift</th>
+                                <th>Planned Qty</th>
+                                <th>Balance</th>
+                                <th>Status</th>
+                                <th class="JO-actions-header">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedules-tbody">
+                            {% for schedule in schedules %}
+                            <tr data-date="{{ schedule.date_planned|date:'Y-m-d' }}" data-shift="{{ schedule.shift|lower }}" data-status="{{ schedule.status|lower }}">
+                                <td data-label="Date">{{ schedule.date_planned|date:"M d, Y" }}</td>
+                                <td data-label="Product">{{ schedule.product_number.product_name }}</td>
+                                <td data-label="Line">{{ schedule.product_number.line.line_name }}</td>
+                                <td data-label="Shift">{{ schedule.shift }}</td>
+                                <td data-label="Planned Qty">{{ schedule.planned_qty }}</td>
+                                <td data-label="Balance">{{ schedule.balance }}</td>
+                                <td data-label="Status">
+                                    <span class="JO-status JO-status-{{ schedule.status|lower|cut:' ' }}">{{ schedule.status }}</span>
+                                </td>
+                                <td data-label="Actions">
+                                    <div class="JO-action-buttons JO-action-buttons-row">
+                                        <button class="JO-action-btn edit-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                            <span class="sr-only">Edit</span>
+                                        </button>
+                                        <button class="JO-action-btn delete-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                            <span class="sr-only">Delete</span>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="JO-empty-table">
+                                    <div class="FGD-empty-state">
+                                        <i class="fas fa-calendar-alt"></i>
+                                        <p>No schedules found</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="JO-modal" id="export-data-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Export Output Data</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="export-data-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-line-col">
+                        <label for="export-type">Export Type</label>
+                        <select id="export-type" class="JO-select JO-product-line-col" required>
+                            <option value="hourly">Hourly Output</option>
+                            <option value="total">Production Total Output</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-line-col">
+                        <label for="export-from-date">From Date</label>
+                        <input type="date" id="export-from-date" class="JO-input" value="{{ today_date }}" required>
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="export-to-date">To Date</label>
+                        <input type="date" id="export-to-date" class="JO-input" value="{{ today_date }}" required>
+                    </div>
+                </div>
+
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-line-col">
+                        <label for="export-line">Line</label>
+                        <select id="export-line" class="JO-select JO-product-line-col">
+                            <option value="all">All Lines</option>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-product-line-col">
+                        <label for="export-shift">Shift</label>
+                        <select id="export-shift" class="JO-select JO-product-line-col">
+                            <option value="all">All Shifts</option>
+                            <option value="AM">AM Shift</option>
+                            <option value="PM">PM Shift</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-export">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fas fa-download"></i> Export
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="add-product-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Add Product</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'add_product' %}" id="add-product-form">
+            {% csrf_token %}
+            <input type="hidden" name="monitoring_id" value="{{ monitoring.id }}">
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="{{ product_form.product_name.id_for_label }}">{{ product_form.product_name.label }}</label>
+                    {{ product_form.product_name }}
+                </div>
+                
+                <div class="JO-form-group">
+                    <label for="{{ product_form.description.id_for_label }}">{{ product_form.description.label }}</label>
+                    {{ product_form.description }}
+                </div>
+                
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-line-col">
+                        <label for="{{ product_form.line.id_for_label }}">{{ product_form.line.label }}</label>
+                        <select id="{{ product_form.line.id_for_label }}" name="{{ product_form.line.name }}" class="JO-select JO-product-line-col" required>
+                            <option value="">Select a line</option>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="{{ product_form.qty_per_box.id_for_label }}">{{ product_form.qty_per_box.label }}</label>
+                        {{ product_form.qty_per_box }}
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="{{ product_form.qty_per_hour.id_for_label }}">{{ product_form.qty_per_hour.label }}</label>
+                        {{ product_form.qty_per_hour }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-add-product">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="edit-product-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Edit Product</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" id="edit-product-form">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="edit-product-name">Product Name</label>
+                    <input type="text" id="edit-product-name" name="product_name" class="JO-input" required>
+                </div>
+                
+                <div class="JO-form-group">
+                    <label for="edit-product-description">Description</label>
+                    <textarea id="edit-product-description" name="description" class="JO-textarea" rows="3"></textarea>
+                </div>
+
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-line-col">
+                        <label for="{{ product_form.line.id_for_label }}">{{ product_form.line.label }}</label>
+                        <select id="edit-product-line" name="line" class="JO-select" required>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="edit-product-qty-box">Quantity per Box</label>
+                        <input type="number" id="edit-product-qty-box" name="qty_per_box" class="JO-input" min="1" required>
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="edit-product-qty-hour">Quantity per Hour</label>
+                        <input type="number" id="edit-product-qty-hour" name="qty_per_hour" class="JO-input" min="1" required>  
+                    </div>
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-edit-product">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Update Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="add-schedule-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Add Schedule</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'add_schedule' %}" id="add-schedule-form">
+            {% csrf_token %}
+            <input type="hidden" name="monitoring_id" value="{{ monitoring.id }}">
+            <div class="JO-modal-body">
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-qty-col">
+                        <label for="{{ schedule_form.date_planned.id_for_label }}">{{ schedule_form.date_planned.label }}</label>
+                        <input type="date" id="{{ schedule_form.date_planned.id_for_label }}" name="{{ schedule_form.date_planned.name }}" class="JO-input" required>
+                    </div>
+                    <div class="JO-product-line-col">
+                        <label for="{{ schedule_form.product_number.id_for_label }}">{{ schedule_form.product_number.label }}</label>
+                        <select id="{{ schedule_form.product_number.id_for_label }}" name="{{ schedule_form.product_number.name }}" class="JO-select JO-product-line-col" required>
+                            <option value="">Select a product</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.product_name }} - {{ product.line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-qty-col">
+                        <label for="{{ schedule_form.shift.id_for_label }}">{{ schedule_form.shift.label }}</label>
+                        <select id="{{ schedule_form.shift.id_for_label }}" name="{{ schedule_form.shift.name }}" class="JO-select JO-product-line-col" required>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="{{ schedule_form.planned_qty.id_for_label }}">{{ schedule_form.planned_qty.label }}</label>
+                        <input type="number" id="{{ schedule_form.planned_qty.id_for_label }}" name="{{ schedule_form.planned_qty.name }}" class="JO-input" min="1" required>
+                    </div>
+                    <div class="JO-product-qty-col">
+                        <label for="{{ schedule_form.status.id_for_label }}">{{ schedule_form.status.label }}</label>
+                        <select id="{{ schedule_form.status.id_for_label }}" name="{{ schedule_form.status.name }}" class="JO-select JO-product-line-col" required>
+                            {% if request.user.monitoring_sales %}
+                            <option value="Planned">Planned</option>
+                            {% endif %}
+                            <option value="Change Load">Change Load</option>
+                            <option value="Backlog">Backlog</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-add-schedule">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Add Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="edit-schedule-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Edit Schedule</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" id="edit-schedule-form">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-qty-col">
+                        <label for="edit-schedule-product">Product</label>
+                        <select id="edit-schedule-product" name="product_number" class="JO-select JO-product-qty-col" required>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.product_name }} - {{ product.line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-product-line-col">
+                        <label for="edit-schedule-date">Date Planned</label>
+                        <input type="date" id="edit-schedule-date" name="date_planned" class="JO-input JO-product-line-col" required>
+                    </div>
+                </div>
+
+                <div class="JO-form-group JO-product-row">
+                    <div class="JO-product-qty-col">
+                        <label for="edit-schedule-shift">Shift</label>
+                        <select id="edit-schedule-shift" name="shift" class="JO-select JO-product-qty-col" required>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                    <div class="JO-product-line-col">
+                        <label for="edit-schedule-qty">Planned Quantity</label>
+                        <input type="number" id="edit-schedule-qty" name="planned_qty" class="JO-input JO-product-line-col" min="1" required>
+                    </div>
+                    <div class="JO-product-line-col">
+                        <label for="edit-schedule-status">Status</label>
+                        <select id="edit-schedule-status" name="status" class="JO-select JO-product-line-col" required>
+                            <option value="Planned">Planned</option>
+                            <option value="Change Load">Change Load</option>
+                            <option value="Backlog">Backlog</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-edit-schedule">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Update Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="import-products-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Import Products</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'import_products' %}" enctype="multipart/form-data" id="import-products-form">
+            {% csrf_token %}
+            <input type="hidden" name="monitoring_id" value="{{ monitoring.id }}">
+            <div class="JO-modal-body">
+                <div class="FGD-import-info">
+                    <div class="FGD-info-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="FGD-info-content">
+                        <h4>Import Instructions</h4>
+                        <ul>
+                            <li>Download the template first to see the required format</li>
+                            <li>Fill in all required columns: Product Name, Line, Qty per Box, Qty per Hour</li>
+                            <li>Use only the lines assigned to this monitoring group</li>
+                            <li>Save as Excel format (.xlsx)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="JO-form-group">
+                    <div class="JO-file-input-wrapper" id="product-file-drop-area">
+                        <span class="JO-file-input-icon"><i class="fas fa-file-upload"></i></span>
+                        <label for="product-file" class="JO-file-input-label">Select or drag Excel file here</label>
+                        <span class="JO-file-input-desc">Accepted: .xlsx, .xls</span>
+                        <input type="file" id="product-file" name="product_file" class="JO-file-input" accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                
+                <div class="FGD-template-download">
+                    <button type="button" id="download-product-template" class="JO-button JO-secondary-button">
+                        <i class="fas fa-download"></i> Download Template
+                    </button>
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-import-products">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Import Products</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="import-schedules-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Import Schedules</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="POST" action="{% url 'import_schedules' %}" enctype="multipart/form-data" id="import-schedules-form">
+            {% csrf_token %}
+            <input type="hidden" name="monitoring_id" value="{{ monitoring.id }}">
+            <div class="JO-modal-body">
+                <div class="FGD-import-info">
+                    <div class="FGD-info-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="FGD-info-content">
+                        <h4>Import Instructions</h4>
+                        <ul>
+                            <li>Download the template first to see the required format</li>
+                            <li>Fill in all required columns: Product, Date, Shift, Planned Qty, Status</li>
+                            <li>Use only products from this monitoring group</li>
+                            <li>Date format: YYYY-MM-DD</li>
+                            <li>Save as Excel format (.xlsx)</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="JO-form-group">
+                    <div class="JO-file-input-wrapper" id="schedule-file-drop-area">
+                        <span class="JO-file-input-icon"><i class="fas fa-file-upload"></i></span>
+                        <label for="schedule-file" class="JO-file-input-label">Select or drag Excel file here</label>
+                        <span class="JO-file-input-desc">Accepted: .xlsx, .xls</span>
+                        <input type="file" id="schedule-file" name="schedule_file" class="JO-file-input" accept=".xlsx,.xls" required>
+                    </div>
+                </div>
+                
+                <div class="FGD-template-download">
+                    <button type="button" id="download-schedule-template" class="JO-button JO-secondary-button">
+                        <i class="fas fa-download"></i> Download Template
+                    </button>
+                </div>
+            </div>
+            
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-import-schedules">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Import Schedules</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="JO-modal" id="delete-confirmation-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Confirm Delete</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="FGD-delete-confirmation">
+                <div class="FGD-delete-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 id="delete-title">Delete Item?</h3>
+                <p id="delete-message">This action cannot be undone.</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="JO-button JO-secondary-button" id="cancel-delete">Cancel</button>
+            <button type="button" class="JO-button JO-danger-button" id="confirm-delete">Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/monitoring/group-detail.js' %}"></script>
+<script>
+    const monitoringId = {{ monitoring.id }};
+    const facilitatorDashboardUrl = "{% url 'monitoring_dashboard' %}";
+    const chartDataUrl = "{% url 'facilitator_group_chart_data' monitoring.id %}";
+    const exportDataUrl = "{% url 'facilitator_export_output_data' monitoring.id %}";
+    const getProductUrl = "{% url 'get_product' 0 %}".replace('0', '');
+    const editProductUrl = "{% url 'edit_product' 0 %}".replace('0', '');
+    const deleteProductUrl = "{% url 'delete_product' 0 %}".replace('0', '');
+    const getScheduleUrl = "{% url 'get_schedule' 0 %}".replace('0', '');
+    const editScheduleUrl = "{% url 'edit_schedule' 0 %}".replace('0', '');
+    const deleteScheduleUrl = "{% url 'delete_schedule' 0 %}".replace('/0/delete/', '/');
+    const exportProductTemplateUrl = "{% url 'export_product_template' %}";
+    const exportScheduleTemplateUrl = "{% url 'export_schedule_template' %}";
+</script>
+{% endblock %}

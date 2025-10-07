@@ -903,3 +903,68 @@
         font-size: 3rem;
     }
 }
+
+.JO-form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--jo-text, #2c3e50);
+}
+
+.JO-form-group .prefilled-field-container,
+.JO-form-group input[type="text"],
+.JO-form-group input[type="number"],
+.JO-form-group textarea,
+.JO-form-group select {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--jo-border, #dee2e6);
+    border-radius: 8px;
+    font-size: 1rem;
+    background: #fff;
+    color: var(--jo-text, #2c3e50);
+    box-shadow: 0 1px 2px rgba(44,62,80,0.03);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-bottom: 0.5rem;
+    outline: none;
+}
+
+.JO-form-group input[type="text"]:focus,
+.JO-form-group input[type="number"]:focus,
+.JO-form-group textarea:focus,
+.JO-form-group select:focus {
+    border-color: var(--jo-primary, #3366ff);
+    box-shadow: 0 0 0 2px var(--jo-primary-light, rgba(51,102,255,0.15));
+}
+
+.JO-form-group .prefilled-field-container {
+    background: #f8fafc;
+    border: 1px solid var(--jo-border, #dee2e6);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    color: var(--jo-text-light, #6c757d);
+    margin-bottom: 0.5rem;
+}
+
+.JO-form-group input[type="number"]::-webkit-inner-spin-button,
+.JO-form-group input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.JO-form-group input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+@media (max-width: 600px) {
+    .JO-form-group .prefilled-field-container,
+    .JO-form-group input[type="text"],
+    .JO-form-group input[type="number"],
+    .JO-form-group textarea,
+    .JO-form-group select {
+        font-size: 0.95rem;
+        padding: 0.65rem 0.75rem;
+    }
+}

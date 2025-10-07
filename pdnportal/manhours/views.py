@@ -12,6 +12,7 @@ from django.db.models import Sum
 from django.db.models.functions import TruncDay, TruncWeek
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
+from django.views.decorators.csrf import csrf_exempt
 
 @login_required(login_url="user-login")
 def manhours(request):
@@ -529,6 +530,96 @@ def get_chart_data(request):
         }
 
     return JsonResponse(result)
+
+@login_required(login_url="user-login")
+@csrf_exempt
+def get_operators(request):
+    operators = Operators.objects.all()
+    search_term = request.GET.get('search', '')
+    
+    if search_term:
+        operators = operators.filter(name__icontains=search_term)
+        
+    return JsonResponse({
+        'status': 'success',
+        'operators': [{
+            'id': operator.id,
+            'name': operator.name,
+            'id_number': operator.id_number
+        } for operator in operators]
+    }, safe=False)
+
+@login_required(login_url="user-login")
+@csrf_exempt
+def get_operator(request, operator_id):
+    operator = get_object_or_404(Operators, id=operator_id)
+    return JsonResponse({
+        'status': 'success',
+        'operator': {
+            'id': operator.id,
+            'name': operator.name,
+            'id_number': operator.id_number
+        }
+    })
+
+@login_required(login_url="user-login")
+@csrf_exempt
+def create_operator(request):
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        id_number = request.POST.get('id_number', None)
+        
+        if name:
+            operator = Operators(name=name, id_number=id_number)
+            operator.save()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Operator created successfully',
+                'operator': {
+                    'id': operator.id,
+                    'name': operator.name,
+                    'id_number': operator.id_number
+                }
+            })
+        return JsonResponse({'status': 'error', 'message': 'Operator name is required'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required(login_url="user-login")
+@csrf_exempt
+def update_operator(request, operator_id):
+    if request.method == 'POST':
+        operator = get_object_or_404(Operators, id=operator_id)
+        name = request.POST.get('name')
+        id_number = request.POST.get('id_number', operator.id_number)
+        
+        if name:
+            operator.name = name
+            operator.id_number = id_number
+            operator.save()
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Operator updated successfully',
+                'operator': {
+                    'id': operator.id,
+                    'name': operator.name,
+                    'id_number': operator.id_number
+                }
+            })
+        return JsonResponse({'status': 'error', 'message': 'Operator name is required'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required(login_url="user-login")
+@csrf_exempt
+def delete_operator(request, operator_id):
+    if request.method == 'DELETE':
+        operator = get_object_or_404(Operators, id=operator_id)
+        operator_name = operator.name
+        operator.delete()
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Operator "{operator_name}" deleted successfully'
+        })
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @login_required(login_url="user-login")
 def get_machine_performance(request):

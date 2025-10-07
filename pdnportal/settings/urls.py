@@ -4,6 +4,7 @@ from .import views
 urlpatterns = [
     
     path('account-settings/', views.user_management, name="account_settings"),
+    path('search-users/', views.search_users, name='search_users'),
     path('create/', views.create_user, name='create'),
     path('user_edit/<int:user_id>/', views.edit_user, name='edit'),
     

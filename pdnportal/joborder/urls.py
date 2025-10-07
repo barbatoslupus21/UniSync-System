@@ -2,6 +2,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # SPECTATOR
+    path('spectator/', views.spectator_page, name='spectator-homepage'),
+    path('spectator/chart-data/<str:period>/', views.spectator_chart_data, name='spectator-chart-data'),
+    path('spectator/status-chart-data/', views.spectator_status_chart_data, name='spectator-status-chart-data'),
 
     # REQUESTORS
     path('', views.requestor_page, name='requestor-homepage'),

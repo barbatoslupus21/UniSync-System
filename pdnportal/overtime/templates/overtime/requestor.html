@@ -59,7 +59,7 @@
                                 <i class="far fa-clock"></i> {{ filing.date|date:"M d, Y" }}
                             </div>
                             <button class="OT-button OT-view-details-btn" data-id="{{ filing.id }}">
-                                <i class="fas fa-eye"></i> View Details
+                                View Details
                             </button>
                         </div>
                     </div>
@@ -303,18 +303,18 @@
 
 <!-- View OT Details Modal -->
 <div class="OT-modal" id="ot-details-modal">
-    <div class="OT-modal-content OT-large-modal">
+    <div class="OT-modal-content">
         <div class="OT-modal-header">
             <h2 id="details-modal-title">Overtime Details</h2>
             <button class="OT-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="OT-modal-body" id="details-content">
+        <div class="OT-modal-body" id="details-content" style="overflow-y: auto !important; overflow-x: hidden !important;">
             <!-- Loading state is shown initially -->
-            <div class="OT-loading">
-                <i class="fas fa-spinner fa-spin"></i>
-                <p>Loading overtime details...</p>
+            <div class="OT-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
+                <p style="font-size: 16px; color: #666;">Loading overtime details...</p>
             </div>
         </div>
         <div class="OT-modal-footer">
@@ -327,7 +327,7 @@
 <div class="OT-modal" id="status-change-modal">
     <div class="OT-modal-content OT-small-modal">
         <div class="OT-modal-header">
-            <h2 id="status-change-modal-title">Change Employee Status</h2>
+            <h2 id="status-change-modal-title">Update Employee Status</h2>
             <button class="OT-modal-close">
                 <i class="fas fa-times"></i>
             </button>
@@ -375,3 +375,213 @@
         </div>
     </div>
 </div>
+
+<style>
+/* Modal Styles */
+.OT-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto;
+}
+
+.OT-modal.active {
+    display: flex;
+}
+
+.OT-modal-content {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    margin: 20px;
+    position: relative;
+    animation: OT-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes OT-scale-in {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.OT-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.OT-modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.OT-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: #666;
+    cursor: pointer;
+    padding: 5px;
+    transition: color 0.2s;
+}
+
+.OT-modal-close:hover {
+    color: #333;
+}
+
+.OT-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.OT-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 15px 20px;
+    border-top: 1px solid #e0e0e0;
+    gap: 10px;
+}
+
+/* Loading Animation */
+.OT-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    text-align: center;
+}
+
+.OT-loading i {
+    margin-bottom: 15px;
+    color: #3366ff;
+}
+
+.OT-loading p {
+    font-size: 16px;
+    color: #666;
+}
+
+/* Button Styles */
+.OT-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.OT-secondary-button {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.OT-secondary-button:hover {
+    background-color: #e0e0e0;
+}
+
+.OT-primary-button {
+    background-color: #3366ff;
+    color: white;
+}
+
+.OT-primary-button:hover {
+    background-color: #2952cc;
+}
+
+/* Details Content Styles */
+.OT-details-section {
+    margin-bottom: 20px;
+}
+
+.OT-details-section h3 {
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.OT-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.OT-details-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.OT-details-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.OT-details-value {
+    font-size: 1rem;
+    color: #333;
+    font-weight: 500;
+}
+
+.OT-divider {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 20px 0;
+}
+
+.OT-reason-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+.OT-team-member {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.OT-team-member-info {
+    flex: 1;
+}
+
+.OT-team-member-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.OT-team-member-role {
+    font-size: 0.9rem;
+    color: #666;
+}
+</style>

@@ -30,7 +30,10 @@ INSTALLED_APPS = [
     'dcf.apps.DcfConfig',
     'ecis.apps.EcisConfig',
     'overtime.apps.OvertimeConfig',
-    'materialrequest.apps.MaterialrequestConfig'
+    'materialrequest.apps.MaterialrequestConfig',
+    'wip.apps.WipConfig',
+    'qualitycontrol.apps.QualitycontrolConfig',
+    'stockdeclaration.apps.StockdeclarationConfig',
 ]
 
 AUTH_USER_MODEL ='portalusers.users'
@@ -45,7 +48,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'chat.middleware.UserOnlineStatusMiddleware',
-    'pdnportal.db_middleware.DatabaseConnectionMiddleware',  # Add our custom middleware
+    # 'pdnportal.db_middleware.DatabaseConnectionMiddleware',
 ]
 
 CHANNEL_LAYERS = {
@@ -69,6 +72,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'stockdeclaration.context_processors.stock_notifications',
             ],
         },
     },
@@ -88,18 +92,11 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
-        'OPTIONS': {
-            # Enable Write-Ahead Logging mode for better concurrency
-            'timeout': 20,  # Timeout in seconds
-            'isolation_level': None,  # Use autocommit mode
-            'check_same_thread': False,  # Allow multiple threads to use the same connection
-        },
-        'ATOMIC_REQUESTS': True,  # Wrap each request in a transaction
     }
 }
 
 # Database routers
-DATABASE_ROUTERS = ['pdnportal.db_router.RetryingRouter']
+# DATABASE_ROUTERS = ['pdnportal.db_router.RetryingRouter']
 
 
 

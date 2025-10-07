@@ -1,0 +1,655 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Stock Declaration{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+<link rel="stylesheet" href="{% static 'css/stockdeclaration/stockdeclaration.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">Stock Declaration Management</h1>
+            <p class="JO-subtitle">Log, assign, and monitor stock declarations and inventory levels</p> 
+        </div>
+    </div>
+
+    <div class="main-chart-section">
+        <div class="chart-main-container">
+            <div class="JO-card-header">
+                <h2>Stock Declaration Overview</h2>
+                <div class="main-chart-filters">
+                    <select id="time-range-filter" class="JO-select">
+                        <option value="week">This Week</option>
+                        <option value="month" selected>This Month</option>
+                        <option value="year">This Year</option>
+                    </select>
+                    <select id="type-filter" class="JO-select">
+                        <option value="all">All Types</option>
+                        <option value="critical">Critical Stock</option>
+                        <option value="out_of_stock">Out Of Stock</option>
+                        <option value="overstock">Overstock</option>
+                    </select>
+                </div>
+            </div>
+            <div class="main-chart-container">
+                <canvas id="stock-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <!-- Stock Declaration Search Bar -->
+                        <div class="JO-search-container">
+                            <input type="text" id="stock-declaration-search" class="JO-search-input" placeholder="Search by Control Number, product, stock type..." value="{{ search_query }}">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        {% if request.user.stock_declaration_warehouse %}
+                        <button id="add-stock-declaration-btn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i>
+                            Declare Stock
+                        </button>
+                        {% endif %}
+
+                        {% if request.user.stock_declaration_warehouse or request.user.stock_declaration_purchasing %}
+                        <button id="report-stock-declaration-btn" class="btn btn-primary">
+                            <i class="fa fa-download" aria-hidden="true"></i>
+                            Export Report
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="trial-run-table">
+                        <thead>
+                            <tr>
+                                <th>Control Number</th>
+                                <th>Date Declared</th>
+                                <th>Product Number</th>
+                                <th class="hide-column">Product Name</th>
+                                <th class="hide-column">Stock Type</th>
+                                <th class="hide-column">Lines</th>
+                                <th class="hide-column" style="text-align: center;">Status</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trial-run-tbody">
+                            {% for declaration in stock_declarations %}
+                            <tr data-control-number="{{ declaration.control_number|lower }}" data-product="{{ declaration.product_name|lower }}" data-stock-type="{{ declaration.stock_type }}" data-product-number="{{ declaration.product_number }}" data-quantity="{{ declaration.quantity }}" data-lines="{% for line in declaration.lines.all %}{{ line.id }}{% if not forloop.last %},{% endif %}{% endfor %}" data-created-by="{{ declaration.created_by.name }}" data-created-at="{{ declaration.created_at|date:'M d, Y' }}" data-updated-at="{{ declaration.updated_at|date:'M d, Y' }}" data-is-updated="{% if declaration.updated_at != declaration.created_at %}true{% else %}false{% endif %}" data-status="{{ declaration.status }}" data-in-transit="{{ declaration.in_transit|default_if_none:''|escape }}" data-received-by-production="{{ declaration.received_by_production }}" data-date-received-by-production="{% if declaration.date_received_by_production %}{{ declaration.date_received_by_production|date:'M d, Y g:i A' }}{% endif %}">
+                                <td data-label="Control Number">{{ declaration.control_number }}</td>
+                                <td data-label="Date Declared">{{ declaration.created_at|date:"M d, Y" }}</td>
+                                <td data-label="Product Number">{{ declaration.product_number }}</td>
+                                <td class="hide-column" data-label="Product Name">{{ declaration.product_name }}</td>
+                                <td class="hide-column" data-label="Stock Type">{{ declaration.get_stock_type_display }}</td>
+                                <td class="hide-column lines-cell" data-label="Lines">{% for line in declaration.lines.all %}<span class="line-container">{{ line.line_name }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</td>
+                                <td class="hide-column text-center" data-label="Status" class="text-center">
+                                    {% if declaration.status == 'arrived' %}
+                                    <span class="JO-status JO-status-approved">{{ declaration.get_status_display }}</span>
+                                    {% elif declaration.status == 'cancelled' %}
+                                    <span class="JO-status JO-status-cancelled">{{ declaration.get_status_display }}</span>
+                                    {% elif declaration.status == 'filed' %}
+                                    <span class="JO-status JO-status-filed">{{ declaration.get_status_display }}</span>
+                                    {% else %}
+                                    <span class="JO-status JO-status-pending">{{ declaration.get_status_display }}</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Actions" class="text-center">
+                                    {% if request.user.line and request.user.line in declaration.lines.all and not declaration.received_by_production %}
+                                        {% if declaration.status == 'in_transit' or declaration.status == 'arrived' or declaration.status == 'filed' %}
+                                            <button class="btn btn-icon view-stock-declaration-btn receive-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-icon view-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-icon view-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% if declaration.created_by == user and declaration.status == 'filed' %}
+                                        <button class="btn btn-icon edit-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        
+                                        <button class="btn btn-icon btn-error cancel-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Cancel">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    {% endif %}
+
+                                    {% if request.user.stock_declaration_purchasing and declaration.status == 'filed' %}
+                                        <button class="btn btn-icon btn-success intransit-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Mark In Transit">
+                                            <i class="fa fa-truck" aria-hidden="true"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="10" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Stock Declaration Found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No stock declaration has been filed yet</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ stock_declarations.start_index }} to {{ stock_declarations.end_index }} of {{ stock_declarations.paginator.count }} entries
+                    </div>
+                    {% if stock_declarations.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if stock_declarations.has_previous %}
+                            <a href="?tab=StockDeclaration&page={{ stock_declarations.previous_page_number }}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in stock_declarations.paginator.page_range %}
+                                {% if stock_declarations.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > stock_declarations.number|add:'-3' and num < stock_declarations.number|add:'3' %}
+                                <a href="?tab=StockDeclaration&page={{ num }}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if stock_declarations.has_next %}
+                            <a href="?tab=StockDeclaration&page={{ stock_declarations.next_page_number }}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+    </div>
+
+<!-- Stock Declaration Modal -->
+<div id="stock-declaration-modal" class="JO-modal">
+    <div class="JO-modal-content modal-lg">
+        <div class="JO-modal-header">
+            <h2>Declare Stock</h2>
+            <button type="button" class="JO-modal-close" id="close-stock-declaration-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="stock-declaration-form" method="post">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                {% if form.non_field_errors %}
+                <div class="form-errors">
+                    {% for error in form.non_field_errors %}
+                    <div class="error-message">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.product_number.id_for_label }}">{{ form.product_number.label }} *</label>
+                            {{ form.product_number }}
+                            {% if form.product_number.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.product_number.errors %}
+                                    <span class="error-message">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.product_name.id_for_label }}">{{ form.product_name.label }} *</label>
+                            {{ form.product_name }}
+                            {% if form.product_name.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.product_name.errors %}
+                                    <span class="error-message">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }} *</label>
+                            {{ form.quantity }}
+                            {% if form.quantity.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.quantity.errors %}
+                                    <span class="error-message">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.stock_type.id_for_label }}">{{ form.stock_type.label }} *</label>
+                            {{ form.stock_type }}
+                            {% if form.stock_type.errors %}
+                                <div class="field-errors">
+                                    {% for error in form.stock_type.errors %}
+                                    <span class="error-message">{{ error }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="JO-form-group">
+                        <label>{{ form.lines.label }} *</label>
+                        {% if form.lines.help_text %}
+                        <div class="field-help">{{ form.lines.help_text }}</div>
+                        {% endif %}
+                        <div class="lines-search-container">
+                            <input type="text" id="lines-search" class="lines-search-input" placeholder="Search lines...">
+                        </div>
+                        <div class="lines-scrollable-container">
+                            <div class="JO-tooling-options" id="lines-container">
+                                {% for line in lines %}
+                                <div class="JO-checkbox-container line-item" data-line-name="{{ line.line_name|lower }}">
+                                    <input type="checkbox" id="line_{{ line.id }}" name="lines" value="{{ line.id }}" {% if line.id|stringformat:"i" in form.lines.value %}checked{% endif %}>
+                                    <label for="line_{{ line.id }}" class="JO-checkbox-label">{{ line.line_name }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% if form.lines.errors %}
+                            <div class="field-errors">
+                                {% for error in form.lines.errors %}
+                                <span class="error-message">{{ error }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="cancel-stock-declaration-btn">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Declare Stock
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Stock Declaration Modal -->
+<div id="view-stock-declaration-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>View Stock Declaration</h3>
+            <button class="JO-modal-close" id="view-stock-declaration-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="modal-details-header">
+                <div class="modal-details-id">
+                    <h3 id="view-control-number"></h3>
+                    <span id="view-status" class="JO-view-value"></span>
+                </div>
+
+                <div class="JO-details-date">
+                    <p><span id="view-date-label"></span> <span id="view-date-value"></span></p>
+                </div>
+            </div>
+        
+            <div class="modal-details-section">
+                <h4>Stock Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Number</span>
+                        <span id="view-product-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Name</span>
+                        <span id="view-product-name" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Quantity</span>
+                        <span id="view-quantity" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Stock Type</span>
+                        <span id="view-stock-type" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Production Lines</span>
+                        <span id="view-lines" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Declared By</span>
+                        <span id="view-created-by" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-details-section" id="in-transit-info-section" style="display: none;">
+                <h4>In Transit Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item JO-details-item-full">
+                        <span class="JO-details-label">In Transit Notes</span>
+                        <span id="view-in-transit-notes" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-details-section" id="received-info-section" style="display: none;">
+                <h4>Production Receipt Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Received by Production</span>
+                        <span id="view-received-status" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Date Received</span>
+                        <span id="view-received-date" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="btn btn-outline" id="view-stock-declaration-close">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Stock Declaration Modal -->
+<div id="edit-stock-declaration-modal" class="JO-modal">
+    <div class="JO-modal-content modal-lg">
+        <div class="JO-modal-header">
+            <h3>Edit Stock Declaration</h3>
+            <button class="JO-modal-close" id="edit-stock-declaration-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="edit-stock-declaration-form">
+            {% csrf_token %}
+            <input type="hidden" name="declaration_id" id="edit-declaration-id">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-product-number">Product Number <span class="input-required">*</span></label>
+                            <input type="text" id="edit-product-number" name="product_number" class="JO-input form-control" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-product-name">Product Name <span class="input-required">*</span></label>
+                            <input type="text" id="edit-product-name" name="product_name" class="JO-input form-control" required>
+                        </div>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-quantity">Quantity <span class="input-required">*</span></label>
+                            <input type="number" id="edit-quantity" name="quantity" class="JO-input form-control" min="0" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-stock-type">Stock Type <span class="input-required">*</span></label>
+                            <select id="edit-stock-type" name="stock_type" class="JO-select form-control" required>
+                                <option value="critical">Critical</option>
+                                <option value="regular">Regular</option>
+                                <option value="surplus">Surplus</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="JO-form-group">
+                        <label>Production Lines <span class="input-required">*</span></label>
+                        <div class="lines-search-container">
+                            <input type="text" id="edit-lines-search" class="lines-search-input" placeholder="Search lines...">
+                        </div>
+                        <div class="lines-scrollable-container" id="edit-lines-container-wrapper">
+                            <div class="JO-tooling-options" id="edit-lines-container">
+                                {% for line in lines %}
+                                <div class="JO-checkbox-container line-item" data-line-name="{{ line.line_name|lower }}">
+                                    <input type="checkbox" id="edit_line_{{ line.id }}" name="lines" value="{{ line.id }}">
+                                    <label for="edit_line_{{ line.id }}" class="JO-checkbox-label">{{ line.line_name }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="edit-stock-declaration-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check"></i>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- In Transit Stock Declaration Modal -->
+<div id="intransit-stock-declaration-modal" class="JO-modal">
+    <div class="JO-modal-content modal-lg">
+        <div class="JO-modal-header">
+            <h3>Mark Stock Declaration In Transit</h3>
+            <button class="JO-modal-close" id="intransit-stock-declaration-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="intransit-stock-declaration-form">
+            {% csrf_token %}
+            <input type="hidden" name="declaration_id" id="intransit-declaration-id">
+            <div class="JO-modal-body">
+                <div class="modal-details-header">
+                    <div class="modal-details-id">
+                        <h3 id="intransit-control-number"></h3>
+                        <span id="intransit-status" class="JO-view-value"></span>
+                    </div>
+
+                    <div class="JO-details-date">
+                        <p><span id="intransit-date-label"></span> <span id="intransit-date-value"></span></p>
+                    </div>
+                </div>
+            
+                <div class="modal-details-section">
+                    <h4>Stock Information</h4>
+                    <div class="modal-details-grid">
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Product Number</span>
+                            <span id="intransit-product-number" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Product Name</span>
+                            <span id="intransit-product-name" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Quantity</span>
+                            <span id="intransit-quantity" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Stock Type</span>
+                            <span id="intransit-stock-type" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Production Lines</span>
+                            <span id="intransit-lines" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Declared By</span>
+                            <span id="intransit-created-by" class="JO-view-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-details-section">
+                    <h4>In Transit Information</h4>
+                    <div class="JO-form-grid">
+                        <div class="JO-form-group">
+                            <label for="intransit-notes">In Transit Notes <span class="input-required">*</span></label>
+                            <textarea id="intransit-notes" name="intransit_notes" class="JO-textarea" rows="4" placeholder="Enter details about the in transit status (e.g., carrier information, tracking number, expected delivery date, etc.)" required></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="intransit-stock-declaration-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-success">
+                    <i class="fa fa-truck"></i>
+                    Mark In Transit
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cancel Stock Declaration Confirmation Modal -->
+<div id="cancel-stock-declaration-modal" class="JO-modal modal-md">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Cancel Stock Declaration</h3>
+            <button class="JO-modal-close" id="cancel-stock-declaration-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa fa-times-circle" aria-hidden="true"></i>
+                </div>
+                <h4>Are you sure you want to cancel this stock declaration?</h4>
+                <p>This action cannot be undone. The stock declaration will be marked as cancelled.</p>
+                <div class="JO-trial-run-info">
+                    <strong>Control Number:</strong> <span id="cancel-control-number"></span><br>
+                    <strong>Product:</strong> <span id="cancel-product-name"></span>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <input type="hidden" id="cancel-declaration-id">
+            <button type="button" class="btn btn-outline" id="cancel-stock-declaration-cancel">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Keep Declaration
+            </button>
+            <button type="button" class="btn btn-error" id="confirm-cancel-stock-declaration">
+                <i class="fa fa-check" aria-hidden="true"></i>
+                Cancel Declaration
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Stock Declaration Report Modal -->
+<div id="export-stock-declaration-modal" class="JO-modal modal-sm">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Export Stock Declaration Report</h3>
+            <button class="JO-modal-close" id="export-stock-declaration-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="GET" action="{% url 'export_stock_declaration_report' %}" id="export-stock-declaration-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-date-from">Date From <span class="input-required">*</span></label>
+                            <input type="date" id="export-date-from" name="date_from" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-date-to">Date To <span class="input-required">*</span></label>
+                            <input type="date" id="export-date-to" name="date_to" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="export-status">Status <span class="input-required">*</span></label>
+                        <select id="export-status" name="status" class="JO-select" required>
+                            <option value="">Select Status</option>
+                            <option value="filed">Filed</option>
+                            <option value="in_transit">In Transit</option>
+                            <option value="arrived">Arrived</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="all">All Status</option>
+                        </select>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="export-stock-type">Stock Type</label>
+                        <select id="export-stock-type" name="stock_type" class="JO-select">
+                            <option value="">All Types</option>
+                            <option value="critical">Critical Stock</option>
+                            <option value="out_of_stock">Out Of Stock</option>
+                            <option value="overstock">Overstock</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="export-stock-declaration-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-file-excel-o" aria-hidden="true"></i>
+                    Export
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</main>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/stockdeclaration/stockdeclaration.js' %}"></script>
+{% endblock %}

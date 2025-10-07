@@ -27,7 +27,6 @@ from .utils import is_late_filing, proper_case, create_system_activity
 logger = logging.getLogger(__name__)
 
 
-
 # Main View
 @login_required
 def overtime_view(request):
@@ -72,7 +71,7 @@ def overtime_view(request):
         ot_history = OTFiling.objects.filter(requestor=request.user).order_by('-date_created')[:10]
 
         # Get all active employees for the employee selection in the group modal
-        employees = Employee.objects.filter(is_active=True).order_by('name')
+        employees = Employee.objects.all().order_by('name')
 
         context.update({
             'employee_groups': employee_groups,

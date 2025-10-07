@@ -1,0 +1,778 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - WIP Admin Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/wip/wip.css' %}">
+<link rel="stylesheet" href="{% static 'css/wip/wip-admin.css' %}">
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">WIP Data Management</h1>
+            <p class="JO-subtitle">Manage masterlist, products, and processes for WIP inventory system</p>
+        </div>
+        <div class="WIP-admin-actions">
+            <button id="export-inventory-btn" class="JO-button JO-primary-button">
+                <i class="fas fa-file-excel"></i> Export All Inventory Data
+            </button>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="JO-stats-container">
+        <div class="JO-stats-card JO-total">
+            <div class="JO-stats-icon">
+                <i class="fas fa-box"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Active Products</h3>
+                <h2 class="JO-stats-number">{{ stats.active_products }}</h2>
+                <p>Total Products</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-approved">
+            <div class="JO-stats-icon">
+                <i class="fas fa-list"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Material Lists</h3>
+                <h2 class="JO-stats-number">{{ stats.unique_materials }}</h2>
+                <p>Unique Materials</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-pending">
+            <div class="JO-stats-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>For Checking</h3>
+                <h2 class="JO-stats-number">{{ stats.sessions_for_checking }}</h2>
+                <p>Pending Sessions</p>
+            </div>
+        </div>
+        
+        <div class="JO-stats-card JO-approval">
+            <div class="JO-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Checked Sessions</h3>
+                <h2 class="JO-stats-number">{{ stats.sessions_checked }}</h2>
+                <p>Completed Sessions</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session Summary Card -->
+    <div class="JO-table-section">
+        <div class="JO-card">
+            <div class="JO-card-header">
+                <h2>Active WIP Sessions</h2>
+            </div>
+            <div class="JO-table-container">
+                <table class="JO-table" id="sessions-table">
+                    <thead>
+                        <tr>
+                            <th>WIP ID</th>
+                            <th>Line</th>
+                            <th>Person Responsible</th>
+                            <th>Created At</th>
+                            <th>Checked By</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in current_month_sessions %}
+                        <tr data-id="{{ session.id }}">
+                            <td>{{ session.id }}</td>
+                            <td>{{ session.line.line_name }}</td>
+                            <td>{{ session.person_responsible }}</td>
+                            <td>{{ session.created_at|date:"M d, Y" }}</td>
+                            <td>{{ session.checked_by.name|default:"-" }}</td>
+                            <td>
+                                {% if session.status == 'FOR_CHECKING' %}
+                                    <span class="JO-status JO-status-pending">For Checking</span>
+                                {% elif session.status == 'CHECKED' %}
+                                    <span class="JO-status JO-status-approved">Checked</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="JO-empty-table">No sessions found for the current month.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabbed Management Section -->
+    <div class="WIP-inventory-tabs-container">
+        <div class="WIP-inventory-tabs" role="tablist">
+            <button class="WIP-tab-btn active" data-tab="masterlist" role="tab" aria-selected="false">Raw Materials Management</button>
+            <button class="WIP-tab-btn" data-tab="products" role="tab" aria-selected="false">Product Material Lists</button>
+            <button class="WIP-tab-btn" data-tab="processes" role="tab" aria-selected="false">Process Management</button>
+        </div>
+
+        <!-- Masterlist Tab Content -->
+        <div class="WIP-tab-content active" id="masterlist-tab">
+            <div class="WIP-admin-section WIP-data-table-container">
+                <div class="WIP-section-header">
+                    <div class="WIP-table-controls">
+                        <div class="JO-search-container">
+                            <input type="text" class="JO-search-input" id="materials-search" placeholder="Search materials...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="WIP-section-actions">
+                        <button class="JO-button WIP-import-btn" data-target="masterlist">
+                            <i class="fas fa-file-excel"></i> Import / Export
+                        </button>
+                        <button class="JO-button JO-primary-button" id="add-material-btn">
+                            <i class="fas fa-plus"></i> Add Material
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="JO-table-container">
+                    <table class="JO-table" id="materials-table">
+                        <thead>
+                            <tr>
+                                <th>Material Name</th>
+                                <th>Description</th>
+                                <th>UOM</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="materials-tbody">
+                            {% for material in materials %}
+                            <tr data-id="{{ material.id }}">
+                                <td>{{ material.material_name }}</td>
+                                <td>{{ material.description }}</td>
+                                <td>{{ material.uom }}</td>
+                                <td>{{ material.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <button class="JO-icon-button WIP-edit-item-btn" data-type="material" data-id="{{ material.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="JO-icon-button WIP-delete-item-btn" data-type="material" data-id="{{ material.id }}" data-name="{{ material.material_name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="JO-empty-table">No materials found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="WIP-pagination" id="materials-pagination">
+                    <!-- Pagination will be dynamically generated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Products Tab Content -->
+        <div class="WIP-tab-content" id="products-tab">
+            <div class="WIP-admin-section WIP-data-table-container">
+                <div class="WIP-section-header">
+                    <div class="WIP-table-controls">
+                        <div class="JO-search-container">
+                            <input type="text" class="JO-search-input" id="products-search" placeholder="Search products...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="WIP-section-actions">
+                        <button class="JO-button WIP-import-btn" data-target="products">
+                            <i class="fas fa-file-excel"></i> Import / Export
+                        </button>
+                        <button class="JO-button JO-primary-button" id="add-product-btn">
+                            <i class="fas fa-plus"></i> Add Product
+                        </button>
+                    </div>
+                </div>
+                <div class="JO-table-container">
+                    <table class="JO-table" id="products-table">
+                        <thead>
+                            <tr>
+                                <th>Product Number</th>
+                                <th>Description</th>
+                                <th>Materials</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="products-tbody">
+                            {% for product in products %}
+                            <tr data-id="{{ product.id }}">
+                                <td>{{ product.product_number }}</td>
+                                <td>{{ product.description }}</td>
+                                <td>
+                                    <div class="WIP-materials-tags">
+                                        {% for wip in product.wip_materials|slice:":3" %}
+                                            <span class="WIP-material-tag">{{ wip.material_name.material_name }}</span>
+                                        {% endfor %}
+                                        {% if product.wip_materials|length > 3 %}
+                                            <span class="WIP-material-tag WIP-more">+{{ product.wip_materials|length|add:"-3" }} more</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td>{{ product.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <button class="JO-icon-button WIP-edit-item-btn" data-type="product" data-id="{{ product.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="JO-icon-button WIP-delete-item-btn" data-type="product" data-id="{{ product.id }}" data-name="{{ product.product_number }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="JO-empty-table">No products found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="WIP-pagination" id="products-pagination"></div>
+            </div>
+        </div>
+
+        <!-- Processes Tab Content -->
+        <div class="WIP-tab-content" id="processes-tab">
+            <div class="WIP-admin-section WIP-data-table-container">
+                <div class="WIP-section-header">
+                    <div class="WIP-table-controls">
+                        <div class="JO-search-container">
+                            <input type="text" class="JO-search-input" id="processes-search" placeholder="Search processes...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="WIP-section-actions">
+                        <button class="JO-button JO-primary-button" id="add-process-btn">
+                            <i class="fas fa-plus"></i> Add Process
+                        </button>
+                    </div>
+                </div>
+                <div class="JO-table-container">
+                    <table class="JO-table" id="processes-table">
+                        <thead>
+                            <tr>
+                                <th>Process Name</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="processes-tbody">
+                            {% for process in processes %}
+                            <tr data-id="{{ process.id }}">
+                                <td>{{ process.process_name }}</td>
+                                <td>
+                                    {% if process.is_active %}
+                                        <span class="JO-status JO-status-approved">Active</span>
+                                    {% else %}
+                                        <span class="JO-status JO-status-rejected">Inactive</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ process.created_at|date:"M d, Y" }}</td>
+                                <td>
+                                    <button class="JO-icon-button WIP-edit-item-btn" data-type="process" data-id="{{ process.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="JO-icon-button WIP-delete-item-btn" data-type="process" data-id="{{ process.id }}" data-name="{{ process.process_name }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="JO-empty-table">No processes found.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="WIP-pagination" id="processes-pagination"></div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Import Modal (Unified) -->
+<div class="JO-modal" id="import-modal">
+    <div class="JO-modal-content WIP-wide-modal">
+        <div class="JO-modal-header">
+            <h2 id="import-modal-title">Data Management</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <!-- Import Content Section -->
+            <div id="import-content-section">
+                <!-- Import Instructions Section -->
+                <div class="WIP-import-instructions">
+                    <div class="WIP-instructions-icon">
+                        <i class="fas fa-info-circle"></i>
+                    </div>
+                    <div class="WIP-instructions-content">
+                        <h4>Import Instructions</h4>
+                        <ul>
+                            <li>Download the template first to see the required format</li>
+                            <li>Save as Excel format (.xlsx)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- File Dropzone -->
+                <div class="WIP-import-area">
+                    <div class="JO-form-group">
+                        <div class="JO-file-input-wrapper" id="product-file-drop-area">
+                            <span class="JO-file-input-icon"><i class="fas fa-file-upload"></i></span>
+                            <label for="product-file" class="JO-file-input-label">Select or drag Excel file here</label>
+                            <span class="JO-file-input-desc">Accepted: .xlsx, .xls</span>
+                            <input type="file" id="file-input" accept=".xlsx,.xls" style="display: none;">
+
+                            <div class="WIP-file-info" id="file-info" style="display: none;">
+                                <div class="WIP-file-details">
+                                    <i class="fas fa-file-excel"></i>
+                                    <span id="file-name"></span>
+                                    <span id="file-size"></span>
+                                </div>
+                                <button class="WIP-remove-file-btn" id="remove-file-btn">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <!-- Download Template Button -->
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button class="JO-button JO-secondary-button" id="download-import-template-btn">
+                        <i class="fas fa-download"></i> Download Template
+                    </button>
+                </div>
+            </div>
+
+            <!-- Export Content Section (initially hidden) -->
+            <div id="export-content-section" style="display: none; margin-top: 2rem;">
+                <div class="WIP-export-info">
+                    <i class="fas fa-file-excel WIP-export-icon"></i>
+                    <h3>Export Complete Inventory Data</h3>
+                    <p>This will generate an Excel file with three sheets:</p>
+                    <ul class="WIP-export-details">
+                        <li><strong>Raw Materials:</strong> Product info, materials, count tags, quantities, and calculated totals</li>
+                        <li><strong>Finished Goods:</strong> Count tags, product numbers, descriptions, and quantities</li>
+                        <li><strong>In Process:</strong> WIP products with material details and calculated totals</li>
+                    </ul>
+                    <p><strong>Note:</strong> Only data from checked sessions will be included.</p>
+                </div>
+                
+                <!-- Date Filter Section -->
+                <div class="WIP-date-filter-section" style="margin-top: 2rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
+                    <h4 style="margin-bottom: 1rem; color: #333;">Date Range Filter</h4>
+                    <p style="margin-bottom: 1rem; color: #666; font-size: 0.9rem;">Select a date range to filter sessions. Only entries from sessions created within this range will be exported.</p>
+                    
+                    <div class="WIP-date-inputs" style="display: flex; gap: 1rem; align-items: end;">
+                        <div class="JO-form-group" style="flex: 1;">
+                            <label for="export-start-date" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Start Date <span class="required">*</span></label>
+                            <input type="date" id="export-start-date" class="WIP-input" required>
+                        </div>
+                        <div class="JO-form-group" style="flex: 1;">
+                            <label for="export-end-date" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">End Date <span class="required">*</span></label>
+                            <input type="date" id="export-end-date" class="WIP-input" required>
+                        </div>
+                    </div>
+                    
+                    <div class="WIP-date-validation" id="date-validation-message" style="margin-top: 1rem; display: none;">
+                        <p style="color: #dc3545; font-size: 0.9rem; margin: 0;">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <span id="validation-text"></span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="JO-button JO-secondary-button close-modal">Cancel</button>
+            <button type="submit" class="JO-button JO-primary-button" id="import-products-confirm-btn" disabled>Import Products</button>
+            <button type="button" class="JO-button JO-primary-button" id="confirm-export-btn" style="display: none;">
+                <i class="fas fa-download"></i> Export Data
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Material Modal -->
+<div class="JO-modal" id="add-material-modal">
+    <div class="JO-modal-content  WIP-wide-modal">
+        <div class="JO-modal-header">
+            <h2>Add New Material</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="add-material-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="material-name">Material Name <span class="required">*</span></label>
+                    <input type="text" id="material-name" name="material_name" class="WIP-input" required>
+                </div>
+                <div class="JO-form-group">
+                    <label for="material-description">Description</label>
+                    <textarea id="material-description" name="description" class="WIP-input" rows="3"></textarea>
+                </div>
+                <div class="JO-form-group">
+                    <label for="material-uom">Unit of Measure</label>
+                    <input type="text" id="material-uom" name="uom" class="WIP-input">
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button close-modal">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Add Material</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Product Modal -->
+<div class="JO-modal" id="add-product-modal">
+    <div class="JO-modal-content WIP-wide-modal">
+        <div class="JO-modal-header">
+            <h2>Add New Product</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="add-product-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="product-number">Product Number <span class="required">*</span></label>
+                    <input type="text" id="product-number" name="product_number" class="WIP-input" required>
+                </div>
+                <div class="JO-form-group">
+                    <label for="product-description">Description</label>
+                    <textarea id="product-description" name="description" class="WIP-input" rows="3"></textarea>
+                </div>
+                <div class="JO-form-group">
+                    <label>Materials</label>
+                    <div class="WIP-search-container">
+                        <input type="text" id="material-search" class="WIP-search-input" placeholder="Search materials...">
+                    </div>
+                    <div class="WIP-materials-table-wrapper">
+                        <table class="JO-table" id="materials-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th>Material Name</th>
+                                    <th>Description</th>
+                                    <th>Cutting Length</th>
+                                    <th>UOM</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materials-table-body">
+                                {% for material in all_materials %}
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" name="material_ids" value="{{ material.id }}">
+                                    </td>
+                                    <td>{{ material.material_name }}</td>
+                                    <td>{{ material.description }}</td>
+                                    <td>
+                                        <input type="number" step="0.01" min="0" class="WIP-input cutting-length-input" name="cutting_length_{{ material.id }}" style="width: 100px;" disabled>
+                                    </td>
+                                    <td>
+                                        <input type="text" class="WIP-input uom-input" name="uom_{{ material.id }}" style="width: 80px;" disabled>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button close-modal">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Add Product</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Process Modal -->
+<div class="JO-modal" id="add-process-modal">
+    <div class="JO-modal-content  WIP-wide-modal">
+        <div class="JO-modal-header">
+            <h2>Add New Process</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="add-process-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-group">
+                    <label for="process-name">Process Name <span class="required">*</span></label>
+                    <input type="text" id="process-name" name="process_name" class="WIP-input" required>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button close-modal">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Add Process</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Item Modal -->
+<div class="JO-modal" id="edit-item-modal">
+    <div class="JO-modal-content WIP-wide-modal">
+        <div class="JO-modal-header">
+            <h2 id="edit-modal-title">Edit Item</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="edit-item-form">
+            <div class="JO-modal-body" id="edit-modal-body">
+                <!-- Content will be dynamically generated -->
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="JO-button JO-secondary-button close-modal">Cancel</button>
+                <button type="submit" class="JO-button JO-primary-button">Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="JO-modal JO-confirmation-modal" id="delete-confirmation-modal">
+    <div class="JO-modal-content normal-modal">
+        <div class="JO-modal-header">
+            <h2>Confirm Deletion</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div style="text-align: center;">
+                <i class="fas fa-exclamation-triangle JO-confirmation-icon danger"></i>
+                <p class="JO-confirmation-message">Are you sure you want to delete <strong id="delete-item-name"></strong>?</p>
+                <p class="JO-confirmation-submessage">This action cannot be undone.</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-modal">Cancel</button>
+            <button class="JO-button JO-danger-button" id="confirm-delete-btn">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- Duplicates Modal -->
+<div class="JO-modal" id="duplicates-modal">
+    <div class="JO-modal-content  WIP-wide-modal">
+        <div class="JO-modal-header">
+            <h2>Duplicate Items Found</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="WIP-duplicates-info">
+                <i class="fas fa-exclamation-circle WIP-warning-icon"></i>
+                <p>The following items already exist and were skipped during import:</p>
+                <div class="WIP-duplicates-list" id="duplicates-list">
+                    <!-- Duplicates will be listed here -->
+                </div>
+                <p class="WIP-import-summary" id="import-summary"></p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-primary-button close-modal">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Unverified Sessions Confirmation Modal -->
+<div class="JO-modal" id="unverified-sessions-modal">
+    <div class="JO-modal-content normal-modal">
+        <div class="JO-modal-header">
+            <h2>Unverified Sessions Warning</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="WIP-unverified-sessions-info">
+                <i class="fas fa-exclamation-triangle WIP-warning-icon" style="color: #ffc107; font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p class="WIP-warning-message">The following sessions are still marked as 'For Checking'. Are you sure you want to proceed with exporting?</p>
+                <p class="WIP-warning-submessage">Note: Only data from checked sessions will be included in the export.</p>
+                
+                <div class="WIP-unverified-sessions-list" id="unverified-sessions-list">
+                    <!-- Unverified sessions will be listed here -->
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-modal">Cancel</button>
+            <button class="JO-button JO-primary-button" id="proceed-export-btn">
+                <i class="fas fa-download"></i> Proceed with Export
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/wip/wip-admin.js' %}"></script>
+<script>
+function filterMaterialsTable() {
+    const input = document.getElementById('material-search');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('materials-table-body');
+    const rows = table.getElementsByTagName('tr');
+    for (let i = 0; i < rows.length; i++) {
+        const name = rows[i].cells[1].textContent.toLowerCase();
+        const desc = rows[i].cells[2].textContent.toLowerCase();
+        const cut = rows[i].cells[3].textContent.toLowerCase();
+        if (name.includes(filter) || desc.includes(filter) || cut.includes(filter)) {
+            rows[i].style.display = '';
+        } else {
+            rows[i].style.display = 'none';
+        }
+    }
+}
+// Attach the filter function to the input event for live filtering
+window.addEventListener('DOMContentLoaded', function() {
+    var searchInput = document.getElementById('material-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', filterMaterialsTable);
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tabBtns = document.querySelectorAll('.WIP-tab-btn');
+    const tabContents = document.querySelectorAll('.WIP-tab-content');
+
+    // Set the first tab as active by default
+    if (tabBtns.length > 0) {
+        tabBtns[0].classList.add('active');
+        tabBtns[0].setAttribute('aria-selected', 'true');
+    }
+    if (tabContents.length > 0) {
+        tabContents.forEach((content, index) => {
+            if (index === 0) {
+                content.style.display = 'block';
+            } else {
+                content.style.display = 'none';
+            }
+        });
+    }
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const tabId = btn.dataset.tab;
+
+            // Deactivate all tabs and hide all content
+            tabBtns.forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+            });
+            tabContents.forEach(c => c.style.display = 'none');
+
+            // Activate the clicked tab and show its content
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            const contentToShow = document.getElementById(`${tabId}-tab`);
+            if (contentToShow) {
+                contentToShow.style.display = 'block';
+            }
+        });
+    });
+});
+
+// --- Restore Active Tab and Scroll Position ---
+
+// Save active tab and scroll position before reload
+function saveWIPAdminState(tabId) {
+    localStorage.setItem('wip_admin_active_tab', tabId);
+    localStorage.setItem('wip_admin_scroll', window.scrollY);
+}
+
+// Restore active tab and scroll position on load
+function restoreWIPAdminState() {
+    const savedTab = localStorage.getItem('wip_admin_active_tab');
+    const savedScroll = localStorage.getItem('wip_admin_scroll');
+    const tabBtns = document.querySelectorAll('.WIP-tab-btn');
+    const tabContents = document.querySelectorAll('.WIP-tab-content');
+
+    // Restore tab
+    if (savedTab) {
+        tabBtns.forEach((btn, idx) => {
+            if (btn.dataset.tab === savedTab) {
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+                tabContents[idx].style.display = 'block';
+            } else {
+                btn.classList.remove('active');
+                btn.setAttribute('aria-selected', 'false');
+                tabContents[idx].style.display = 'none';
+            }
+        });
+    }
+
+    // Restore scroll
+    if (savedScroll !== null) {
+        setTimeout(() => {
+            window.scrollTo(0, parseInt(savedScroll, 10));
+        }, 50); // Delay to ensure content is rendered
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Restore state on load
+    restoreWIPAdminState();
+
+    // Save tab on click
+    document.querySelectorAll('.WIP-tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            saveWIPAdminState(btn.dataset.tab);
+        });
+    });
+
+    // Save scroll position before unload
+    window.addEventListener('beforeunload', function() {
+        // Find the currently active tab
+        const activeTab = document.querySelector('.WIP-tab-btn.active');
+        if (activeTab) {
+            saveWIPAdminState(activeTab.dataset.tab);
+        }
+    });
+});
+</script>
+{% endblock %}

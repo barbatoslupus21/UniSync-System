@@ -47,16 +47,6 @@
     transform: translateY(-2px);
 }
 
-.UM-edit-user:hover {
-    background-color: var(--jo-primary-light);
-    color: var(--jo-primary);
-}
-
-.UM-delete-user:hover {
-    background-color: var(--um-inactive-light);
-    color: var(--um-inactive-color);
-}
-
 .UM-toggle-status:hover {
     background-color: var(--um-active-light);
     color: var(--um-active-color);
@@ -432,10 +422,6 @@
     gap: 16px;
 }
 
-.UM-form-group {
-    margin-bottom: 10px;
-}
-
 .UM-form-group label {
     display: block;
     font-weight: 500;
@@ -585,24 +571,32 @@
 
 /* Permission sections */
 .UM-permission-category {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--jo-border);
+    padding: 15px 0;
+    /* border-bottom: 1px solid var(--jo-border); */
 }
 
 .UM-permission-category:last-child {
     border-bottom: none;
 }
 
-.UM-permission-header {
-    margin-bottom: 10px;
-}
-
 .UM-subpermissions {
     margin-left: 25px;
-    padding: 10px 0;
+    /* Start hidden to avoid leaving vertical space under the header */
     display: none;
-    animation: UM-fade-in 0.3s ease-out;
+    padding: 0; /* no vertical padding when hidden */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.32s cubic-bezier(.2,.8,.2,1), opacity 0.24s ease, padding 0.2s ease;
+    will-change: max-height, opacity, padding;
+}
+
+.UM-subpermissions.visible {
+    display: block;
+    /* large enough max-height to accommodate the content; if you have deeper content increase this value */
+    max-height: 400px;
+    opacity: 1;
+    padding: 10px 0;
 }
 
 .UM-radio-group {
@@ -624,9 +618,11 @@
 .UM-avatar-container {
     position: relative;
     width: 100%;
-    max-width: 650px;
+    max-width: 80%;
     overflow: hidden;
+    border-radius: 10px;
     padding: 15px 0;
+    height: 120px; /* Fixed height for container */
 }
 
 .UM-avatar-slider {
@@ -1029,7 +1025,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr 2fr auto;
     gap: 15px;
-    align-items: end;
+    align-items: center !important;
     padding: 10px;
     background-color: var(--jo-bg-color);
     border-radius: 8px;
@@ -1048,20 +1044,6 @@
     padding-bottom: 10px;
 }
 
-.UM-remove-approver-btn {
-    color: var(--um-inactive-color);
-}
-
-.UM-remove-approver-btn:hover {
-    background-color: var(--um-inactive-light);
-    color: var(--um-inactive-color);
-}
-
-.UM-remove-approver-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 #add-approver-btn {
     align-self: flex-start;
     margin-top: 10px;
@@ -1073,16 +1055,6 @@
 
 .UM-inline-form {
     display: inline;
-}
-
-.UM-avatar-container {
-    position: relative;
-    width: 100%;
-    max-width: 350px;
-    overflow: hidden;
-    border-radius: 10px;
-    padding: 15px 0;
-    height: 120px; /* Fixed height for container */
 }
 
 /* ==========================================================================
@@ -1324,6 +1296,16 @@
 .UM-ecis-pill {
     background-color: var(--um-ecis-light);
     color: var(--um-ecis-color);
+}
+
+.UM-quality-control-pill {
+    background-color: var(--um-qc-light, #fff3e0);
+    color: var(--um-qc-color, #e65100);
+}
+
+.UM-stock-declaration-pill {
+    background-color: var(--um-stock-light, #fff8e1);
+    color: var(--um-stock-color, #f57f17);
 }
 
 /* Status */

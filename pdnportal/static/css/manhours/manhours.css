@@ -524,6 +524,11 @@ canvas#mh-analysis-chart {
     transform: translateY(-2px);
 }
 
+.modal-buttons-container{
+    display: flex;
+    justify-content: space-between;
+}
+
 .MH-search-container {
     display: flex;
     align-items: center;
@@ -909,6 +914,45 @@ canvas#mh-analysis-chart {
     }
 }
 
+/* Delete Confirmation Modal Styles */
+.delete-confirmation-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px 15px 10px;
+}
+
+.delete-icon-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background-color: rgba(220, 53, 69, 0.1);
+    margin-bottom: 20px;
+}
+
+.delete-icon-container i {
+    font-size: 30px;
+    color: #dc3545;
+}
+
+.delete-confirmation-container h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.delete-confirmation-container p {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
 @keyframes modalSlideUp {
     from {
         transform: translateY(20px);
@@ -934,6 +978,56 @@ canvas#mh-analysis-chart {
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999;
     animation: modalFadeIn 0.3s ease-out forwards;
+}
+
+/* ==========================================================================
+   Empty States & No Results
+   ========================================================================== */
+
+.JO-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    text-align: center;
+    width: 100%;
+    min-height: 300px;
+    position: relative;
+    margin: 20px 0;
+}
+
+.JO-empty-state-icon {
+    color: #888;
+    font-size: 24px;
+    margin: 0 auto 15px;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: #f5f5f5;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.JO-empty-state-icon i {
+    font-size: 24px;
+    color: #aaa;
+}
+
+.JO-empty-state-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.JO-empty-state-message {
+    font-size: 14px;
+    color: #666;
+    max-width: 80%;
+    margin: 0 auto;
 }
 
 /* ==========================================================================

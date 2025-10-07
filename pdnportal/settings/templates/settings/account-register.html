@@ -4,7 +4,7 @@
 {% block title %}UniSync - User Account{% endblock %}
 
 {% block extra_css %}
-
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
 <link rel="stylesheet" href="{% static 'css/account/account-registration.css' %}">
 {% endblock %}
 
@@ -16,9 +16,7 @@
             <h1 class="UM-page-title">User Management</h1>
             <p class="UM-subtitle">Add, edit, and manage user accounts and permissions</p>
         </div>
-        <button id="add-user-btn" class="UM-button UM-primary-button">
-            <i class="fas fa-plus"></i> Add New User
-        </button>
+        
     </div>
 
     <!-- Stats cards -->
@@ -64,167 +62,193 @@
         </div>
     </div>
 
-    <!-- Main content grid with filters and user table -->
-    <div class="UM-card UM-all-users">
-        <div class="UM-card-header">
-            <h2>All Users</h2>
-            <div class="UM-card-actions">
-                <div class="UM-search-container">
-                    <input type="text" id="user-search" class="UM-search-input" placeholder="Search by name, ID or line...">
-                    <button class="UM-search-button">
-                        <i class="fas fa-search"></i>
-                    </button>
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2>Users Lists</h2>
+                    <div class="card-header-action">
+                        <!-- User Search Bar -->
+                        <div class="JO-search-container">
+                            <input type="text" id="user-search" class="JO-search-input" placeholder="Search by name, ID or line...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+
+                        <div class="UM-filter-container">
+                            <select id="permission-filter" class="UM-select UM-filter-select">
+                                <option value="all">All Permissions</option>
+                                <option value="admin">Admin Users</option>
+                                <option value="job_order">Job Order</option>
+                                <option value="manhours">Manhours</option>
+                                <option value="monitoring">Monitoring</option>
+                                <option value="dcf">DCF</option>
+                                <option value="ecis">ECIS</option>
+                            </select>
+                        </div>
+
+                        <button id="add-user-btn" class="UM-button UM-primary-button">
+                            <i class="fas fa-plus"></i> Add New User
+                        </button>
+                    </div>
                 </div>
-                <div class="UM-filter-container">
-                    <select id="permission-filter" class="UM-select UM-filter-select">
-                        <option value="all">All Permissions</option>
-                        <option value="admin">Admin Users</option>
-                        <option value="job_order">Job Order</option>
-                        <option value="manhours">Manhours</option>
-                        <option value="monitoring">Monitoring</option>
-                        <option value="dcf">DCF</option>
-                        <option value="ecis">ECIS</option>
-                    </select>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="trial-run-table">
+                        <thead>
+                            <tr>
+                                <th>Avatar</th>
+                                <th>ID Number</th>
+                                <th>Name</th>
+                                <th>Position</th>
+                                <th>Line</th>
+                                <th>Permissions</th>
+                                <th style="text-align: center;">Status</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trial-run-tbody">
+                            {% for user in users %}
+                                <tr>
+                                    <td data-label="Avatar">
+                                        <img src="{{ user.avatar.url }}" alt="{{ user.name }}" class="UM-user-avatar">
+                                    </td>
+                                    <td data-label="ID">{{ user.id_number }}</td>
+                                    <td data-label="Name">{{ user.name }}</td>
+                                    <td data-label="Position">{{ user.position }}</td>
+                                    <td data-label="Line">{{ user.line.line_name }}</td>
+                                    <td data-label="Permissions">
+                                        <div class="UM-permission-pills">
+                                            {% if user.is_admin %}
+                                            <span class="UM-permission-pill UM-admin-pill">Admin</span>
+                                            {% endif %}
+
+                                            {% if user.job_order_user %}
+                                            <span class="UM-permission-pill UM-job-order-pill">Job Order</span>
+                                            {% endif %}
+
+                                            {% if user.manhours_user %}
+                                            <span class="UM-permission-pill UM-manhours-pill">Manhours</span>
+                                            {% endif %}
+
+                                            {% if user.monitoring_user %}
+                                            <span class="UM-permission-pill UM-monitoring-pill">Monitoring</span>
+                                            {% endif %}
+
+                                            {% if user.quality_control_user %}
+                                            <span class="UM-permission-pill UM-quality-control-pill">Quality Control</span>
+                                            {% endif %}
+
+                                            {% if user.stock_declaration_user %}
+                                            <span class="UM-permission-pill UM-stock-declaration-pill">Stock Declaration</span>
+                                            {% endif %}
+
+                                            {% if user.dcf_user %}
+                                            <span class="UM-permission-pill UM-dcf-pill">DCF</span>
+                                            {% endif %}
+
+                                            {% if user.ecis_user %}
+                                            <span class="UM-permission-pill UM-ecis-pill">ECIS</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td class="text-center" data-label="Status">
+                                        <span class="UM-status {% if user.is_active %}UM-status-active{% else %}UM-status-inactive{% endif %}">
+                                            {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </td>
+                                    <td data-label="Actions">
+                                        <div class="UM-action-buttons">
+                                            <button class="btn btn-icon UM-edit-user" data-id="{{ user.id }}" title="Edit User">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-icon btn-error UM-delete-user" data-id="{{ user.id }}" title="Delete User">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                            <form method="post" action="{% url 'toggle_status' user.id %}" class="UM-inline-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-icon {% if user.is_active %}btn-error{% else %}btn-success{% endif %}" title="{% if user.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                                    <i class="fas {% if user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Trial Run Found</h4>
+                                        <p>No trial run has been requested yet</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-        </div>
 
-        <div class="UM-table-container">
-            <table class="UM-table">
-                <thead>
-                    <tr>
-                        <th>Avatar</th>
-                        <th>ID Number</th>
-                        <th>Name</th>
-                        <th>Position</th>
-                        <th>Line</th>
-                        <th>Username</th>
-                        <th>Permissions</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for user in users %}
-                    <tr>
-                        <td data-label="Avatar">
-                            <img src="{{ user.avatar.url }}" alt="{{ user.name }}" class="UM-user-avatar">
-                        </td>
-                        <td data-label="ID">{{ user.id_number }}</td>
-                        <td data-label="Name">{{ user.name }}</td>
-                        <td data-label="Position">{{ user.position }}</td>
-                        <td data-label="Line">{{ user.line.line_name }}</td>
-                        <td data-label="Username">{{ user.username }}</td>
-                        <td data-label="Permissions">
-                            <div class="UM-permission-pills">
-                                {% if user.is_admin %}
-                                <span class="UM-permission-pill UM-admin-pill">Admin</span>
-                                {% endif %}
-
-                                {% if user.job_order_user %}
-                                <span class="UM-permission-pill UM-job-order-pill">Job Order</span>
-                                {% endif %}
-
-                                {% if user.manhours_user %}
-                                <span class="UM-permission-pill UM-manhours-pill">Manhours</span>
-                                {% endif %}
-
-                                {% if user.monitoring_user %}
-                                <span class="UM-permission-pill UM-monitoring-pill">Monitoring</span>
-                                {% endif %}
-
-                                {% if user.dcf_user %}
-                                <span class="UM-permission-pill UM-dcf-pill">DCF</span>
-                                {% endif %}
-
-                                {% if user.ecis_user %}
-                                <span class="UM-permission-pill UM-ecis-pill">ECIS</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td data-label="Status">
-                            <span class="UM-status {% if user.is_active %}UM-status-active{% else %}UM-status-inactive{% endif %}">
-                                {% if user.is_active %}Active{% else %}Inactive{% endif %}
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ users.start_index }} to {{ users.end_index }} of {{ users.paginator.count }} entries
+                    </div>
+                    {% if users.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if users.has_previous %}
+                            <a href="?page={{ users.previous_page_number }}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
                             </span>
-                        </td>
-                        <td data-label="Actions">
-                            <div class="UM-action-buttons">
-                                <button class="UM-icon-button UM-edit-user" data-id="{{ user.id }}" title="Edit User">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="UM-icon-button UM-delete-user" data-id="{{ user.id }}" title="Delete User">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                                <form method="post" action="{% url 'toggle_status' user.id %}" class="UM-inline-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="UM-icon-button UM-toggle-status" title="{% if user.is_active %}Deactivate{% else %}Activate{% endif %}">
-                                        <i class="fas {% if user.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
-                                    </button>
-                                </form>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in users.paginator.page_range %}
+                                {% if users.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                                <a href="?page={{ num }}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
                             </div>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" class="UM-empty-table">No users found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="UM-pagination">
-            <div class="UM-pagination-info">
-                Showing {{ users.start_index }} to {{ users.end_index }} of {{ users.paginator.count }} users
-            </div>
-            <div class="UM-pagination-pages">
-                {% if users.has_previous %}
-                <a href="?page=1" class="UM-pagination-btn">
-                    <i class="fas fa-angle-double-left"></i>
-                </a>
-                <a href="?page={{ users.previous_page_number }}" class="UM-pagination-btn">
-                    <i class="fas fa-angle-left"></i>
-                </a>
-                {% endif %}
-
-                {% for i in users.paginator.page_range %}
-                    {% if users.number == i %}
-                    <span class="UM-pagination-page active">{{ i }}</span>
-                    {% elif i > users.number|add:'-3' and i < users.number|add:'3' %}
-                    <a href="?page={{ i }}" class="UM-pagination-page">{{ i }}</a>
+                            
+                            {% if users.has_next %}
+                            <a href="?page={{ users.next_page_number }}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
                     {% endif %}
-                {% endfor %}
-
-                {% if users.has_next %}
-                <a href="?page={{ users.next_page_number }}" class="UM-pagination-btn">
-                    <i class="fas fa-angle-right"></i>
-                </a>
-                <a href="?page={{ users.paginator.num_pages }}" class="UM-pagination-btn">
-                    <i class="fas fa-angle-double-right"></i>
-                </a>
-                {% endif %}
+                </div>
             </div>
         </div>
-    </div>
+
 </main>
 
 <!-- Add User Modal -->
-<div class="UM-modal" id="add-user-modal">
-    <div class="UM-modal-content">
-        <div class="UM-modal-header">
-            <h2 id="modal-title">Add New User</h2>
-            <button class="UM-modal-close">
+<div class="JO-modal" id="add-user-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3 id="modal-title">Add New User</h3>
+            <button class="JO-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <form id="user-form" method="post" action="{% url 'create' %}" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" id="user-id" name="user_id" value="">
-            <div class="UM-modal-body">
+            <div class="JO-modal-body">
                 <!-- Avatar Selection -->
                 <div class="UM-form-section">
-                    <h3>Profile Avatar</h3>
                     <div class="UM-avatar-carousel">
                         <button type="button" class="UM-avatar-nav-btn" id="avatar-prev">
                             <i class="fas fa-chevron-left"></i>
@@ -463,6 +487,72 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Quality Control Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="quality-control-user" name="quality_control_user">
+                                <span class="UM-checkbox-label UM-category-label">Quality Control</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="quality-control-roles">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="warehouse">
+                                    <span class="UM-radio-label">Warehouse</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="engineering">
+                                    <span class="UM-radio-label">Maintenance and Engineering</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="production">
+                                    <span class="UM-radio-label">Production</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="qa">
+                                    <span class="UM-radio-label">Quality Assurance</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stock Declaration Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="stock-declaration-user" name="stock_declaration_user">
+                                <span class="UM-checkbox-label UM-category-label">Stock Declaration Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="stock-declaration-roles">
+                            <div class="UM-radio-group">
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="stock_declaration_role" value="production">
+                                    <span class="UM-radio-label">Production</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="stock_declaration_role" value="warehouse">
+                                    <span class="UM-radio-label">Warehouse</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="stock_declaration_role" value="purchasing">
+                                    <span class="UM-radio-label">Purchasing</span>
+                                </label>
+
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- User Approvers Section -->
@@ -473,8 +563,8 @@
                             <!-- Initial approver row -->
                             <div class="UM-approver-row">
                                 <div class="UM-form-group">
-                                    <label for="approver-module-0">Module</label>
-                                    <select name="approver_module[]" id="approver-module-0" class="UM-select" required>
+                                    {% comment %} <label for="approver-module-0">Module</label> {% endcomment %}
+                                    <select name="approver_module[]" id="approver-module-0" class="UM-select">
                                         <option value="">Select Module</option>
                                         {% for module_value, module_label in module_choices %}
                                         <option value="{{ module_value }}">{{ module_label }}</option>
@@ -483,8 +573,8 @@
                                 </div>
 
                                 <div class="UM-form-group">
-                                    <label for="approver-role-0">Role</label>
-                                    <select name="approver_role[]" id="approver-role-0" class="UM-select" required>
+                                    {% comment %} <label for="approver-role-0">Role</label> {% endcomment %}
+                                    <select name="approver_role[]" id="approver-role-0" class="UM-select">
                                         <option value="">Select Role</option>
                                         {% for role_value, role_label in role_choices %}
                                         <option value="{{ role_value }}">{{ role_label }}</option>
@@ -493,8 +583,8 @@
                                 </div>
 
                                 <div class="UM-form-group approver-user-group">
-                                    <label for="approver-user-0">Approver</label>
-                                    <select name="approver_user[]" id="approver-user-0" class="UM-select" required>
+                                    {% comment %} <label for="approver-user-0">Approver</label> {% endcomment %}
+                                    <select name="approver_user[]" id="approver-user-0" class="UM-select">
                                         <option value="">Select Approver</option>
                                         {% for approver in potential_approvers %}
                                         <option value="{{ approver.id }}">{{ approver.name }} ({{ approver.position }})</option>
@@ -503,40 +593,53 @@
                                 </div>
 
                                 <div class="UM-approver-actions">
-                                    <button type="button" class="UM-icon-button UM-remove-approver-btn" disabled>
+                                    <button type="button" class="btn btn-icon btn-error">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        <button type="button" id="add-approver-btn" class="UM-button UM-secondary-button">
+                        <button type="button" id="add-approver-btn" class="btn btn-outline btn-sm">
                             <i class="fas fa-plus"></i> Add Another Approver
                         </button>
                     </div>
                 </div>
+                <!-- Hidden template select to clone options from (keeps options available even if rows are cleared) -->
+                <select id="approver-user-template" style="display:none;">
+                    <option value="">Select Approver</option>
+                    {% for approver in potential_approvers %}
+                    <option value="{{ approver.id }}">{{ approver.name }} ({{ approver.position }})</option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="UM-modal-footer">
-                <button type="button" class="UM-button UM-secondary-button" id="cancel-user">Cancel</button>
-                <button type="submit" class="UM-button UM-primary-button" id="save-user">Save User</button>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="cancel-user">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="save-user">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Register User
+                </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Edit User Modal - Separate from Add User Modal -->
-<div class="UM-modal" id="edit-user-modal">
-    <div class="UM-modal-content">
-        <div class="UM-modal-header">
-            <h2>Edit User</h2>
-            <button class="UM-modal-close">
+<!-- Edit User Modal -->
+<div class="JO-modal" id="edit-user-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Edit User</h3>
+            <button class="JO-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <form id="edit-user-form" method="post" action="" enctype="multipart/form-data">
             {% csrf_token %}
             <input type="hidden" id="edit-user-id" name="user_id" value="">
-            <div class="UM-modal-body">
+            <div class="JO-modal-body">
                 <!-- Avatar Selection -->
                 <div class="UM-form-section">
                     <h3>Profile Avatar</h3>
@@ -778,6 +881,72 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Quality Control Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-quality-control-user" name="quality_control_user">
+                                <span class="UM-checkbox-label UM-category-label">Quality Control</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-quality-control-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="warehouse">
+                                    <span class="UM-radio-label">Warehouse</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="engineering">
+                                    <span class="UM-radio-label">Maintenance and Engineering</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="production">
+                                    <span class="UM-radio-label">Production</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="quality_control_role" value="qa">
+                                    <span class="UM-radio-label">Quality Assurance</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stock Declaration Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-stock-declaration-user" name="stock_declaration_user">
+                                <span class="UM-checkbox-label UM-category-label">Stock Declaration Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-stock-declaration-roles">
+                            <div class="UM-radio-group">
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="stock_declaration_role" value="production">
+                                    <span class="UM-radio-label">Production</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="stock_declaration_role" value="warehouse">
+                                    <span class="UM-radio-label">Warehouse</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="stock_declaration_role" value="purchasing">
+                                    <span class="UM-radio-label">Purchasing</span>
+                                </label>
+
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- User Approvers Section -->
@@ -794,35 +963,50 @@
                     </div>
                 </div>
             </div>
-            <div class="UM-modal-footer">
-                <button type="button" class="UM-button UM-secondary-button" id="edit-cancel-user">Cancel</button>
-                <button type="submit" class="UM-button UM-primary-button" id="edit-save-user">Save Changes</button>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="edit-cancel-user">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" id="edit-save-user">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Save Changes
+                </button>
+
             </div>
         </form>
     </div>
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="UM-modal UM-confirmation-modal" id="delete-confirm-modal">
-    <div class="UM-modal-content">
-        <div class="UM-modal-header">
-            <h2>Confirm Deletion</h2>
-            <button class="UM-modal-close">
+<div class="JO-modal UM-confirmation-modal" id="delete-confirm-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Confirm Deletion</h3>
+            <button class="JO-modal-close">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="UM-modal-body">
-            <div class="UM-confirmation-content">
-                <i class="fas fa-exclamation-triangle UM-confirmation-icon danger"></i>
-                <p class="UM-confirmation-message">Are you sure you want to delete this user?</p>
-                <p class="UM-confirmation-submessage">This action cannot be undone. All data associated with this user will be permanently deleted.</p>
+        <div class="JO-modal-body">
+            <div class="JO-confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa fa-times-circle" aria-hidden="true"></i>
+                </div>
+                <h4>Are you sure you want to delete this user?</h4>
+                <p>This action cannot be undone. The user will be permanently deleted.</p>                
             </div>
         </div>
         <form id="delete-user-form" method="post" action="">
             {% csrf_token %}
-            <div class="UM-modal-footer">
-                <button type="button" class="UM-button UM-secondary-button" id="cancel-delete">Cancel</button>
-                <button type="submit" class="UM-button UM-danger-button" id="confirm-delete">Delete User</button>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="cancel-delete">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-error" id="confirm-delete">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Confirm Delete
+                </button>
             </div>
         </form>
     </div>

@@ -1,0 +1,476 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - WIP Session Details{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/wip/wip.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <!-- CSRF token for AJAX requests -->
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">WIP Session Details - WIP-{{ session.id }}</h1>
+            <p class="JO-subtitle">
+                {{ session.line.line_name }} | Responsible: {{ session.person_responsible }}
+                {% if session.status == 'CHECKED' %} | Checked by: {{ session.checked_by.name }} on {{ session.checked_at|date:"M d, Y H:i" }}{% endif %}
+            </p>
+        </div>
+        <div class="JO-header-actions">
+            {% if user_type == 'counter' %}
+                <button class="JO-button JO-secondary-button" onclick="window.location.href='{% url 'wip_dashboard' %}'">
+                    <i class="fas fa-arrow-left"></i> Back to Dashboard
+                </button>
+            {% elif user_type == 'checker' %}
+                <button class="JO-button JO-secondary-button" onclick="window.history.back()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+                {% if can_check and all_entries_checked %}
+                <button class="JO-button JO-success-button" id="checking-complete-btn" data-id="{{ session.id }}">
+                    <i class="fas fa-check-circle"></i> Checking Complete
+                </button>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="WIP-session-info">
+        <div class="WIP-info-card">
+            <div class="WIP-info-header">
+                <h3>Session Information</h3>
+                {% if session.status == 'FOR_CHECKING' %}
+                    <span class="JO-status JO-status-pending">Pending Check</span>
+                {% elif session.status == 'CHECKED' %}
+                    <span class="JO-status JO-status-approved">Checked</span>
+                {% else %}
+                    <span class="JO-status JO-status-rejected">{{ session.status }}</span>
+                {% endif %}
+            </div>
+            <div class="WIP-info-grid">
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Line:</span>
+                    <span class="WIP-info-value">{{ session.line.line_name }}</span>
+                </div>
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Person Responsible:</span>
+                    <span class="WIP-info-value">{{ session.person_responsible }}</span>
+                </div>
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Created By:</span>
+                    <span class="WIP-info-value">{{ session.created_by.name }}</span>
+                </div>
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Created Date:</span>
+                    <span class="WIP-info-value">{{ session.created_at|date:"M d, Y" }}</span>
+                </div>
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Total Entries:</span>
+                    <span class="WIP-info-value">{{ session.entry_count }}</span>
+                </div>
+                {% if session.checked_by %}
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Checked By:</span>
+                    <span class="WIP-info-value">{{ session.checked_by.name }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="WIP-inventory-tabs-container">
+      <div class="WIP-inventory-tabs" role="tablist">
+        <button class="WIP-tab-btn" data-tab="raw" role="tab" aria-selected="true">Raw Materials</button>
+        <button class="WIP-tab-btn" data-tab="finished" role="tab" aria-selected="false">Finished Products</button>
+        <button class="WIP-tab-btn" data-tab="wip" role="tab" aria-selected="false">WIP Products</button>
+      </div>
+      <div class="WIP-tab-content" id="tab-raw">
+        <div class="WIP-tab-header-row">
+          <div></div>
+          {% if can_edit %}
+          <button class="JO-button JO-primary-button WIP-add-entry-btn" data-type="raw">
+            <i class="fas fa-plus"></i> <span>Add Raw Materials</span>
+          </button>
+          {% endif %}
+        </div>
+        {% if raw_materials %}
+        <div class="WIP-table-container">
+          <table class="JO-table">
+            <thead>
+              <tr>
+                <th>Count Tag</th>
+                <th>Material Name</th>
+                <th>Description</th>
+                <th>WIP Qty</th>
+                <th>UOM</th>
+                <th>Status</th>
+                {% if not all_raw_materials_checked %}
+                <th>Actions</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in raw_materials %}
+              <tr data-entry-id="{{ entry.id }}">
+                <td class="WIP-editable-cell" data-field="count_tag">{{ entry.count_tag }}</td>
+                <td>{{ entry.material.material_name }}</td>
+                <td>{{ entry.material.description }}</td>
+                <td class="WIP-editable-cell" data-field="quantity">{{ entry.quantity }}</td>
+                <td>{{ entry.material.uom|default:"-" }}</td>
+                <td>
+                  {% if entry.status == 'FOR_CHECKING' %}
+                  <span class="WIP-status WIP-status-pending">For Checking</span>
+                  {% elif entry.status == 'CHECKED' %}
+                  <span class="WIP-status WIP-status-approved">Checked</span>
+                  {% else %}
+                  {{ entry.status }}
+                  {% endif %}
+                </td>
+                {% if not all_raw_materials_checked %}
+                <td style="display:flex; gap:8px; align-items: center;">
+                  {% if can_edit and entry.status == 'FOR_CHECKING' %}
+                  <button class="JO-icon-button WIP-edit-entry-btn" data-id="{{ entry.id }}">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="JO-icon-button WIP-delete-entry-btn" data-id="{{ entry.id }}">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                  {% endif %}
+                  {% if can_check and entry.status == 'FOR_CHECKING' %}
+                  <button class="JO-icon-button WIP-mark-checked-btn" data-id="{{ entry.id }}" title="Mark Entry as Checked">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  {% endif %}
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="WIP-empty-section">
+          <p>No raw materials entries yet.</p>
+        </div>
+        {% endif %}
+      </div>
+      <div class="WIP-tab-content" id="tab-finished" style="display:none;">
+        <div class="WIP-tab-header-row">
+          <div></div>
+          {% if can_edit %}
+          <button class="JO-button JO-primary-button WIP-add-entry-btn" data-type="finished">
+            <i class="fas fa-plus"></i> <span>Add Finished Products</span>
+          </button>
+          {% endif %}
+        </div>
+        {% if finished_products %}
+        <div class="WIP-table-container">
+          <table class="JO-table">
+            <thead>
+              <tr>
+                <th>Count Tag</th>
+                <th>Product Number</th>
+                <th>Description</th>
+                <th>WIP Qty</th>
+                <th>Status</th>
+                {% if not all_finished_products_checked %}
+                <th>Actions</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in finished_products %}
+              <tr data-entry-id="{{ entry.id }}">
+                <td class="WIP-editable-cell" data-field="count_tag">{{ entry.count_tag }}</td>
+                <td>{{ entry.product.product_number }}</td>
+                <td>{{ entry.product.description }}</td>
+                <td class="WIP-editable-cell" data-field="quantity">{{ entry.quantity }}</td>
+                <td>
+                  {% if entry.status == 'FOR_CHECKING' %}
+                  <span class="WIP-status WIP-status-pending">For Checking</span>
+                  {% elif entry.status == 'CHECKED' %}
+                  <span class="WIP-status WIP-status-approved">Checked</span>
+                  {% else %}
+                  {{ entry.status }}
+                  {% endif %}
+                </td>
+                {% if not all_finished_products_checked %}
+                <td style="display:flex; gap:8px; align-items: center;">
+                  {% if can_edit and entry.status == 'FOR_CHECKING' %}
+                  <button class="JO-icon-button WIP-edit-entry-btn" data-id="{{ entry.id }}">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="JO-icon-button WIP-delete-entry-btn" data-id="{{ entry.id }}">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                  {% endif %}
+                  {% if can_check and entry.status == 'FOR_CHECKING' %}
+                  <button class="JO-icon-button WIP-mark-checked-btn" data-id="{{ entry.id }}" title="Mark Entry as Checked">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  {% endif %}
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="WIP-empty-section">
+          <p>No finished products entries yet.</p>
+        </div>
+        {% endif %}
+      </div>
+      <div class="WIP-tab-content" id="tab-wip" style="display:none;">
+        <div class="WIP-tab-header-row">
+          <div></div>
+          {% if can_edit %}
+          <button class="JO-button JO-primary-button WIP-add-entry-btn" data-type="wip">
+            <i class="fas fa-plus"></i> <span>Add WIP Products</span>
+          </button>
+          {% endif %}
+        </div>
+        {% if wip_products %}
+        <div class="WIP-table-container">
+          <table class="JO-table">
+            <thead>
+              <tr>
+                <th>Count Tag</th>
+                <th>Product Number</th>
+                <th>Process</th>
+                <th>Materials</th>
+                <th>Material Description</th>
+                <th>WIP Qty</th>
+                <th>UOM</th>
+                <th>Status</th>
+                {% if not all_wip_products_checked %}
+                <th>Actions</th>
+                {% endif %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in wip_products %}
+              <tr data-entry-id="{{ entry.id }}">
+                <td class="WIP-editable-cell" data-field="count_tag">{{ entry.count_tag }}</td>
+                <td>{{ entry.product.product_number }}</td>
+                <td>{{ entry.process.process_name }}</td>
+                <td>{{ entry.material.material_name }}</td>
+                <td>{{ entry.material.description }}</td>
+                <td class="WIP-editable-cell" data-field="quantity">{{ entry.quantity }}</td>
+                <td>{{ entry.wip_uom|default:"-" }}</td>
+                <td>
+                  {% if entry.status == 'FOR_CHECKING' %}
+                  <span class="WIP-status WIP-status-pending">For Checking</span>
+                  {% elif entry.status == 'CHECKED' %}
+                  <span class="WIP-status WIP-status-approved">Checked</span>
+                  {% else %}
+                  {{ entry.status }}
+                  {% endif %}
+                </td>
+                {% if not all_wip_products_checked %}
+                <td style="display:flex; gap:8px; align-items: center;">
+                  {% if can_edit and entry.status == 'FOR_CHECKING' %}
+                  <button class="JO-icon-button WIP-edit-entry-btn" data-id="{{ entry.id }}">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="JO-icon-button WIP-delete-entry-btn" data-id="{{ entry.id }}">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                  {% endif %}
+                  {% if can_check and entry.status == 'FOR_CHECKING' %}
+                  <button class="JO-icon-button WIP-mark-checked-btn" data-id="{{ entry.id }}" title="Mark Entry as Checked">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  {% endif %}
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="WIP-empty-section">
+          <p>No WIP products entries yet.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+</main>
+
+<div class="JO-modal" id="raw-materials-modal">
+    <div class="JO-modal-content large-modal">
+        <div class="JO-modal-header">
+            <h2>Add Raw Materials</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="WIP-modal-step" id="raw-step-1">
+                <h3>Select Products</h3>
+                <div class="WIP-search-container">
+                    <input type="text" class="WIP-search-input" placeholder="Search products..." id="raw-product-search">
+                </div>
+                <div class="WIP-product-list" id="raw-product-list">
+                </div>
+            </div>
+            <div class="WIP-modal-step" id="raw-step-2" style="display: none;">
+                <h3>Enter Count Tags and Quantities</h3>
+                <div class="WIP-entry-form" id="raw-entry-form">
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="raw-back-btn" style="display: none;">Back</button>
+            <button class="JO-button JO-secondary-button close-modal">Cancel</button>
+            <button class="JO-button JO-primary-button" id="raw-next-btn">Next</button>
+            <button class="JO-button JO-primary-button" id="raw-submit-btn" style="display: none;">Add Entries</button>
+        </div>
+    </div>
+</div>
+
+<div class="JO-modal" id="finished-products-modal">
+    <div class="JO-modal-content large-modal">
+        <div class="JO-modal-header">
+            <h2>Add Finished Products</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="WIP-modal-step" id="finished-step-1">
+                <h3>Select Products</h3>
+                <div class="WIP-search-container">
+                    <input type="text" class="WIP-search-input" placeholder="Search products..." id="finished-product-search">
+                </div>
+                <div class="WIP-product-list" id="finished-product-list">
+                </div>
+            </div>
+            <div class="WIP-modal-step" id="finished-step-2" style="display: none;">
+                <h3>Enter Count Tags and Quantities</h3>
+                <div class="WIP-entry-form" id="finished-entry-form">
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="finished-back-btn" style="display: none;">Back</button>
+            <button class="JO-button JO-secondary-button close-modal">Cancel</button>
+            <button class="JO-button JO-primary-button" id="finished-next-btn">Next</button>
+            <button class="JO-button JO-primary-button" id="finished-submit-btn" style="display: none;">Add Entries</button>
+        </div>
+    </div>
+</div>
+
+<div class="JO-modal" id="wip-products-modal">
+    <div class="JO-modal-content large-modal">
+        <div class="JO-modal-header">
+            <h2>Add WIP Products</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="WIP-form-row">
+                <div class="WIP-form-group">
+                    <label for="wip-product-select">Product</label>
+                    <select id="wip-product-select" class="WIP-select">
+                        <option value="">Select Product</option>
+                    </select>
+                </div>
+                <div class="WIP-form-group">
+                    <label for="wip-process-select">Process</label>
+                    <select id="wip-process-select" class="WIP-select">
+                        <option value="">Select Process</option>
+                    </select>
+                </div>
+            </div>
+            <div class="WIP-form-group">
+                <label>Materials</label>
+                <div class="WIP-materials-list" id="wip-materials-list">
+                </div>
+            </div>
+            <div class="WIP-form-group">
+                <label for="wip-count-tag">Count Tag</label>
+                <input type="number" id="wip-count-tag" class="WIP-input" placeholder="Enter count tag" min="0">
+            </div>
+            <div class="WIP-form-group">
+                <label for="wip-quantity">WIP Quantity</label>
+                <input type="number" id="wip-quantity" class="WIP-input" placeholder="0" min="0">
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-modal">Cancel</button>
+            <button class="JO-button JO-primary-button" id="wip-submit-btn">Add Entry</button>
+        </div>
+    </div>
+</div>
+
+<div class="JO-modal JO-confirmation-modal" id="checking-complete">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Checking Complete</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" id="checking-complete-body">
+            <div style="text-align: center;">
+                <i class="fas fa-check-circle JO-confirmation-icon" style="color: #28a745;"></i>
+                <p class="JO-confirmation-message">Are you sure you want to mark this session as checked?</p>
+                <div id="unchecked-entries-list" style="margin-top: 16px; display: none;">
+                    <p class="JO-confirmation-submessage">The following entries are not yet checked:</p>
+                    <ul id="unchecked-entries-ul" style="text-align:left; margin: 0 auto; max-width: 400px;"></ul>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer" style="justify-content: end; gap: 16px;">
+            <button class="JO-button JO-secondary-button" id="cancel-checking-complete">Cancel</button>
+            <button class="JO-button JO-success-button" id="confirm-checking-complete">Mark as Checked</button>
+        </div>
+    </div>
+</div>
+
+<div class="JO-modal JO-confirmation-modal" id="delete-entry-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Confirm Delete</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div style="text-align: center;">
+                <i class="fas fa-trash JO-confirmation-icon danger"></i>
+                <p class="JO-confirmation-message">Are you sure you want to delete this entry?</p>
+                <p class="JO-confirmation-submessage">This action cannot be undone.</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-delete-entry">Cancel</button>
+            <button class="JO-button JO-danger-button" id="confirm-delete-entry">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.sessionId = {{ session.id }};
+    window.canEdit = {{ can_edit|yesno:"true,false" }};
+    window.userType = '{{ user_type }}';
+</script>
+<script src="{% static 'js/wip/wip-session-details.js' %}"></script>
+<script>
+// Patch: allow checkers to edit entries with status FOR_CHECKING
+window.canEditEntry = function(entryStatus) {
+    return window.userType === 'counter' || (window.userType === 'checker' && entryStatus === 'FOR_CHECKING');
+};
+</script>
+{% endblock %}

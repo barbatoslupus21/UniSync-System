@@ -1,0 +1,19 @@
+{% for log in logs %}
+<tr>
+    <td data-label="Time">{{ log.time|date:"h:i A" }}</td>
+    <td data-label="Operator">{{ log.operator }}</td>
+    <td data-label="Line">{{ log.line }}</td>
+    <td data-label="Output">{{ log.output }}</td>
+    <td data-label="Target">{{ log.target }}</td>
+    <td data-label="Variance">
+        <span class="{% if log.variance >= 0 %}PM-positive{% else %}PM-negative{% endif %}">{% if log.variance >= 0 %}+{% endif %}{{ log.variance }}</span>
+    </td>
+    <td data-label="Status">
+        <span class="JO-status {% if log.status == 'Met' %}JO-status-approved{% else %}JO-status-rejected{% endif %}">{{ log.status }}</span>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="7" class="JO-empty-table">No output logs found for today.</td>
+</tr>
+{% endfor %}

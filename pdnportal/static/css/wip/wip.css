@@ -1,0 +1,1407 @@
+:root {
+    --wip-primary: #3366ff;
+    --wip-primary-light: #e0e8ff;
+    --wip-success: #48c774;
+    --wip-success-light: #e8f5e9;
+    --wip-warning: #ffc107;
+    --wip-warning-light: #fff8e1;
+    --wip-danger: #f14668;
+    --wip-danger-light: #ffeaea;
+    --wip-text: #333333;
+    --wip-text-light: #666666;
+    --wip-border: #e6e6e6;
+    --wip-bg: #f8f9fa;
+    --wip-card-bg: #ffffff;
+    --wip-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    --wip-shadow-hover: 0 4px 15px rgba(0, 0, 0, 0.15);
+    --wip-transition: all 0.3s ease;
+    
+    /* JO table variables for consistency */
+    --jo-primary: #3366ff;
+    --jo-primary-light: #e0e8ff;
+    --jo-text: #333333;
+    --jo-bg-color: #f8f9fa;
+    --jo-border: #e6e6e6;
+    --jo-transition: all 0.3s ease;
+}
+
+.WIP-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--wip-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background-color: white;
+    transition: var(--wip-transition);
+}
+
+.WIP-select:focus {
+    border-color: var(--wip-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.WIP-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--wip-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--wip-transition);
+}
+
+.WIP-input:focus {
+    border-color: var(--wip-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.WIP-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.WIP-count-badge.WIP-pending {
+    background-color: var(--wip-warning-light);
+    color: var(--wip-warning);
+}
+
+.WIP-count-badge.WIP-checked {
+    background-color: var(--wip-success-light);
+    color: var(--wip-success);
+}
+
+.JO-header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-items: space-between;
+}
+
+.WIP-session-info {
+    margin-bottom: 24px;
+}
+
+.WIP-info-card {
+    background: var(--wip-card-bg);
+    border-radius: 12px;
+    box-shadow: var(--wip-shadow);
+    overflow: hidden;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.WIP-info-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--wip-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f8f9fa;
+}
+
+.WIP-info-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--wip-text);
+}
+
+.WIP-info-grid {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+}
+
+.WIP-info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.WIP-info-label {
+    font-size: 0.85rem;
+    color: var(--wip-text-light);
+    font-weight: 500;
+}
+
+.WIP-info-value {
+    font-size: 0.95rem;
+    color: var(--wip-text);
+    font-weight: 600;
+}
+
+.WIP-inventory-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.WIP-section {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--wip-border);
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.6s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+    overflow: hidden; /* Ensure content doesn't overflow during animations */
+}
+
+.WIP-section:nth-child(1) { animation-delay: 0.1s; }
+.WIP-section:nth-child(2) { animation-delay: 0.2s; }
+.WIP-section:nth-child(3) { animation-delay: 0.3s; }
+
+.WIP-section:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Make all sections collapsed by default */
+.WIP-section-header {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--wip-bg), #ffffff);
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 1px solid var(--wip-border);
+    position: relative;
+}
+
+/* .WIP-section-header:hover {
+    background: linear-gradient(135deg, var(--wip-primary-light), #ffffff);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+} */
+
+/* Add visual indicator for collapsed sections */
+.WIP-section.collapsed .WIP-section-header {
+    border-radius: 12px; /* Full rounded corners when collapsed */
+    border-bottom: 1px solid var(--wip-border);
+}
+
+.WIP-section.expanded .WIP-section-header {
+    border-radius: 12px 12px 0 0; /* Top rounded corners when expanded */
+    border-bottom: 1px solid var(--wip-border);
+}
+
+.WIP-section-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--wip-text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: color 0.3s ease;
+}
+
+.WIP-section-header:hover h3 {
+    color: var(--wip-primary);
+}
+
+.WIP-section-header h3 i {
+    color: var(--wip-primary);
+    font-size: 1rem;
+}
+
+.WIP-entry-count {
+    font-size: 0.85rem;
+    color: var(--wip-text-light);
+    font-weight: 400;
+}
+
+.WIP-section-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.WIP-collapse-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--wip-text-light);
+}
+
+.WIP-collapse-btn:hover {
+    background-color: var(--wip-primary-light);
+    color: var(--wip-primary);
+    transform: scale(1.05);
+}
+
+/* Arrow rotation for expanded state */
+.WIP-collapse-btn i {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.9rem;
+    transform: rotate(-90deg); /* Start rotated (collapsed state) */
+}
+
+.WIP-section.expanded .WIP-collapse-btn i {
+    transform: rotate(0deg); /* Rotate to normal (expanded state) */
+}
+
+.WIP-section-content {
+    padding: 20px;
+    transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    max-height: 0; /* Start collapsed */
+    opacity: 0; /* Start hidden */
+    display: block;
+}
+
+/* When section is expanded */
+.WIP-section.expanded .WIP-section-content {
+    max-height: 2000px; /* Allow expansion */
+    opacity: 1;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.WIP-table-container {
+    overflow-x: auto;
+    border-radius: 8px;
+    /* border: 1px solid var(--wip-border); */
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    margin: 0;
+    max-width: 100%;
+}
+
+
+
+@keyframes slideInRow {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.WIP-editable-cell {
+    position: relative;
+    cursor: pointer;
+}
+
+.WIP-editable-cell:hover {
+    background-color: var(--wip-primary-light);
+}
+
+.WIP-empty-section {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--wip-text-light);
+}
+
+.WIP-empty-section p {
+    font-size: 1rem;
+    margin: 0;
+}
+
+.WIP-wide-modal .JO-modal-content {
+    max-width: 900px;
+    width: 95%;
+}
+
+.WIP-modal-step h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 16px;
+    color: var(--wip-text);
+}
+
+.WIP-search-container {
+    margin-bottom: 16px;
+}
+
+.WIP-search-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--wip-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.WIP-search-input:focus {
+    border-color: var(--wip-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.WIP-product-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid var(--wip-border);
+    border-radius: 6px;
+    background: white;
+    margin-top: 10px;
+    /* padding: 0 20px; */
+}
+
+.WIP-product-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.WIP-product-table th {
+    text-align: left;
+    padding: 12px 15px;
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--jo-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.WIP-product-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--jo-border);
+    color: var(--jo-text);
+    transition: var(--jo-transition);
+}
+
+.WIP-product-row {
+    transition: var(--jo-transition);
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: JO-row-appear 0.5s ease forwards;
+}
+
+.WIP-product-row:hover {
+    background-color: var(--jo-primary-light);
+}
+
+.WIP-product-checkbox,
+.WIP-select-all-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--jo-primary);
+}
+
+.WIP-product-checkbox:focus,
+.WIP-select-all-checkbox:focus {
+    outline: 2px solid var(--jo-primary);
+    outline-offset: 2px;
+}
+
+@keyframes JO-row-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.WIP-product-row:nth-child(1) { animation-delay: 0.1s; }
+.WIP-product-row:nth-child(2) { animation-delay: 0.2s; }
+.WIP-product-row:nth-child(3) { animation-delay: 0.3s; }
+.WIP-product-row:nth-child(4) { animation-delay: 0.4s; }
+.WIP-product-row:nth-child(5) { animation-delay: 0.5s; }
+.WIP-product-row:nth-child(6) { animation-delay: 0.6s; }
+
+.WIP-product-item {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.WIP-product-item:last-child {
+    border-bottom: none;
+}
+
+.WIP-product-item:hover {
+    background-color: var(--wip-primary-light);
+}
+
+.WIP-product-item input[type="checkbox"] {
+    margin-right: 12px;
+    width: 16px;
+    height: 16px;
+}
+
+.WIP-product-details {
+    flex: 1;
+}
+
+.WIP-product-number {
+    font-weight: 600;
+    color: var(--wip-text);
+    margin-bottom: 4px;
+}
+
+.WIP-product-description {
+    color: var(--wip-text-light);
+    font-size: 0.85rem;
+}
+
+.WIP-entry-form {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.WIP-entry-form-table {
+    min-height: 180px;
+    width: 100%;
+    display: block;
+}
+
+.WIP-entry-form-table tbody {
+    display: table-row-group;
+    width: 100%;
+}
+
+.WIP-entry-form-table .no-data-message {
+    min-height: 120px;
+    padding: 32px 0 24px 0;
+}
+
+.WIP-entry-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.WIP-entry-table th,
+.WIP-entry-table td {
+    padding: 10px 12px;
+    border: 1px solid var(--wip-border);
+    text-align: left;
+}
+
+.WIP-entry-table th {
+    background: var(--wip-bg);
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+.WIP-entry-table input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--wip-border);
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.WIP-entry-table input:focus {
+    border-color: var(--wip-primary);
+    outline: none;
+}
+
+.WIP-form-group {
+    margin-bottom: 16px;
+}
+
+.WIP-form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--wip-text);
+    font-size: 0.9rem;
+}
+
+.WIP-materials-list {
+    min-width: 320px;
+    min-height: 60px;
+    border: 1px solid var(--wip-border);
+    border-radius: 6px;
+    background: #fff;
+    padding: 12px 10px;
+    margin-top: 4px;
+    margin-bottom: 8px;
+    transition: var(--wip-transition);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.WIP-materials-list-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-size: 1rem;
+    min-height: 48px;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+}
+
+.WIP-material-item {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--wip-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.WIP-material-item:last-child {
+    border-bottom: none;
+}
+
+.WIP-material-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.WIP-material-info {
+    flex: 1;
+}
+
+.WIP-material-name {
+    font-weight: 500;
+    color: var(--wip-text);
+    font-size: 0.9rem;
+}
+
+.WIP-material-description {
+    font-size: 0.8rem;
+    color: var(--wip-text-light);
+}
+
+.WIP-edit-btn {
+    color: var(--wip-primary);
+}
+
+.WIP-edit-btn:hover {
+    background-color: var(--wip-primary-light);
+}
+
+.WIP-delete-btn {
+    color: var(--wip-danger);
+}
+
+.WIP-delete-btn:hover {
+    background-color: var(--wip-danger-light);
+}
+
+.WIP-check-btn {
+    color: var(--wip-success);
+}
+
+.WIP-check-btn:hover {
+    background-color: var(--wip-success-light);
+}
+
+.WIP-mark-checked-btn {
+    background-color: #7ed957 !important;
+    color: #fff !important;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 4px;
+    font-size: 1rem;
+    width: 32px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    outline: none;
+}
+
+.WIP-mark-checked-btn:focus {
+    box-shadow: 0 0 0 2px #b6f7a2;
+}
+
+.WIP-mark-checked-btn i {
+    color: #fff !important;
+    font-size: 1em;
+    vertical-align: middle;
+}
+
+.WIP-mark-checked-btn:hover, .WIP-mark-checked-btn:focus {
+    background-color: #6cc94a !important;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.WIP-add-entry-btn {
+    animation: slideIn 0.3s ease-out;
+}
+
+.JO-confirmation-icon {
+    font-size: 4em;
+    padding: 15px;
+    color: var(--wip-primary);
+}
+
+.JO-confirmation-icon.danger {
+    font-size: 4em;
+    padding: 15px;
+    color: #ff434b;
+}
+
+.no-data-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    color: var(--wip-text-light);
+    font-size: 1rem;
+    padding: 32px 0 24px 0;
+    width: 100%;
+}
+
+.no-data-icon {
+    font-size: 2.5rem;
+    color: #b0b0b0; /* gray */
+    margin-bottom: 8px;
+}
+
+.no-data-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.no-data-sub {
+    font-size: 0.95rem;
+    color: var(--wip-text-light);
+}
+
+@media (max-width: 1024px) {
+    .main-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+        overflow-x: hidden;
+    }
+
+    .WIP-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .WIP-section-title {
+        width: 100%;
+    }
+    
+    .WIP-section-header {
+        padding: 12px 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+    }
+    
+    .WIP-section-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .WIP-table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .WIP-table {
+        min-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 5px;
+        margin: 0;
+        overflow-x: hidden;
+    }
+
+    .JO-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 0px 15px;
+    }
+    
+    .JO-header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        order: -1;
+        margin-top: 8px;
+        margin-bottom: 8px;
+    }
+
+    .JO-title-section {
+        width: 100%;
+    }
+    
+    .WIP-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        padding: 15px;
+    }
+    
+    .WIP-section-header {
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+    }
+
+    .WIP-section-header h3 {
+        font-size: 1rem;
+        margin-right: auto;
+    }
+    
+    .WIP-section-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .WIP-collapse-btn {
+        display: none;
+    }
+
+    .WIP-add-entry-btn {
+        margin-left: auto;
+        padding: 8px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .WIP-add-entry-btn span {
+        display: none;
+    }
+
+    .WIP-add-entry-btn i {
+        margin: 0;
+        font-size: 1rem;
+    }
+    
+    .WIP-wide-modal .JO-modal-content {
+        width: 95%;
+        max-width: none;
+    }
+    
+    .WIP-table-container {
+        width: 100%;
+        overflow-x: auto;
+        margin: 10px 0px;
+        -webkit-overflow-scrolling: touch;
+        padding: 8px;
+    }
+    
+    /* .WIP-table {
+        min-width: 800px;
+    } */
+    
+    .WIP-table th,
+    .WIP-table td {
+        padding: 10px 10px;
+        font-size: 0.8rem;
+    }
+    
+    .WIP-entry-table th,
+    .WIP-entry-table td {
+        padding: 6px 4px;
+    }
+
+    .WIP-section-content {
+        padding: 15px;
+    }
+
+    .material-name-cell, .material-desc-cell {
+        font-size: 0.85rem !important;
+    }
+
+    .JO-table td[data-label="Actions"] {
+        flex-direction: row;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .WIP-entry-table.large-table th {
+        background: var(--wip-primary-light);
+        font-weight: 500;
+        font-size: 0.85rem;
+        color: var(--wip-primary);
+    }
+    
+    .WIP-product-table {
+        font-size: 0.8rem;
+    }
+    
+    .WIP-product-table th,
+    .WIP-product-table td {
+        padding: 8px 10px;
+    }
+    
+    .WIP-product-table th:first-child,
+    .WIP-product-table td:first-child {
+        width: 35px;
+        min-width: 35px;
+    }
+
+    .material-name-cell, .material-desc-cell {
+        font-size: 0.85rem !important;
+    }
+    .WIP-entry-table input {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+    }
+
+    .WIP-entry-table input[type="text"]:focus,
+    .WIP-entry-table input[type="number"]:focus {
+        border-color: var(--jo-primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+        font-size: 0.85rem;
+    }
+
+    .WIP-entry-table.large-table th,
+    .WIP-entry-table.large-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--jo-border);
+        text-align: left;
+        font-size: 0.85rem;
+    }
+    .WIP-entry-table.large-table th {
+        background-color: var(--jo-bg-color);
+        color: var(--jo-text);
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-bottom: 2px solid var(--jo-border);
+    }
+}
+
+@media (max-width: 480px) {
+    .main-content {
+        width: 100%;
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+        overflow-x: hidden;
+    }
+
+    .WIP-section-header {
+        padding: 12px 15px;
+    }
+    
+    .WIP-section-content {
+        padding: 15px;
+    }
+    
+    .WIP-info-grid {
+        padding: 15px;
+    }
+    
+    .WIP-product-item {
+        padding: 10px 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .WIP-product-table {
+        font-size: 0.8rem;
+    }
+    
+    .WIP-product-table th,
+    .WIP-product-table td {
+        padding: 8px 10px;
+    }
+    
+    .WIP-product-table th:first-child,
+    .WIP-product-table td:first-child {
+        width: 35px;
+        min-width: 35px;
+    }
+    
+    .WIP-material-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+}
+
+.modal-sm{
+    max-width: 500px;
+}
+.modal-md{
+    max-width: 700px;
+}
+.modal-lg{
+    max-width: 900px;
+}
+
+.large-modal {
+    all: unset;
+}
+
+.WIP-wide-modal {
+    all: unset;
+}
+
+/* Update media queries for better mobile responsiveness */
+@media (max-width: 768px) {
+    .JO-modal {
+        padding: 10px;
+    }
+    
+    .JO-modal-content {
+        max-width: 95%;
+    }
+    
+    .JO-modal-content.large-modal {
+        max-width: 95%;
+    }
+}
+
+.WIP-entry-table.large-table {
+    width: 100%;
+    min-width: 650px;
+    border-collapse: collapse;
+    background: var(--jo-card-bg);
+    font-size: 0.9rem;
+    margin-bottom: 0;
+}
+.WIP-entry-table.large-table th,
+.WIP-entry-table.large-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid var(--jo-border);
+    text-align: left;
+    font-size: 0.9rem;
+}
+.WIP-entry-table.large-table th {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    font-weight: 600;
+    border-bottom: 2px solid var(--jo-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.WIP-entry-table.large-table tr:last-child td {
+    border-bottom: none;
+    font-size: 0.9rem;
+}
+.WIP-entry-table input[type="text"],
+.WIP-entry-table input[type="number"] {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--jo-border);
+    font-size: 0.9rem;
+    background: #fff;
+    transition: var(--jo-transition);
+    box-sizing: border-box;
+}
+.WIP-entry-table input[type="text"]:focus,
+.WIP-entry-table input[type="number"]:focus {
+    border-color: var(--jo-primary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    font-size: 0.9rem;
+}
+
+.material-name-cell, .material-desc-cell {
+    font-weight: normal !important;
+    font-size: 0.9rem !important;
+    word-break: break-word;
+    color: var(--jo-text);
+}
+
+.normal-modal{
+    max-width: 450px;
+}
+
+@media (max-width: 768px) {
+    .material-name-cell, .material-desc-cell {
+        font-size: 0.85rem !important;
+    }
+    .WIP-entry-table input {
+        font-size: 0.85rem;
+        padding: 6px 10px;
+    }
+
+    .WIP-entry-table input[type="text"]:focus,
+    .WIP-entry-table input[type="number"]:focus {
+        border-color: var(--jo-primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+        font-size: 0.85rem;
+    }
+
+    .WIP-entry-table.large-table th,
+    .WIP-entry-table.large-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--jo-border);
+        text-align: left;
+        font-size: 0.85rem;
+    }
+    .WIP-entry-table.large-table th {
+        background-color: var(--jo-bg-color);
+        color: var(--jo-text);
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-bottom: 2px solid var(--jo-border);
+    }
+}
+
+.action-col {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* JO Modal Base Styles */
+.JO-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+    z-index: 1000;
+    justify-content: center; /* Center content horizontally */
+    align-items: center; /* Center content vertically */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.JO-modal.active {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+}
+
+.JO-modal-content {
+    background-color: var(--wip-card-bg);
+    border-radius: 12px;
+    box-shadow: var(--wip-shadow-hover); /* More prominent shadow for modals */
+    width: 90%;
+    max-width: 600px;
+    overflow: hidden;
+    transform: translateY(20px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.JO-modal.active .JO-modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Validation Error Styles */
+.WIP-entry-table input.validation-error {
+    border-color: #f14668 !important;
+    box-shadow: 0 0 0 2px rgba(241, 70, 104, 0.2) !important;
+    background-color: #fff5f5;
+}
+
+.WIP-entry-table input.validation-error:focus {
+    border-color: #f14668 !important;
+    box-shadow: 0 0 0 2px rgba(241, 70, 104, 0.3) !important;
+}
+
+.WIP-entry-table input.validation-error::placeholder {
+    color: #f14668;
+}
+
+/* Table alignment fixes */
+.WIP-table {
+    width: 100%;
+    min-width: 800px;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    table-layout: fixed; /* Ensure consistent column widths */
+}
+
+/* Column width specifications for raw materials table */
+.WIP-table th:nth-child(1), .WIP-table td:nth-child(1) { width: 12%; } /* Count Tag */
+.WIP-table th:nth-child(2), .WIP-table td:nth-child(2) { width: 18%; } /* Material Name */
+.WIP-table th:nth-child(3), .WIP-table td:nth-child(3) { width: 25%; } /* Description */
+.WIP-table th:nth-child(4), .WIP-table td:nth-child(4) { width: 12%; } /* WIP Qty */
+.WIP-table th:nth-child(5), .WIP-table td:nth-child(5) { width: 8%; }  /* UOM */
+.WIP-table th:nth-child(6), .WIP-table td:nth-child(6) { width: 12%; } /* Status */
+.WIP-table th:nth-child(7), .WIP-table td:nth-child(7) { width: 13%; } /* Actions */
+
+/* Ensure text wrapping for description column */
+.WIP-table td:nth-child(3) {
+    white-space: normal;
+    word-wrap: break-word;
+    max-width: 0; /* Allow text to wrap */
+}
+
+/* Ensure proper alignment for all table cells */
+.WIP-table th,
+.WIP-table td {
+    text-align: left;
+    padding: 12px 16px;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--wip-border);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.WIP-table th {
+    background: linear-gradient(135deg, var(--wip-bg), #ffffff);
+    color: var(--wip-text);
+    font-weight: 600;
+    font-size: 0.8rem;
+    border-bottom: 2px solid var(--wip-border);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    transition: background-color 0.3s ease;
+}
+
+.WIP-table th:hover {
+    background: linear-gradient(135deg, var(--wip-primary-light), #ffffff);
+}
+
+.WIP-table td {
+    color: var(--wip-text);
+    transition: all 0.3s ease;
+    font-size: 0.85rem;
+}
+
+/* Add subtle indicator for expandable sections */
+.WIP-section-header::after {
+    content: '';
+    position: absolute;
+    right: 60px; /* Position before the arrow button */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 4px solid var(--wip-text-light);
+    opacity: 0.6;
+    transition: all 0.3s ease;
+}
+
+.WIP-section-header:hover::after {
+    opacity: 1;
+    border-top-color: var(--wip-primary);
+}
+
+.WIP-section.expanded .WIP-section-header::after {
+    opacity: 0; /* Hide indicator when expanded */
+}
+
+/* Enhanced section styling for better visual hierarchy */
+.WIP-section {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    border: 1px solid var(--wip-border);
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.6s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+    overflow: hidden; /* Ensure content doesn't overflow during animations */
+}
+
+.WIP-section:nth-child(1) { animation-delay: 0.1s; }
+.WIP-section:nth-child(2) { animation-delay: 0.2s; }
+.WIP-section:nth-child(3) { animation-delay: 0.3s; }
+
+.WIP-section:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+/* Make all sections collapsed by default */
+
+/* --- Inventory Tabs --- */
+.WIP-inventory-tabs-container {
+  margin-top: 32px;
+  background: var(--wip-card-bg);
+  border-radius: 12px;
+  box-shadow: var(--wip-shadow);
+  /* padding: 0 0 24px 0; */
+}
+.WIP-inventory-tabs {
+  display: flex;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 2px solid var(--wip-border);
+  background: var(--wip-bg);
+  border-radius: 12px 12px 0 0;
+  overflow-x: auto;
+}
+.WIP-tab-btn {
+  flex: 1 1 0;
+  padding: 16px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--wip-text-light);
+  cursor: pointer;
+  transition: color 0.2s, border-bottom 0.2s, background 0.2s;
+  outline: none;
+  font-family: poppins;
+  white-space: nowrap;
+}
+.WIP-tab-btn.active,
+.WIP-tab-btn[aria-selected="true"] {
+  color: var(--wip-primary);
+  border-bottom: 2.5px solid var(--wip-primary);
+  background: #fff;
+  z-index: 2;
+}
+.WIP-tab-btn:focus {
+  color: var(--wip-primary);
+  background: var(--wip-primary-light);
+}
+
+.WIP-tab-content {
+  display: block;
+  /* padding: 24px 24px 0 24px; */
+  animation: fadeInUp 0.4s;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.WIP-tab-header-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
+  padding: 16px;
+}
+.WIP-tab-header-row > .JO-button {
+  margin-left: auto;
+  min-width: unset;
+  width: auto;
+  max-width: 220px;
+}
+
+/* Responsive: Tabs always in one row, Add button stays right */
+@media (max-width: 900px) {
+  .WIP-inventory-tabs {
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .WIP-tab-btn {
+    font-size: 0.98rem;
+    padding: 12px 8px;
+  }
+  .WIP-tab-header-row > .JO-button {
+    max-width: 160px;
+    font-size: 0.95rem;
+    padding: 8px 12px;
+  }
+}
+@media (max-width: 600px) {
+  .WIP-inventory-tabs {
+    flex-wrap: nowrap;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }  
+  .WIP-inventory-tabs::-webkit-scrollbar {
+    display: none;
+  }    
+  .WIP-tab-btn {
+    font-size: 0.95rem;
+    padding: 10px 6px;
+  }
+  .WIP-tab-header-row > .JO-button {
+    max-width: 120px;
+    font-size: 0.92rem;
+    padding: 7px 8px;
+  }
+}
+
+.WIP-form-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    margin-bottom: 16px;
+}
+
+.WIP-form-row .WIP-form-group {
+    flex: 1;
+    margin-bottom: 0;
+}

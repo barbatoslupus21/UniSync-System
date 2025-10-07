@@ -25,6 +25,7 @@ class Users(AbstractUser):
     job_order_checker = models.BooleanField(default=False)
     job_order_maintenance = models.BooleanField(default=False)
     job_order_facilitator = models.BooleanField(default=False)
+    job_order_spectator = models.BooleanField(default=False)
     
     # Manhours Permissions
     manhours_user = models.BooleanField(default=False)
@@ -49,6 +50,19 @@ class Users(AbstractUser):
     ecis_facilitator = models.BooleanField(default=False)
     ecis_requestor = models.BooleanField(default=False)
 
+    #Quality Control
+    quality_control_user = models.BooleanField(default=False)
+    quality_control_qa = models.BooleanField(default=False)
+    quality_control_warehouse = models.BooleanField(default=False)
+    quality_control_engineering = models.BooleanField(default=False)
+    quality_control_production = models.BooleanField(default=False)
+
+    #Stock Declaration Control
+    stock_declaration_user = models.BooleanField(default=False)
+    stock_declaration_warehouse = models.BooleanField(default=False)
+    stock_declaration_purchasing = models.BooleanField(default=False)
+    stock_declaration_production = models.BooleanField(default=False)
+
     # Overtime Permission
     overtime_user = models.BooleanField(default=False)
     overtime_requestor = models.BooleanField(default=False)
@@ -56,6 +70,12 @@ class Users(AbstractUser):
     overtime_importer = models.BooleanField(default=False)
     overtime_allocator = models.BooleanField(default=False)
     overtime_facilitator = models.BooleanField(default=False)
+
+    # WIP Permission
+    wip_user = models.BooleanField(default=False)
+    wip_counter = models.BooleanField(default=False)
+    wip_checker = models.BooleanField(default=False)
+    wip_facilitator = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []

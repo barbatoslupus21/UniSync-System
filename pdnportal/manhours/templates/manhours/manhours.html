@@ -17,14 +17,22 @@
             <p class="MH-subtitle">Track and analyze production manhours and performance metrics</p>
         </div>
         <div class="MH-header-actions">
+            {% if request.user.manhours_user and request.user.manhours_staff %}
+            <div class="MH-header-actions">
+                <button id="manage-operators-btn" class="MH-button MH-secondary-button">
+                    <i class="fas fa-users"></i> Manage Operators
+                </button>
+                <button id="new-entry-btn" class="MH-button MH-primary-button">
+                    <i class="fas fa-plus"></i> New Entry
+                </button>
+            </div>
+            {% endif %}
             {% if request.user.manhours_user and request.user.manhours_supervisor %}
-            <button id="export-btn" class="MH-button MH-secondary-button">
-                <i class="fas fa-file-export"></i> Export Data
-            </button>
-            {% else %}
-            <button id="new-entry-btn" class="MH-button MH-primary-button">
-                <i class="fas fa-plus"></i> New Entry
-            </button>
+            <div class="MH-header-actions">
+                <button id="export-reports-btn" class="MH-button MH-secondary-button">
+                    <i class="fas fa-file-export"></i> Export Reports
+                </button>
+            </div>
             {% endif %}
         </div>
     </div>
@@ -144,7 +152,9 @@
                         <th>Man-hours</th>
                         <th>Output</th>
                         <th>Output/Hour</th>
+                        {% if request.user.manhours_user and request.user.manhours_staff %}
                         <th>Actions</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody id="manhours-table-body">
@@ -159,16 +169,17 @@
                         <td data-label="Man-hours">{{ entry.manhours }}</td>
                         <td data-label="Output">{{ entry.output }}</td>
                         <td data-label="Output/Hour">{{ entry.total_output }}</td>
-                        <td data-label="Actions">
-                            <button class="MH-icon-button view-details-btn" title="View Details" data-id="{{ entry.id }}">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            {% if request.user.manhours_user and request.user.manhours_staff %}
-                            <button class="MH-icon-button edit-manhours-btn" title="Edit Entry" data-id="{{ entry.id }}">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            {% endif %}
-                        </td>
+                        {% if request.user.manhours_user and request.user.manhours_staff %}
+                            <td data-label="Actions">                             
+                                <button class="MH-icon-button view-details-btn" title="View Details" data-id="{{ entry.id }}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+
+                                <button class="MH-icon-button edit-manhours-btn" title="Edit Entry" data-id="{{ entry.id }}">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                        {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
@@ -216,7 +227,6 @@
     </div>
 </main>
 
-</main>
 <!-- New Manhours Entry Modal -->
 <div class="JO-modal" id="new-manhours-modal">
     <div class="JO-modal-content">
@@ -228,7 +238,7 @@
         </div>
         <form id="manhours-form" method="post" action="{% url 'create_manhours' %}">
             {% csrf_token %}
-            <div class="JO-modal-body">
+            <div class="JO-modal-body" style="max-height: 60vh; overflow-y: auto; padding: 20px;">
                 <div class="MH-form-grid">
                     <div class="JO-form-group">
                         <label for="date-input">Date of Completion*</label>
@@ -239,7 +249,7 @@
                         <select id="operator-input" name="operator" class="MH-select" required>
                             <option value="">Select operator</option>
                             {% for operator in operators %}
-                                <option value="{{ operator.operator_name }}">{{ operator.operator_name }}</option>
+                                <option value="{{ operator.name }}">{{ operator.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -353,6 +363,124 @@
                 <button type="submit" class="JO-button JO-primary-button" id="edit-submit-btn">Update Entry</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Operator Management Modal -->
+<div class="JO-modal" id="manage-operators-modal">
+    <div class="JO-modal-content" style="max-width: 800px;">
+        <div class="JO-modal-header">
+            <h2>Manage Operators</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-subheader" style="padding: 20px 15px 10px 15px">
+            <div class="modal-buttons-container">
+                <button id="add-operator-btn" class="JO-button JO-primary-button">
+                    <i class="fas fa-plus"></i> Add New Operator
+                </button>
+                <div class="MH-search-container" style="width: 300px;">
+                    <input type="text" id="operator-search" class="MH-search-input" placeholder="Search operators...">
+                    <button class="MH-search-button">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-body" style="max-height: 60vh; overflow-y: auto; padding: 0px 15px; margin: 0px;">         
+            <table class="MH-table">
+                <thead>
+                    <tr>
+                        <th>ID Number</th>
+                        <th>Operator</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="operators-table-body">
+                    {% for operator in operators %}
+                    <tr>
+                        <td>{{ operator.id_number }}</td>
+                        <td>{{ operator.name }}</td>
+                        <td>
+                            <button class="MH-icon-button edit-operator-btn" title="Edit Operator" data-id="{{ operator.id }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="MH-icon-button delete-operator-btn" title="Delete Operator" data-id="{{ operator.id }}">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div id="no-operators-found" class="JO-empty-state" style="display: none;">
+                <div class="JO-empty-state-icon">
+                    <i class="fas fa-user-slash"></i>
+                </div>
+                <h3 class="JO-empty-state-title">No operators found</h3>
+                <p class="JO-empty-state-message">Try adjusting your search criteria or add a new operator</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button close-manage-operators-modal">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Operator Modal -->
+<div class="JO-modal" id="operator-form-modal">
+    <div class="JO-modal-content" style="max-width: 500px;">
+        <div class="JO-modal-header">
+            <h2 id="operator-form-title">Add New Operator</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <form id="operator-form">
+                {% csrf_token %}
+                <input type="hidden" id="operator-id" name="operator_id">
+                <div class="JO-form-group">
+                    <label for="operator-name">Operator Name*</label>
+                    <input type="text" id="operator-name" name="name" class="JO-input" required>
+                </div>
+                <div class="JO-form-group">
+                    <label for="operator-id-number">ID Number</label>
+                    <input type="text" id="operator-id-number" name="id_number" class="JO-input">
+                </div>
+            </form>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="JO-button JO-secondary-button" id="operator-cancel-btn">Cancel</button>
+            <button type="submit" class="JO-button JO-primary-button" id="operator-submit-btn">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Operator Confirmation Modal -->
+<div class="JO-modal" id="delete-operator-modal">
+    <div class="JO-modal-content" style="max-width: 400px;">
+        <div class="JO-modal-header">
+            <h2>Delete Operator</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="delete-confirmation-container">
+                <div class="delete-icon-container">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h4>Are you sure you want to delete this operator?</h4>
+                <p>This action cannot be undone.</p>
+                <input type="hidden" id="delete-operator-id">
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="JO-button JO-secondary-button" id="cancel-delete-btn">Cancel</button>
+            <button type="button" class="JO-button JO-danger-button" id="confirm-delete-btn">Delete</button>
+        </div>
     </div>
 </div>
 

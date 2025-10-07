@@ -1,0 +1,1366 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Job Order{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+{% endblock %}
+
+
+{% block content %}
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">Quality Control Assignment & Monitoring</h1>
+            <p class="JO-subtitle">Log, assign, and monitor quality inspections and process validations</p>
+        </div>
+    </div>
+
+    <div class="content-tabs">
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="trialRun">Trial Run Request</button>
+            <button class="tab-btn" data-tab="LotOut">Lot Out Inspections Request</button>
+            {% if request.user.quality_control_qa or request.user.quality_control_production %}
+                <button class="tab-btn" data-tab="CutAway">Cut-Away Request</button>
+            {% endif %}
+            <div class="tab-slider"></div>
+        </div>
+
+        <div class="tab-content active" id="trialRun">
+            <div>
+                <div class="card-header">
+                    <h2>Trial Run Requisition</h2>
+                    <div class="card-header-action">
+                        <!-- Trial Run Request Search Bar -->
+                        <div class="JO-search-container">
+                            <input type="text" id="trial-run-search" class="JO-search-input" placeholder="Search by TRR Number, product, line...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <button id="add-trial-run-btn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Request Trial Run
+                        </button>
+                        {% if request.user.quality_control_qa %}
+                        <button id="report-trial-run-btn" class="btn btn-primary">
+                            <i class="fa fa-download" aria-hidden="true"></i>
+                             Export Report
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="trial-run-table">
+                        <thead>
+                            <tr>
+                                <th>TRR Number</th>
+                                <th>Trial Date</th>
+                                <th class="hide-column">Product Name</th>
+                                <th class="hide-column">Line</th>
+                                <th class="hide-column">Process Name</th>
+                                <th class="hide-column">Trial Operator</th>
+                                <th class="hide-column">Requested By</th>
+                                <th style="text-align: center;">Status</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trial-run-tbody">
+                            {% for request in trial_run_requests %}
+                            <tr data-trr-number="{{ request.trr_number|lower }}" data-product="{{ request.product_name|lower }}" data-line="{{ request.line.line_name|lower }}" data-trial-run-id="{{ request.id }}" data-product-number="{{ request.product_number }}" data-change-from="{{ request.change_from }}" data-change-to="{{ request.change_to }}" data-created-at="{{ request.created_at|date:'M d, Y' }}" data-updated-at="{{ request.updated_at|date:'M d, Y' }}" data-is-updated="{% if request.updated_at != request.created_at %}true{% else %}false{% endif %}" data-status="{{ request.status }}">
+                                <td data-label="TRR Number">{{ request.trr_number }}</td>
+                                <td data-label="Trial Date">{{ request.trial_date|date:"M d, Y" }}</td>
+                                <td class="hide-column" data-label="Product Name">{{ request.product_name }}</td>
+                                <td class="hide-column" data-label="Line">{{ request.line.line_name }}</td>
+                                <td class="hide-column" data-label="Process Name">{{ request.process_name }}</td>
+                                <td class="hide-column" data-label="Trial Operator">{{ request.trial_operator }}</td>
+                                <td class="hide-column" data-label="Requested By">{{ request.requested_by.name }}</td>
+                                <td data-label="Status" class="text-center">
+                                    {% if request.status == 'cancelled' %}
+                                    <span class="JO-status JO-status-cancelled">Cancelled</span>
+                                    {% else %}
+                                    <span class="JO-status JO-status-approved">Submitted</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Actions" class="text-center">
+                                    <button class="btn btn-icon view-trial-run-btn" data-trial-run-id="{{ request.id }}" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if request.requested_by == user and request.status == 'submitted' %}
+                                        <button class="btn btn-icon edit-trial-run-btn" data-trial-run-id="{{ request.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-icon btn-error cancel-trial-run-btn" data-trial-run-id="{{ request.id }}" title="Cancel">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Trial Run Found</h4>
+                                        <p>No trial run has been requested yet</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ trial_run_requests.start_index }} to {{ trial_run_requests.end_index }} of {{ trial_run_requests.paginator.count }} entries
+                    </div>
+                    {% if trial_run_requests.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if trial_run_requests.has_previous %}
+                            <a href="?tab=TrialRun&page={{ trial_run_requests.previous_page_number }}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in trial_run_requests.paginator.page_range %}
+                                {% if trial_run_requests.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > trial_run_requests.number|add:'-3' and num < trial_run_requests.number|add:'3' %}
+                                <a href="?tab=TrialRun&page={{ num }}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if trial_run_requests.has_next %}
+                            <a href="?tab=TrialRun&page={{ trial_run_requests.next_page_number }}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="LotOut">
+            <div>
+                <div class="card-header">
+                    <h2>Lot-Out Inspections</h2>
+                    <div class="card-header-action">
+                        <!-- Trial Run Request Search Bar -->
+                        <div class="JO-search-container">
+                            <input type="text" id="lot-out-search" class="JO-search-input" placeholder="Search by RLI Number, product, line...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <button id="add-lot-out-btn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Request Lot-Out
+                        </button>
+                        {% if request.user.quality_control_qa %}
+                        <button id="report-lot-out-btn" class="btn btn-primary">
+                            <i class="fa fa-download" aria-hidden="true"></i>
+                            Export Report
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="lot-out-table">
+                        <thead>
+                            <tr>
+                                <th>RLI Number</th>
+                                <th class="hide-column">Requested Date</th>
+                                <th>Product Number</th>
+                                <th class="hide-column">Product Name</th>
+                                <th class="hide-column">Line Affected</th>
+                                <th class="hide-column">Requested By</th>
+                                <th style="text-align: center;">Status</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lot-out-tbody">
+                            {% for inspection in lot_out_inspections %}
+                            <tr data-rli-number="{{ inspection.rli_number|lower }}" 
+                                data-product="{{ inspection.product_name|lower }}" 
+                                data-line="{{ inspection.line_affected.line_name|lower }}" 
+                                data-lot-out-id="{{ inspection.id }}" 
+                                data-product-number="{{ inspection.product_number }}" 
+                                data-reason="{{ inspection.reason_for_lot_out }}" 
+                                data-line-id="{{ inspection.line_affected.id }}"
+                                data-status="{{ inspection.status }}"
+                                data-created-at="{{ inspection.created_at|date:'M d, Y' }}" 
+                                data-updated-at="{{ inspection.updated_at|date:'M d, Y' }}" 
+                                data-is-updated="{% if inspection.updated_at != inspection.created_at %}true{% else %}false{% endif %}">
+                                <td data-label="RLI Number">{{ inspection.rli_number }}</td>
+                                <td class="hide-column" data-label="Requested Date">{{ inspection.request_date|date:"M d, Y" }}</td>
+                                <td data-label="Product Number">{{ inspection.product_number }}</td>
+                                <td class="hide-column" data-label="Product Name">{{ inspection.product_name }}</td>
+                                <td class="hide-column" data-label="Line Affected">{{ inspection.line_affected.line_name }}</td>
+                                <td class="hide-column" data-label="Requested By">{{ inspection.requested_by.name }}</td>
+                                <td data-label="Status" class="text-center">
+                                    {% if inspection.status == 'cancelled' %}
+                                    <span class="JO-status JO-status-cancelled">Cancelled</span>
+                                    {% else %}
+                                    <span class="JO-status JO-status-approved">Submitted</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Actions" class="text-center">
+                                    <button class="btn btn-icon view-lot-out-btn" data-lot-out-id="{{ inspection.id }}" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if inspection.requested_by == user and inspection.status == 'submitted' %}
+                                        <button class="btn btn-icon edit-lot-out-btn" data-lot-out-id="{{ inspection.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-icon btn-error cancel-lot-out-btn" data-lot-out-id="{{ inspection.id }}" title="Cancel">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Lot Out Inspections Found</h4>
+                                        <p>No lot out inspection requests have been submitted yet</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ lot_out_inspections.start_index }} to {{ lot_out_inspections.end_index }} of {{ lot_out_inspections.paginator.count }} entries
+                    </div>
+                    {% if lot_out_inspections.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if lot_out_inspections.has_previous %}
+                            <a href="?tab=LotOut&lot_out_page={{ lot_out_inspections.previous_page_number }}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in lot_out_inspections.paginator.page_range %}
+                                {% if lot_out_inspections.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > lot_out_inspections.number|add:'-3' and num < lot_out_inspections.number|add:'3' %}
+                                <a href="?tab=LotOut&lot_out_page={{ num }}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if lot_out_inspections.has_next %}
+                            <a href="?tab=LotOut&lot_out_page={{ lot_out_inspections.next_page_number }}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="CutAway">
+            <div>
+                <div class="card-header">
+                    <h2>Cut-Away Requisition</h2>
+                    <div class="card-header-action">
+                        <!-- Cut-Away Search Bar -->
+                        <div class="JO-search-container">
+                            <input type="text" id="cut-away-search" class="JO-search-input" placeholder="Search by control number, product, line...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        {% if request.user.quality_control_production %}
+                        <button id="add-cut-away-btn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Request for Cut-Away
+                        </button>
+                        {% endif %}
+                        {% if request.user.quality_control_qa %}
+                        <button id="report-cut-away-btn" class="btn btn-primary">
+                            <i class="fa fa-download" aria-hidden="true"></i> Export Report
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="cut-away-table">
+                        <thead>
+                            <tr>
+                                <th>Control Number</th>
+                                <th class="hide-column">Date Prepared</th>
+                                <th>Assy Line</th>
+                                <th class="hide-column">Product Number</th>
+                                <th class="hide-column">Schedule Date</th>
+                                <th class="hide-column">Requested By</th>
+                                <th style="text-align: center;">Status</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cut-away-tbody">
+                            {% for cut_away in cut_aways %}
+                            <tr data-control-number="{{ cut_away.control_number|lower }}" 
+                                data-product="{{ cut_away.product_number|lower }}" 
+                                data-line="{{ cut_away.assy_line.line_name|lower }}" 
+                                data-cut-away-id="{{ cut_away.id }}" 
+                                data-line-id="{{ cut_away.assy_line.id }}"
+                                data-status="{{ cut_away.status_of_cut_away }}"
+                                data-created-at="{{ cut_away.created_at|date:'M d, Y' }}" 
+                                data-updated-at="{{ cut_away.updated_at|date:'M d, Y' }}" 
+                                data-is-updated="{% if cut_away.updated_at != cut_away.created_at %}true{% else %}false{% endif %}"
+                                data-machine-number="{{ cut_away.machine_number }}"
+                                data-applicator-code="{{ cut_away.applicator_number_code }}"
+                                data-crimped-qty="{{ cut_away.crimped_quantity }}"
+                                data-terminal-part="{{ cut_away.terminal_part_number }}"
+                                data-schedule-date="{{ cut_away.schedule_of_cut_away|date:'M d, Y' }}"
+                                data-received-date="{% if cut_away.received_date_by_qa %}{{ cut_away.received_date_by_qa|date:'M d, Y' }}{% endif %}"
+                                data-remarks="{{ cut_away.remarks }}"
+                                data-qa-remarks="{{ cut_away.qa_remarks }}">
+                                <td data-label="Control Number">{{ cut_away.control_number }}</td>
+                                <td class="hide-column" data-label="Date Prepared">{{ cut_away.date_prepared|date:"M d, Y" }}</td>
+                                <td data-label="Assy Line">{{ cut_away.assy_line.line_name }}</td>
+                                <td class="hide-column" data-label="Product Number">{{ cut_away.product_number }}</td>
+                                <td class="hide-column" data-label="Schedule Date">{{ cut_away.schedule_of_cut_away|date:"M d, Y" }}</td>
+                                <td class="hide-column" data-label="Requested By">{{ cut_away.requested_by.name }}</td>
+                                <td data-label="Status" class="text-center">
+                                    {% if cut_away.status_of_cut_away == 'cancelled' %}
+                                    <span class="JO-status JO-status-cancelled">Cancelled</span>
+                                    {% elif cut_away.status_of_cut_away == 'completed' %}
+                                    <span class="JO-status JO-status-completed">Completed</span>
+                                    {% elif cut_away.status_of_cut_away == 'in_progress' %}
+                                    <span class="JO-status JO-status-approved">In Progress</span>
+                                    {% elif cut_away.status_of_cut_away == 'scheduled' %}
+                                    <span class="JO-status JO-status-approved">Scheduled</span>
+                                    {% else %}
+                                    <span class="JO-status JO-status-pending">Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Actions" class="text-center">
+                                    <button class="btn btn-icon view-cut-away-btn" data-cut-away-id="{{ cut_away.id }}" title="View">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    {% if cut_away.requested_by == user and cut_away.status_of_cut_away == 'pending' %}
+                                        <button class="btn btn-icon edit-cut-away-btn" data-cut-away-id="{{ cut_away.id }}" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-icon btn-error cancel-cut-away-btn" data-cut-away-id="{{ cut_away.id }}" title="Cancel">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                    {% if request.user.quality_control_qa and cut_away.status_of_cut_away == 'pending' %}
+                                        <button class="btn btn-icon btn-success qa-cut-away-btn" data-cut-away-id="{{ cut_away.id }}" title="View">
+                                            <i class="fa fa-check-circle"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-cut" aria-hidden="true"></i>
+                                        <h4>No Cut-Away Requests Found</h4>
+                                        <p>No cut-away requisition requests have been submitted yet</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ cut_aways.start_index }} to {{ cut_aways.end_index }} of {{ cut_aways.paginator.count }} entries
+                    </div>
+                    {% if cut_aways.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if cut_aways.has_previous %}
+                            <a href="?tab=CutAway&cut_away_page={{ cut_aways.previous_page_number }}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in cut_aways.paginator.page_range %}
+                                {% if cut_aways.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > cut_aways.number|add:'-3' and num < cut_aways.number|add:'3' %}
+                                <a href="?tab=CutAway&cut_away_page={{ num }}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if cut_aways.has_next %}
+                            <a href="?tab=CutAway&cut_away_page={{ cut_aways.next_page_number }}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<!-- Trial Run Request Modal -->
+<div id="trial-run-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Request Trial Run</h3>
+            <button class="JO-modal-close" id="trial-run-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="trial-run-form">
+            {% csrf_token %}
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.trial_date.id_for_label }}">Trial Date <span class="input-required">*</span></label>
+                            {{ form.trial_date }}
+                            {% if form.trial_date.errors %}
+                                <div class="JO-error">{{ form.trial_date.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.line.id_for_label }}">Line <span class="input-required">*</span></label>
+                            {{ form.line }}
+                            {% if form.line.errors %}
+                                <div class="JO-error">{{ form.line.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.product_name.id_for_label }}">Product Name <span class="input-required">*</span></label>
+                            {{ form.product_name }}
+                            {% if form.product_name.errors %}
+                                <div class="JO-error">{{ form.product_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.product_number.id_for_label }}">Product Number <span class="input-required">*</span></label>
+                            {{ form.product_number }}
+                            {% if form.product_number.errors %}
+                                <div class="JO-error">{{ form.product_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.process_name.id_for_label }}">Process Name <span class="input-required">*</span></label>
+                            {{ form.process_name }}
+                            {% if form.process_name.errors %}
+                                <div class="JO-error">{{ form.process_name.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="{{ form.trial_operator.id_for_label }}">Trial Operator <span class="input-required">*</span></label>
+                            {{ form.trial_operator }}
+                            {% if form.trial_operator.errors %}
+                                <div class="JO-error">{{ form.trial_operator.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="JO-form-group JO-form-group-full">
+                        <label for="{{ form.change_from.id_for_label }}">Change From <span class="input-required">*</span></label>
+                        {{ form.change_from }}
+                        {% if form.change_from.errors %}
+                            <div class="JO-error">{{ form.change_from.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="JO-form-group JO-form-group-full">
+                        <label for="{{ form.change_to.id_for_label }}">Change To <span class="input-required">*</span></label>
+                        {{ form.change_to }}
+                        {% if form.change_to.errors %}
+                            <div class="JO-error">{{ form.change_to.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="trial-run-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Trial Run Modal -->
+<div id="view-trial-run-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>View Trial Run Request</h3>
+            <button class="JO-modal-close" id="view-trial-run-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="modal-details-header">
+                <div class="modal-details-id">
+                    <h3 id="view-trr-number"></h3>
+                    <span id="view-status" class="JO-view-value"></span>
+                </div>
+
+                <div class="JO-details-date">
+                    <p><span id="view-date-label"></span> <span id="view-date-value"></span></p>
+                </div>
+            </div>
+        
+            <div class="modal-details-section">
+                <h4>Trial Run Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Trial Date</span>
+                        <span  id="view-trial-date" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Line</span>
+                        <span  id="view-line" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Name</span>
+                        <span  id="view-product-name" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Number</span>
+                        <span  id="view-product-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Process Name</span>
+                        <span  id="view-process-name" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Trial Operator</span>
+                        <span  id="view-trial-operator" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Requested By</span>
+                        <span  id="view-requested-by" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-details-section">
+                <h4>Requested Changes</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Change From</span>
+                        <span  id="view-change-from" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Change To</span>
+                        <span  id="view-change-to" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="btn btn-outline" id="view-trial-run-close">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Trial Run Modal -->
+<div id="edit-trial-run-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Edit Trial Run Request</h3>
+            <button class="JO-modal-close" id="edit-trial-run-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="edit-trial-run-form">
+            {% csrf_token %}
+            <input type="hidden" name="trial_run_id" id="edit-trial-run-id">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-trial-date">Trial Date <span class="input-required">*</span></label>
+                            <input type="date" id="edit-trial-date" name="trial_date" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-line">Line <span class="input-required">*</span></label>
+                            <select id="edit-line" name="line" class="JO-select" required>
+                                {% for line in available_lines %}
+                                <option value="{{ line.id }}">{{ line.line_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-product-name">Product Name <span class="input-required">*</span></label>
+                            <input type="text" id="edit-product-name" name="product_name" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-product-number">Product Number <span class="input-required">*</span></label>
+                            <input type="text" id="edit-product-number" name="product_number" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-process-name">Process Name <span class="input-required">*</span></label>
+                            <input type="text" id="edit-process-name" name="process_name" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-trial-operator">Trial Operator <span class="input-required">*</span></label>
+                            <input type="text" id="edit-trial-operator" name="trial_operator" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group JO-form-group-full">
+                        <label for="edit-change-from">Change From <span class="input-required">*</span></label>
+                        <textarea id="edit-change-from" name="change_from" class="JO-textarea" rows="3" required></textarea>
+                    </div>
+                    <div class="JO-form-group JO-form-group-full">
+                        <label for="edit-change-to">Change To <span class="input-required">*</span></label>
+                        <textarea id="edit-change-to" name="change_to" class="JO-textarea" rows="3" required></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="edit-trial-run-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check"></i>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cancel Trial Run Confirmation Modal -->
+<div id="cancel-trial-run-modal" class="JO-modal modal-md">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Cancel Trial Run Request</h3>
+            <button class="JO-modal-close" id="cancel-trial-run-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa fa-times-circle" aria-hidden="true"></i>
+                </div>
+                <h4>Are you sure you want to cancel this trial run request?</h4>
+                <p>This action cannot be undone. The trial run request will be marked as cancelled.</p>
+                <div class="JO-trial-run-info">
+                    <strong>TRR Number:</strong> <span id="cancel-trr-number"></span><br>
+                    <strong>Product:</strong> <span id="cancel-product-name"></span>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <input type="hidden" id="cancel-trial-run-id">
+            <button type="button" class="btn btn-outline" id="cancel-trial-run-cancel">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Keep Request
+            </button>
+            <button type="button" class="btn btn-error" id="confirm-cancel-trial-run">
+                <i class="fa fa-check" aria-hidden="true"></i>
+                Cancel Request
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Lot Out Confirmation Modal -->
+<div id="cancel-lot-out-modal" class="JO-modal modal-md">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Cancel Lot Out Inspection Request</h3>
+            <button class="JO-modal-close" id="cancel-lot-out-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa fa-times-circle" aria-hidden="true"></i>
+                </div>
+                <h4>Are you sure you want to cancel this lot out inspection request?</h4>
+                <p>This action cannot be undone. The lot out inspection request will be marked as cancelled.</p>
+                <div class="JO-trial-run-info">
+                    <strong>RLI Number:</strong> <span id="cancel-rli-number"></span><br>
+                    <strong>Product:</strong> <span id="cancel-lot-out-product-name"></span>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <input type="hidden" id="cancel-lot-out-id">
+            <button type="button" class="btn btn-outline" id="cancel-lot-out-cancel">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Keep Request
+            </button>
+            <button type="button" class="btn btn-error" id="confirm-cancel-lot-out">
+                <i class="fa fa-check" aria-hidden="true"></i>
+                Cancel Request
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Trial Run Report Modal -->
+<div id="export-trial-run-modal" class="JO-modal modal-sm">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Export Trial Run Report</h3>
+            <button class="JO-modal-close" id="export-trial-run-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="GET" action="{% url 'export_trial_run_report' %}" id="export-trial-run-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-date-from">Date From <span class="input-required">*</span></label>
+                            <input type="date" id="export-date-from" name="date_from" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-date-to">Date To <span class="input-required">*</span></label>
+                            <input type="date" id="export-date-to" name="date_to" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="export-status">Status <span class="input-required">*</span></label>
+                        <select id="export-status" name="status" class="JO-select" required>
+                            <option value="">Select Status</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="all">All Status</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="export-trial-run-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-file-excel-o" aria-hidden="true"></i>
+                    Export
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Export Lot Out Report Modal -->
+<div id="export-lot-out-modal" class="JO-modal modal-sm">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Export Lot Out Inspection Report</h3>
+            <button class="JO-modal-close" id="export-lot-out-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="GET" action="{% url 'export_lot_out_report' %}" id="export-lot-out-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-lot-out-date-from">Date From <span class="input-required">*</span></label>
+                            <input type="date" id="export-lot-out-date-from" name="date_from" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-lot-out-date-to">Date To <span class="input-required">*</span></label>
+                            <input type="date" id="export-lot-out-date-to" name="date_to" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="export-lot-out-status">Status <span class="input-required">*</span></label>
+                        <select id="export-lot-out-status" name="status" class="JO-select" required>
+                            <option value="">Select Status</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="all">All Status</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="export-lot-out-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-file-excel-o" aria-hidden="true"></i>
+                    Export
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lot Out Inspection Modal -->
+<div id="lot-out-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Request Lot Out Inspection</h3>
+            <button class="JO-modal-close" id="lot-out-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="lot-out-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="lot_out_inspection">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="lot-out-product-number">Product Number <span class="input-required">*</span></label>
+                            <input type="text" id="lot-out-product-number" name="product_number" class="JO-input" placeholder="Enter product number" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="lot-out-product-name">Product Name <span class="input-required">*</span></label>
+                            <input type="text" id="lot-out-product-name" name="product_name" class="JO-input" placeholder="Enter product name" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="lot-out-line-affected">Line Affected <span class="input-required">*</span></label>
+                        <select id="lot-out-line-affected" name="line_affected" class="JO-select" required>
+                            <option value="">Select Line</option>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-form-group JO-form-group-full">
+                        <label for="lot-out-reason">Reason For Lot Out <span class="input-required">*</span></label>
+                        <textarea id="lot-out-reason" name="reason_for_lot_out" class="JO-textarea" rows="4" placeholder="Describe the reason for lot out inspection" required></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="lot-out-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Lot Out Inspection Modal -->
+<div id="view-lot-out-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>View Lot Out Inspection Request</h3>
+            <button class="JO-modal-close" id="view-lot-out-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="modal-details-header">
+                <div class="modal-details-id">
+                    <h3 id="view-lot-out-rli-number"></h3>
+                    <span id="view-lot-out-status" class="JO-view-value"></span>
+                </div>
+
+                <div class="JO-details-date">
+                    <p><span id="view-lot-out-date-label"></span> <span id="view-lot-out-date-value"></span></p>
+                </div>
+            </div>
+        
+            <div class="modal-details-section">
+                <h4>Lot Out Inspection Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Line Affected</span>
+                        <span id="view-lot-out-line-affected" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Number</span>
+                        <span id="view-lot-out-product-number-detail" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Name</span>
+                        <span id="view-lot-out-product-name-detail" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Requested By</span>
+                        <span id="view-lot-out-requested-by" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-details-section">
+                <h4>Reason for Lot Out</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item JO-details-item-full">
+                        <span class="JO-details-label">Reason</span>
+                        <span id="view-lot-out-reason" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="btn btn-outline" id="view-lot-out-close">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Lot Out Inspection Modal -->
+<div id="edit-lot-out-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Edit Lot Out Inspection Request</h3>
+            <button class="JO-modal-close" id="edit-lot-out-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="edit-lot-out-form">
+            {% csrf_token %}
+            <input type="hidden" name="lot_out_id" id="edit-lot-out-id">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-lot-out-product-number">Product Number <span class="input-required">*</span></label>
+                            <input type="text" id="edit-lot-out-product-number" name="product_number" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-lot-out-product-name">Product Name <span class="input-required">*</span></label>
+                            <input type="text" id="edit-lot-out-product-name" name="product_name" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-lot-out-line-affected">Line Affected <span class="input-required">*</span></label>
+                        <select id="edit-lot-out-line-affected" name="line_affected" class="JO-select" required>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="JO-form-group JO-form-group-full">
+                        <label for="edit-lot-out-reason">Reason For Lot Out <span class="input-required">*</span></label>
+                        <textarea id="edit-lot-out-reason" name="reason_for_lot_out" class="JO-textarea" rows="4" required></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="edit-lot-out-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check"></i>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cut-Away Request Modal -->
+<div id="cut-away-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Request Cut-Away</h3>
+            <button class="JO-modal-close" id="cut-away-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="cut-away-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="cut_away_request">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="JO-form-group">
+                        <label for="cut-away-assy-line">Assembly Line <span class="input-required">*</span></label>
+                        <select id="cut-away-assy-line" name="assy_line" class="JO-select" required>
+                            <option value="">Select Line</option>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="cut-away-machine-number">Machine Number <span class="input-required">*</span></label>
+                            <input type="text" id="cut-away-machine-number" name="machine_number" class="JO-input" placeholder="Enter machine number" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="cut-away-applicator-number">Applicator Number/Code <span class="input-required">*</span></label>
+                            <input type="text" id="cut-away-applicator-number" name="applicator_number_code" class="JO-input" placeholder="Enter applicator number/code" required>
+                        </div>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="cut-away-crimped-quantity">Crimped Quantity <span class="input-required">*</span></label>
+                            <input type="number" id="cut-away-crimped-quantity" name="crimped_quantity" class="JO-input" placeholder="Enter quantity" min="1" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="cut-away-product-number">Product Number <span class="input-required">*</span></label>
+                            <input type="text" id="cut-away-product-number" name="product_number" class="JO-input" placeholder="Enter product number" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="cut-away-terminal-part-number">Terminal Part Number <span class="input-required">*</span></label>
+                        <input type="text" id="cut-away-terminal-part-number" name="terminal_part_number" class="JO-input" placeholder="Enter terminal part number" required>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="cut-away-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Submit Request
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Cut-Away Modal -->
+<div id="view-cut-away-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>View Cut-Away Request</h3>
+            <button class="JO-modal-close" id="view-cut-away-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="modal-details-header">
+                <div class="modal-details-id">
+                    <h3 id="view-cut-away-control-number"></h3>
+                    <span id="view-cut-away-status" class="JO-view-value"></span>
+                </div>
+
+                <div class="JO-details-date">
+                    <p><span id="view-cut-away-date-label"></span> <span id="view-cut-away-date-value"></span></p>
+                </div>
+            </div>
+        
+            <div class="modal-details-section">
+                <h4>Cut-Away Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Assembly Line</span>
+                        <span id="view-cut-away-assy-line" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Machine Number</span>
+                        <span id="view-cut-away-machine-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Applicator Number/Code</span>
+                        <span id="view-cut-away-applicator-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Crimped Quantity</span>
+                        <span id="view-cut-away-crimped-quantity" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Product Number</span>
+                        <span id="view-cut-away-product-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Terminal Part Number</span>
+                        <span id="view-cut-away-terminal-part-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Requested By</span>
+                        <span id="view-cut-away-requested-by" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-details-section">
+                <h4>QA Information</h4>
+                <div class="modal-details-grid">                    
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Schedule Of Cut-Away</span>
+                        <span id="view-cut-away-schedule" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Date Received</span>
+                        <span id="view-cut-away-date-received" class="JO-view-value"></span>
+                    </div>
+                    
+                    <div class="JO-details-item JO-details-item-full">
+                        <span class="JO-details-label">Remarks</span>
+                        <div class="JO-view-value" id="view-cut-away-qa-remarks" style="white-space: normal;"></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="btn btn-outline" id="view-cut-away-close">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Cut-Away Modal -->
+<div id="edit-cut-away-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Edit Cut-Away Request</h3>
+            <button class="JO-modal-close" id="edit-cut-away-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="edit-cut-away-form">
+            {% csrf_token %}
+            <input type="hidden" name="cut_away_id" id="edit-cut-away-id">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="JO-form-group">
+                        <label for="edit-cut-away-assy-line">Assembly Line <span class="input-required">*</span></label>
+                        <select id="edit-cut-away-assy-line" name="assy_line" class="JO-select" required>
+                            {% for line in available_lines %}
+                            <option value="{{ line.id }}">{{ line.line_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-cut-away-machine-number">Machine Number <span class="input-required">*</span></label>
+                            <input type="text" id="edit-cut-away-machine-number" name="machine_number" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-cut-away-applicator-number">Applicator Number/Code <span class="input-required">*</span></label>
+                            <input type="text" id="edit-cut-away-applicator-number" name="applicator_number_code" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-cut-away-crimped-quantity">Crimped Quantity <span class="input-required">*</span></label>
+                            <input type="number" id="edit-cut-away-crimped-quantity" name="crimped_quantity" class="JO-input" min="1" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-cut-away-product-number">Product Number <span class="input-required">*</span></label>
+                            <input type="text" id="edit-cut-away-product-number" name="product_number" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-cut-away-terminal-part-number">Terminal Part Number <span class="input-required">*</span></label>
+                        <input type="text" id="edit-cut-away-terminal-part-number" name="terminal_part_number" class="JO-input" required>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="edit-cut-away-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check"></i>
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Cancel Cut-Away Confirmation Modal -->
+<div id="cancel-cut-away-modal" class="JO-modal modal-md">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Cancel Cut-Away Request</h3>
+            <button class="JO-modal-close" id="cancel-cut-away-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div class="JO-confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa fa-times-circle" aria-hidden="true"></i>
+                </div>
+                <h4>Are you sure you want to cancel this cut-away request?</h4>
+                <p>This action cannot be undone. The cut-away request will be marked as cancelled.</p>
+                <div class="JO-trial-run-info">
+                    <strong>Control Number:</strong> <span id="cancel-cut-away-control-number"></span><br>
+                    <strong>Product:</strong> <span id="cancel-cut-away-product-number"></span>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <input type="hidden" id="cancel-cut-away-id">
+            <button type="button" class="btn btn-outline" id="cancel-cut-away-cancel-btn">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Keep Request
+            </button>
+            <button type="button" class="btn btn-error" id="confirm-cancel-cut-away">
+                <i class="fa fa-check" aria-hidden="true"></i>
+                Cancel Request
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- QA Cut-Away Modal -->
+<div id="qa-cut-away-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>QA Cut-Away Processing</h3>
+            <button class="JO-modal-close" id="qa-cut-away-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="qa-cut-away-form">
+            {% csrf_token %}
+            <input type="hidden" name="cut_away_id" id="qa-cut-away-id">
+            <div class="JO-modal-body">
+                <div class="modal-details-header">
+                    <div class="modal-details-id">
+                        <h3 id="qa-cut-away-control-number"></h3>
+                        <span id="qa-cut-away-status" class="JO-view-value"></span>
+                    </div>
+
+                    <div class="JO-details-date">
+                        <p><span id="qa-cut-away-date-label"></span> <span id="qa-cut-away-date-value"></span></p>
+                    </div>
+                </div>
+            
+                <div class="modal-details-section">
+                    <h4>Cut-Away Information</h4>
+                    <div class="modal-details-grid">
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Assembly Line</span>
+                            <span id="qa-cut-away-assy-line" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Machine Number</span>
+                            <span id="qa-cut-away-machine-number" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Applicator Number/Code</span>
+                            <span id="qa-cut-away-applicator-number" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Crimped Quantity</span>
+                            <span id="qa-cut-away-crimped-quantity" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Product Number</span>
+                            <span id="qa-cut-away-product-number" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Terminal Part Number</span>
+                            <span id="qa-cut-away-terminal-part-number" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Requested By</span>
+                            <span id="qa-cut-away-requested-by" class="JO-view-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-details-section">
+                    <h4>QA Information</h4>
+                    <div class="modal-details-grid">
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Schedule Of Cut-Away <span class="input-required">*</span></span>
+                            <input type="date" id="qa-cut-away-schedule" name="schedule_of_cut_away" class="JO-input" required>
+                        </div>
+                        
+                        <div class="JO-details-item JO-details-item-full">
+                            <span class="JO-details-label">Remarks</span>
+                            <textarea id="qa-cut-away-remarks" name="qa_remarks" class="JO-textarea" rows="3" placeholder="Add QA remarks (optional)"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="qa-cut-away-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-check" aria-hidden="true"></i>
+                    Submit
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="{% static 'js/qualitycontrol/qualitycontrol.js' %}"></script>
+{% endblock %}

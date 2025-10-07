@@ -3,11 +3,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const specificDate = document.getElementById('specificDate');
     const shiftFilter = document.getElementById('shiftFilter');
     const searchInput = document.getElementById('searchSchedules');
+    const refreshBtn = document.getElementById('refreshDashboard');
+    const exportBtn = document.getElementById('exportSchedules');
     const loadingOverlay = document.getElementById('loadingOverlay');
-    const errorOverlay = document.getElementById('errorOverlay');
-    const errorMessage = document.getElementById('errorMessage');
 
-    // Store chart instances
     let charts = {
         outputPerDay: null,
         efficiency: null,
@@ -16,599 +15,681 @@ document.addEventListener('DOMContentLoaded', function() {
         statusDistribution: null
     };
 
-    // Auto refresh interval (5 minutes)
+    let currentData = null;
     const REFRESH_INTERVAL = 5 * 60 * 1000;
     let refreshTimer;
+    let animationFrames = [];
 
-    // Show/hide loading overlay
     function showLoading() {
-        loadingOverlay.style.display = 'flex';
+        loadingOverlay.classList.remove('hidden');
     }
 
     function hideLoading() {
-        loadingOverlay.style.display = 'none';
+        setTimeout(() => {
+            loadingOverlay.classList.add('hidden');
+        }, 300);
     }
 
-    // Show error message
-    function showError(message) {
-        errorMessage.textContent = message;
-        errorOverlay.style.display = 'flex';
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-exclamation-circle',
+            warning: 'fa-exclamation-triangle',
+            info: 'fa-info-circle'
+        };
+        
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i class="fas ${icons[type]} toast-icon"></i>
+                <span>${message}</span>
+            </div>
+            <button class="close-btn" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 10);
         setTimeout(() => {
-            errorOverlay.style.display = 'none';
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
 
-    // Set today's date as default for specific date input
-    specificDate.valueAsDate = new Date();
-    specificDate.classList.remove('visible'); // Hide by default
+    function create3DGradient(ctx, color1, color2, direction = 'vertical') {
+        const gradient = direction === 'vertical' 
+            ? ctx.createLinearGradient(0, 0, 0, 400)
+            : ctx.createLinearGradient(0, 0, 400, 0);
+        
+        gradient.addColorStop(0, color1);
+        gradient.addColorStop(0.5, color2);
+        gradient.addColorStop(1, color1);
+        return gradient;
+    }
 
-    // Fetch data from server
+    function createGlowEffect(ctx, color, blur = 20) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = blur;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+    }
+
+    function animateMetricValue(element, targetValue, duration = 1000) {
+        const startValue = parseInt(element.textContent) || 0;
+        const valueChange = targetValue - startValue;
+        const startTime = performance.now();
+
+        function updateValue(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+            const currentValue = Math.round(startValue + (valueChange * easeOutQuart));
+            
+            element.textContent = currentValue;
+            
+            if (progress < 1) {
+                animationFrames.push(requestAnimationFrame(updateValue));
+            }
+        }
+        
+        animationFrames.push(requestAnimationFrame(updateValue));
+    }
+
+    dateFilter.addEventListener('change', function() {
+        if (this.value === 'customDate') {
+            specificDate.classList.add('visible');
+        } else {
+            specificDate.classList.remove('visible');
+        }
+        loadDashboard();
+    });
+
+    specificDate.addEventListener('change', function() {
+        if (dateFilter.value === 'customDate') {
+            loadDashboard();
+        }
+    });
+
+    shiftFilter.addEventListener('change', loadDashboard);
+
+    refreshBtn.addEventListener('click', function() {
+        this.style.animation = 'none';
+        setTimeout(() => {
+            this.style.animation = '';
+        }, 10);
+        loadDashboard();
+        showToast('Dashboard refreshed successfully', 'success');
+    });
+
+    exportBtn.addEventListener('click', exportSchedules);
+
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.gd-table-body .gd-table-row');
+        
+        rows.forEach((row, index) => {
+            const text = row.textContent.toLowerCase();
+            const shouldShow = text.includes(searchTerm);
+            
+            if (shouldShow) {
+                row.style.display = '';
+                row.style.animationDelay = `${index * 0.05}s`;
+                row.classList.add('fade-in');
+            } else {
+                row.style.display = 'none';
+                row.classList.remove('fade-in');
+            }
+        });
+    });
+
     async function fetchDashboardData() {
-        const pathParts = window.location.pathname.split('/').filter(Boolean);
-        const groupId = pathParts[pathParts.length - 1];
         const params = new URLSearchParams({
             dateFilter: dateFilter.value,
             specificDate: specificDate.value,
             shiftFilter: shiftFilter.value
         });
-    
+
         try {
-            console.log(`Fetching dashboard data for group ${groupId} with filters:`, {
-                dateFilter: dateFilter.value,
-                specificDate: specificDate.value || 'none',
-                shiftFilter: shiftFilter.value
-            });
-    
-            const response = await fetch(`/monitoring/group-dashboard/${groupId}/data/?${params}`);
-            
-            if (!response.ok) {
-                let errorMsg = `Failed to fetch dashboard data: ${response.status} ${response.statusText}`;
-                
-                try {
-                    const errorData = await response.json();
-                    if (errorData && errorData.error) {
-                        errorMsg = errorData.error;
-                    }
-                } catch (jsonError) {
-                    // If JSON parsing fails, use default error message
+            const response = await fetch(`/monitoring/group-dashboard/${groupId}/data/?${params}`, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
                 }
-                
-                throw new Error(errorMsg);
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-            
+
             const data = await response.json();
-            console.log("Dashboard data received successfully");
             return data;
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
-            showError(`Error: ${error.message}`);
-            return null;
+            showToast('Failed to load dashboard data', 'error');
+            throw error;
         }
     }
 
-    // Initial load with server data
     async function loadDashboard() {
-        console.log("Loading dashboard...");
         showLoading();
-        
+
         try {
             const data = await fetchDashboardData();
-            
-            if (!data) {
-                console.error('No data returned from server');
+            currentData = data;
+
+            if (!data || Object.keys(data).length === 0) {
+                showEmptyState();
                 hideLoading();
                 return;
             }
 
-            if (!data || 
-                !data.outputPerDay || data.outputPerDay.length === 0 ||
-                !data.efficiencyData || data.efficiencyData.length === 0) {
-                console.warn("No data available for the selected period");
-                
-                // Show a message to the user
-                showError("No data available for the selected time period. Try a different filter.");
-                hideLoading();
-                
-                // Clear any existing charts but don't try to create new ones
-                Object.values(charts).forEach(chart => {
-                    if (chart) {
-                        chart.destroy();
+            updateMetrics(data);
+            updateCharts(data);
+            updateScheduleList(data.schedules || []);
+            hideLoading();
+        } catch (error) {
+            hideLoading();
+            showToast('Error loading dashboard', 'error');
+        }
+    }
+
+    function updateMetrics(data) {
+        animateMetricValue(document.getElementById('totalSchedules'), data.totalSchedules || 0);
+        document.getElementById('totalSchedulesTarget').textContent = data.totalSchedulesTarget || 0;
+        
+        const schedulesProgress = document.getElementById('schedulesProgress');
+        const schedulesPercent = data.totalSchedulesTarget > 0 
+            ? (data.totalSchedules / data.totalSchedulesTarget) * 100 
+            : 0;
+        
+        setTimeout(() => {
+            schedulesProgress.style.width = `${Math.min(schedulesPercent, 100)}%`;
+        }, 200);
+
+        animateMetricValue(document.getElementById('productionProgress'), data.productionProgress || 0);
+        
+        const productionIndicator = document.getElementById('productionIndicator');
+        if (data.productionProgress >= 90) {
+            productionIndicator.className = 'gd-metric-indicator positive';
+            productionIndicator.innerHTML = '<i class="fas fa-arrow-up"></i><span>Excellent</span>';
+        } else if (data.productionProgress >= 70) {
+            productionIndicator.className = 'gd-metric-indicator';
+            productionIndicator.innerHTML = '<i class="fas fa-minus"></i><span>Good</span>';
+        } else {
+            productionIndicator.className = 'gd-metric-indicator negative';
+            productionIndicator.innerHTML = '<i class="fas fa-arrow-down"></i><span>Needs Attention</span>';
+        }
+
+        animateMetricValue(document.getElementById('notMetTarget'), data.notMetTarget || 0);
+        
+        document.getElementById('totalProduction').textContent = (data.totalProduced || 0).toLocaleString();
+        document.getElementById('totalPlanned').textContent = (data.totalPlanned || 0).toLocaleString();
+
+        animateMetricValue(document.getElementById('activeLines'), data.activeLines || 0);
+        document.getElementById('totalLines').textContent = data.totalLines || 0;
+        
+        const linesBadge = document.getElementById('linesBadge');
+        const linesPercent = data.totalLines > 0 
+            ? Math.round((data.activeLines / data.totalLines) * 100) 
+            : 0;
+        linesBadge.innerHTML = `<span>${linesPercent}% Active</span>`;
+        
+        if (linesPercent === 100) {
+            linesBadge.style.background = 'linear-gradient(135deg, var(--gd-success) 0%, #059669 100%)';
+        } else if (linesPercent >= 80) {
+            linesBadge.style.background = 'linear-gradient(135deg, var(--gd-warning) 0%, #d97706 100%)';
+        } else {
+            linesBadge.style.background = 'linear-gradient(135deg, var(--gd-danger) 0%, #dc2626 100%)';
+        }
+    }
+
+    function updateCharts(data) {
+        Object.values(charts).forEach(chart => {
+            if (chart) chart.destroy();
+        });
+
+        const chartDefaults = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            size: 12,
+                            weight: '600'
+                        }
                     }
-                });
-                
-                // Reset charts to null
-                charts = {
-                    outputPerDay: null,
-                    efficiency: null,
-                    outputByLine: null,
-                    shiftOutput: null,
-                    statusDistribution: null
-                };
-                
-                // Clear the schedule list
-                const scheduleListBody = document.getElementById('scheduleListBody');
-                if (scheduleListBody) {
-                    scheduleListBody.innerHTML = `
-                        <div class="PM-empty-state" style="padding: 30px; text-align: center;">
-                            <i class="fas fa-chart-bar" style="font-size: 2rem; color: #ddd; margin-bottom: 15px;"></i>
-                            <h3>No Data Available</h3>
-                            <p>There is no data for the selected time period. Try selecting a different date range.</p>
-                        </div>
-                    `;
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#374151',
+                    bodyColor: '#6b7280',
+                    borderColor: '#e5e7eb',
+                    borderWidth: 1,
+                    cornerRadius: 12,
+                    padding: 16,
+                    boxPadding: 8,
+                    titleFont: {
+                        size: 14,
+                        weight: '700'
+                    },
+                    bodyFont: {
+                        size: 13,
+                        weight: '500'
+                    },
+                    displayColors: true,
+                    usePointStyle: true
                 }
-                
-                return;
+            },
+            animation: {
+                duration: 2000,
+                easing: 'easeOutQuart'
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
             }
+        };
 
-            try {
-                if (data.outputPerDay && data.outputPerDay.length > 0) {
-                    charts.outputPerDay = createOutputPerDayChart(data.outputPerDay);
-                    console.log("Output per day chart created");
-                } else {
-                    console.warn("No output per day data available");
-                }
-            } catch (error) {
-                console.error("Error creating output per day chart:", error);
-            }
+        if (data.outputPerDay && data.outputPerDay.length > 0) {
+            const ctx = document.getElementById('outputPerDayChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+            gradient.addColorStop(0, 'rgba(14, 165, 233, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(56, 189, 248, 0.6)');
+            gradient.addColorStop(1, 'rgba(125, 211, 252, 0.4)');
             
-            try {
-                if (data.efficiencyData && data.efficiencyData.length > 0) {
-                    charts.efficiency = createEfficiencyChart(data.efficiencyData);
-                    console.log("Efficiency chart created");
-                } else {
-                    console.warn("No efficiency data available");
-                }
-            } catch (error) {
-                console.error("Error creating efficiency chart:", error);
-            }
+            const borderGradient = ctx.createLinearGradient(0, 0, 0, 350);
+            borderGradient.addColorStop(0, '#0ea5e9');
+            borderGradient.addColorStop(1, '#0369a1');
             
-            console.log("Processing dashboard data");
-            
-            // Update summary statistics
-            updateSummaryStats(data);
-    
-            // Destroy existing charts if they exist
-            Object.values(charts).forEach(chart => {
-                if (chart) {
-                    chart.destroy();
+            charts.outputPerDay = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.xLabels || data.outputPerDay.map(item => item.date),
+                    datasets: [{
+                        data: data.outputPerDay.map(item => item.quantity),
+                        backgroundColor: gradient,
+                        borderColor: borderGradient,
+                        borderWidth: 2,
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        maxBarThickness: 60
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(15, 23, 42, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b',
+                                padding: 10
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b',
+                                padding: 10
+                            }
+                        }
+                    }
                 }
             });
-    
-            // Create charts with try/catch for each to prevent cascade failures
-            try {
-                charts.outputPerDay = createOutputPerDayChart(data.outputPerDay);
-                console.log("Output per day chart created");
-            } catch (error) {
-                console.error("Error creating output per day chart:", error);
-            }
-            
-            try {
-                charts.efficiency = createEfficiencyChart(data.efficiencyData);
-                console.log("Efficiency chart created");
-            } catch (error) {
-                console.error("Error creating efficiency chart:", error);
-            }
-            
-            try {
-                charts.outputByLine = createOutputByLineChart(data.outputByLine);
-                console.log("Output by line chart created");
-            } catch (error) {
-                console.error("Error creating output by line chart:", error);
-            }
-            
-            try {
-                charts.shiftOutput = createShiftOutputChart(data.shiftOutput);
-                console.log("Shift output chart created");
-            } catch (error) {
-                console.error("Error creating shift output chart:", error);
-            }
-            
-            try {
-                charts.statusDistribution = createStatusDistributionChart(data.statusDistribution);
-                console.log("Status distribution chart created");
-            } catch (error) {
-                console.error("Error creating status distribution chart:", error);
-            }
-    
-            // Populate schedule list
-            try {
-                populateScheduleList(data.schedules);
-                console.log("Schedule list populated with", data.schedules.length, "items");
-            } catch (error) {
-                console.error("Error populating schedule list:", error);
-            }
-    
-            hideLoading();
-            console.log("Dashboard loaded successfully");
-            
-            // Add a subtle indicator that the dashboard refreshed
-            const dashboardContainer = document.querySelector('.PM-dashboard-container');
-            if (dashboardContainer) {
-                dashboardContainer.classList.add('refreshed');
-                setTimeout(() => {
-                    dashboardContainer.classList.remove('refreshed');
-                }, 1000);
-            }
-        } catch (error) {
-            console.error('Error loading dashboard:', error);
-            showError(`Failed to load dashboard: ${error.message}`);
-            hideLoading();
         }
-    }
 
-    function updateSummaryStats(data) {
-        document.getElementById('totalSchedules').textContent = data.totalSchedules;
-        document.getElementById('totalSchedulesTarget').textContent = data.totalSchedulesTarget;
-        document.getElementById('productionProgress').textContent = `${data.productionProgress}%`;
-        document.getElementById('productionProgressTarget').textContent = `${data.productionProgressTarget}%`;
-        document.getElementById('totalProduction').textContent = `${data.totalProduced} / ${data.totalPlanned}`;
-        document.getElementById('totalProductionTarget').textContent = data.totalPlanned;
-        document.getElementById('activeLines').textContent = data.activeLines;
-        document.getElementById('totalLines').textContent = data.totalLines;
-        
-        // Update Not Met Target as the complement of production progress
-        document.getElementById('notMetTarget').textContent = `${data.notMetTarget}%`;
-        
-        // Set appropriate color based on not met target percentage
-        const notMetElem = document.getElementById('notMetTarget');
-        if (data.notMetTarget < 30) {
-            notMetElem.style.color = '#48c774'; // Good - low percentage not meeting target
-        } else if (data.notMetTarget < 70) {
-            notMetElem.style.color = '#ffdd57'; // Warning
-        } else {
-            notMetElem.style.color = '#ff3860'; // Bad - high percentage not meeting target
-        }
-    }
+        if (data.efficiencyData && data.efficiencyData.length > 0) {
+            const avgEfficiency = data.efficiencyData.reduce((sum, item) => sum + item.efficiency, 0) / data.efficiencyData.length;
+            document.getElementById('avgEfficiency').textContent = `${Math.round(avgEfficiency)}%`;
 
-    function createOutputPerDayChart(data) {
-        if (!data || data.length === 0) {
-            console.warn("No data provided for output per day chart");
-            return null;
-        }
-        
-        const ctx = document.getElementById('outputPerDayChart').getContext('2d');
-        
-        return new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(item => item.date),
-                datasets: [{
-                    label: 'Production Output',
-                    data: data.map(item => item.quantity),
-                    backgroundColor: 'rgba(51, 102, 255, 0.7)',
-                    borderColor: 'rgb(51, 102, 255)',
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    borderSkipped: false
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    title: { display: false }
+            const ctx = document.getElementById('efficiencyChart').getContext('2d');
+            const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+            gradient.addColorStop(0, 'rgba(14, 165, 233, 0.6)');
+            gradient.addColorStop(0.5, 'rgba(56, 189, 248, 0.4)');
+            gradient.addColorStop(1, 'rgba(125, 211, 252, 0.2)');
+
+            const borderGradient = ctx.createLinearGradient(0, 0, 0, 350);
+            borderGradient.addColorStop(0, '#0ea5e9');
+            borderGradient.addColorStop(1, '#0369a1');
+
+            charts.efficiency = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.xLabels || data.efficiencyData.map(item => item.date),
+                    datasets: [{
+                        data: data.efficiencyData.map(item => item.efficiency),
+                        borderColor: borderGradient,
+                        backgroundColor: gradient,
+                        borderWidth: 4,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 6,
+                        pointHoverRadius: 10,
+                        pointBackgroundColor: '#0ea5e9',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 3,
+                        pointHoverBorderWidth: 4
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Quantity Produced'
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(15, 23, 42, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b',
+                                padding: 10,
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b',
+                                padding: 10
+                            }
                         }
                     }
-                },
-                elements: {
-                    bar: {
+                }
+            });
+        }
+
+        if (data.outputByLine && data.outputByLine.length > 0) {
+            const ctx = document.getElementById('outputByLineChart').getContext('2d');
+            const colors = [
+                'rgba(14, 165, 233, 0.8)', 'rgba(56, 189, 248, 0.8)', 'rgba(125, 211, 252, 0.8)',
+                'rgba(16, 185, 129, 0.8)', 'rgba(245, 158, 11, 0.8)', 'rgba(239, 68, 68, 0.8)',
+                'rgba(6, 182, 212, 0.8)', 'rgba(249, 115, 22, 0.8)', 'rgba(236, 72, 153, 0.8)',
+                'rgba(132, 204, 22, 0.8)'
+            ];
+
+            const borderColors = [
+                '#0ea5e9', '#38bdf8', '#7dd3fc', '#10b981', '#f59e0b',
+                '#ef4444', '#06b6d4', '#f97316', '#ec4899', '#84cc16'
+            ];
+
+            charts.outputByLine = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.outputByLine.map(item => item.line),
+                    datasets: [{
+                        data: data.outputByLine.map(item => item.quantity),
+                        backgroundColor: colors,
+                        borderColor: borderColors,
                         borderWidth: 2,
-                        borderRadius: 5,
+                        borderRadius: 10,
                         borderSkipped: false
-                    }
-                }
-            }
-        });
-    }
-
-    function createEfficiencyChart(data) {
-        const ctx = document.getElementById('efficiencyChart').getContext('2d');
-        
-        return new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.map(item => item.date),
-                datasets: [{
-                    label: 'Efficiency',
-                    data: data.map(item => item.efficiency),
-                    borderColor: 'rgb(72, 199, 116)',
-                    backgroundColor: 'rgba(72, 199, 116, 0.3)',
-                    tension: 0.4,
-                    fill: true,
-                    borderWidth: 3,
-                    pointRadius: 5,
-                    pointHoverRadius: 8,
-                    pointBackgroundColor: 'rgb(72, 199, 116)',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    title: { display: false }
+                    }]
                 },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100,
-                        title: {
-                            display: true,
-                            text: 'Efficiency (%)'
+                options: {
+                    ...chartDefaults,
+                    indexAxis: 'y',
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(15, 23, 42, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b',
+                                padding: 10
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: {
+                                font: { size: 11, weight: '500' },
+                                color: '#64748b',
+                                padding: 10
+                            }
                         }
                     }
-                },
-                elements: {
-                    line: {
-                        tension: 0.4
-                    },
-                    point: {
-                        radius: 5,
-                        hoverRadius: 8,
-                        borderWidth: 2
-                    }
                 }
-            }
-        });
-    }
+            });
+        }
 
-    function createOutputByLineChart(data) {
-        const ctx = document.getElementById('outputByLineChart').getContext('2d');
-        
-        // Generate a color palette for the lines
-        const colorPalette = [
-            'rgba(51, 102, 255, 0.7)',    // Blue
-            'rgba(72, 199, 116, 0.7)',    // Green
-            'rgba(255, 159, 67, 0.7)',    // Orange
-            'rgba(255, 99, 132, 0.7)',    // Red
-            'rgba(153, 102, 255, 0.7)',   // Purple
-            'rgba(255, 205, 86, 0.7)',    // Yellow
-            'rgba(54, 162, 235, 0.7)',    // Light Blue
-            'rgba(75, 192, 192, 0.7)',    // Teal
-            'rgba(255, 128, 0, 0.7)',     // Dark Orange
-            'rgba(201, 203, 207, 0.7)'    // Gray
-        ];
+        if (data.shiftOutput && data.shiftOutput.length > 0) {
+            const total = data.shiftOutput.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('shiftTotal').textContent = total.toLocaleString();
 
-        return new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.map(item => item.line),
-                datasets: [{
-                    label: 'Output by Line',
-                    data: data.map(item => item.quantity),
-                    backgroundColor: data.map((_, index) => colorPalette[index % colorPalette.length]),
-                    borderColor: data.map((_, index) => colorPalette[index % colorPalette.length].replace('0.7', '1')),
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    borderSkipped: false
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    title: { display: false }
+            const ctx = document.getElementById('shiftOutputChart').getContext('2d');
+            
+            charts.shiftOutput = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.shiftOutput.map(item => item.shift),
+                    datasets: [{
+                        data: data.shiftOutput.map(item => item.quantity),
+                        backgroundColor: [
+                            'rgba(14, 165, 233, 0.8)',
+                            'rgba(245, 158, 11, 0.8)'
+                        ],
+                        borderColor: ['#0ea5e9', '#f59e0b'],
+                        borderWidth: 3,
+                        spacing: 4
+                    }]
                 },
-                scales: {
-                    x: {
-                        beginAtZero: true,
-                        title: {
+                options: {
+                    ...chartDefaults,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
                             display: true,
-                            text: 'Quantity Produced'
-                        }
-                    }
-                },
-                elements: {
-                    bar: {
-                        borderWidth: 2,
-                        borderRadius: 5,
-                        borderSkipped: false
-                    }
-                }
-            }
-        });
-    }
-
-    function createShiftOutputChart(data) {
-        const ctx = document.getElementById('shiftOutputChart').getContext('2d');
-        
-        return new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.map(item => item.shift),
-                datasets: [{
-                    data: data.map(item => item.quantity),
-                    backgroundColor: [
-                        'rgba(51, 102, 255, 0.8)',
-                        'rgba(255, 159, 67, 0.8)'
-                    ],
-                    borderColor: [
-                        'rgb(51, 102, 255)',
-                        'rgb(255, 159, 67)'
-                    ],
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    weight: 0.5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                },
-                cutout: '60%',
-                radius: '90%',
-                elements: {
-                    arc: {
-                        borderWidth: 2,
-                        borderRadius: 5
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: { size: 12, weight: '600' },
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: chartDefaults.plugins.tooltip
                     }
                 }
-            }
-        });
-    }
+            });
+        }
 
-    function createStatusDistributionChart(data) {
-        const ctx = document.getElementById('statusDistributionChart').getContext('2d');
-        
-        return new Chart(ctx, {
-            type: 'pie',
-            data: {
-                labels: data.map(item => item.status),
-                datasets: [{
-                    data: data.map(item => item.count),
-                    backgroundColor: [
-                        'rgba(51, 102, 255, 0.8)',    // Planned - Blue
-                        'rgba(255, 159, 67, 0.8)',    // Change Load - Orange
-                        'rgba(255, 99, 132, 0.8)'     // Backlog - Red
-                    ],
-                    borderColor: [
-                        'rgb(51, 102, 255)',
-                        'rgb(255, 159, 67)',
-                        'rgb(255, 99, 132)'
-                    ],
-                    borderWidth: 2,
-                    borderRadius: 5,
-                    weight: 0.5
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
+        if (data.statusDistribution && data.statusDistribution.length > 0) {
+            const ctx = document.getElementById('statusDistributionChart').getContext('2d');
+            
+            charts.statusDistribution = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: data.statusDistribution.map(item => item.status),
+                    datasets: [{
+                        data: data.statusDistribution.map(item => item.count),
+                        backgroundColor: [
+                            'rgba(14, 165, 233, 0.8)',
+                            'rgba(245, 158, 11, 0.8)',
+                            'rgba(239, 68, 68, 0.8)'
+                        ],
+                        borderColor: ['#0ea5e9', '#f59e0b', '#ef4444'],
+                        borderWidth: 3,
+                        spacing: 4
+                    }]
                 },
-                radius: '90%',
-                elements: {
-                    arc: {
-                        borderWidth: 2,
-                        borderRadius: 5
+                options: {
+                    ...chartDefaults,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: { size: 12, weight: '600' },
+                                usePointStyle: true,
+                                pointStyle: 'circle'
+                            }
+                        },
+                        tooltip: chartDefaults.plugins.tooltip
                     }
                 }
-            }
-        });
+            });
+        }
     }
 
-    function populateScheduleList(schedules) {
+    function updateScheduleList(schedules) {
         const scheduleListBody = document.getElementById('scheduleListBody');
-        scheduleListBody.innerHTML = ''; // Clear existing items
+        scheduleListBody.innerHTML = '';
 
-        schedules.forEach(schedule => {
-            const scheduleItem = document.createElement('div');
-            scheduleItem.className = 'PM-schedule-item';
-            scheduleItem.dataset.status = schedule.status;
-            scheduleItem.dataset.product = schedule.product.toLowerCase();
-
-            // Get status color class
-            let statusClass = '';
-            switch(schedule.status) {
-                case 'Planned':
-                    statusClass = 'Planned';
-                    break;
-                case 'Change Load':
-                    statusClass = 'ChangeLoad';
-                    break;
-                case 'Backlog':
-                    statusClass = 'Backlog';
-                    break;
-            }
-
-            // Get percentage color class
-            let percentageClass = '';
-            if (schedule.progress < 30) {
-                percentageClass = 'low';
-            } else if (schedule.progress >= 30 && schedule.progress <= 70) {
-                percentageClass = 'medium';
-            } else {
-                percentageClass = 'high';
-            }
-
-            scheduleItem.innerHTML = `
-                <div class="PM-schedule-col" data-label="Date">${schedule.date}</div>
-                <div class="PM-schedule-col" data-label="Product">${schedule.product}</div>
-                <div class="PM-schedule-col" data-label="Line">${schedule.line}</div>
-                <div class="PM-schedule-col" data-label="Shift">${schedule.shift}</div>
-                <div class="PM-schedule-col" data-label="Planned Qty">${schedule.plannedQty}</div>
-                <div class="PM-schedule-col" data-label="Produced Qty">${schedule.producedQty}</div>
-                <div class="PM-schedule-col" data-label="Progress">
-                    <span class="PM-schedule-progress ${percentageClass}">
-                        ${schedule.progress.toFixed(1)}%
-                    </span>
+        if (!schedules || schedules.length === 0) {
+            scheduleListBody.innerHTML = `
+                <div class="gd-empty-state">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>No Schedules Found</h3>
+                    <p>There are no schedules for the selected period.</p>
                 </div>
-                <div class="PM-schedule-col" data-label="Status">
-                    <span class="PM-schedule-status ${statusClass}">
-                        ${schedule.status}
-                    </span>
+            `;
+            return;
+        }
+
+        schedules.forEach((schedule, index) => {
+            const row = document.createElement('div');
+            row.className = 'gd-table-row';
+            row.style.animationDelay = `${index * 0.05}s`;
+
+            let progressClass = 'low';
+            if (schedule.progress >= 80) progressClass = 'high';
+            else if (schedule.progress >= 50) progressClass = 'medium';
+
+            let statusClass = 'planned';
+            if (schedule.status === 'Change Load') statusClass = 'change-load';
+            else if (schedule.status === 'Backlog') statusClass = 'backlog';
+
+            row.innerHTML = `
+                <div class="gd-table-cell" data-label="Date">${schedule.date}</div>
+                <div class="gd-table-cell" data-label="Product">${schedule.product}</div>
+                <div class="gd-table-cell" data-label="Line">${schedule.line}</div>
+                <div class="gd-table-cell" data-label="Shift">${schedule.shift}</div>
+                <div class="gd-table-cell" data-label="Planned">${schedule.plannedQty.toLocaleString()}</div>
+                <div class="gd-table-cell" data-label="Produced">${schedule.producedQty.toLocaleString()}</div>
+                <div class="gd-table-cell" data-label="Progress">
+                    <div class="gd-progress-cell">
+                        <div class="gd-progress-mini">
+                            <div class="gd-progress-mini-fill ${progressClass}" style="width: ${Math.min(schedule.progress, 100)}%"></div>
+                        </div>
+                        <span class="gd-progress-text">${schedule.progress.toFixed(0)}%</span>
+                    </div>
+                </div>
+                <div class="gd-table-cell" data-label="Status">
+                    <span class="gd-status-badge ${statusClass}">${schedule.status}</span>
                 </div>
             `;
 
-            scheduleListBody.appendChild(scheduleItem);
+            scheduleListBody.appendChild(row);
+            
+            setTimeout(() => {
+                row.classList.add('fade-in');
+            }, index * 50);
         });
     }
 
-    function filterSchedules() {
-        const searchTerm = document.getElementById('searchSchedules').value.toLowerCase();
-        const scheduleItems = document.querySelectorAll('.PM-schedule-item');
+    function showEmptyState() {
+        const scheduleListBody = document.getElementById('scheduleListBody');
+        scheduleListBody.innerHTML = `
+            <div class="gd-empty-state">
+                <i class="fas fa-chart-bar"></i>
+                <h3>No Data Available</h3>
+                <p>There is no data for the selected time period. Try selecting a different date range.</p>
+            </div>
+        `;
 
-        scheduleItems.forEach(item => {
-            const product = item.dataset.product;
-            const searchMatch = searchTerm === '' || product.includes(searchTerm);
-            item.style.display = searchMatch ? '' : 'none';
+        document.querySelectorAll('.gd-metric-value span').forEach(el => {
+            if (el.id !== 'totalSchedulesTarget' && el.id !== 'totalLines') {
+                el.textContent = '0';
+            }
+        });
+
+        Object.values(charts).forEach(chart => {
+            if (chart) chart.destroy();
         });
     }
 
-    // Event Listeners
-    dateFilter.addEventListener('change', function() {
-        if (dateFilter.value === 'customDate') {
-            specificDate.classList.add('visible');
-        } else {
-            specificDate.classList.remove('visible');
-            loadDashboard();
+    function exportSchedules() {
+        if (!currentData || !currentData.schedules || currentData.schedules.length === 0) {
+            showToast('No data to export', 'warning');
+            return;
         }
-    });
 
-    specificDate.addEventListener('change', loadDashboard);
-    shiftFilter.addEventListener('change', loadDashboard);
-    searchInput.addEventListener('input', filterSchedules);
+        const csvContent = [
+            ['Date', 'Product', 'Line', 'Shift', 'Planned Qty', 'Produced Qty', 'Progress %', 'Status'],
+            ...currentData.schedules.map(s => [
+                s.date,
+                s.product,
+                s.line,
+                s.shift,
+                s.plannedQty,
+                s.producedQty,
+                s.progress.toFixed(2),
+                s.status
+            ])
+        ].map(row => row.join(',')).join('\n');
 
-    // Start auto-refresh
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `production-schedules-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+
+        showToast('Schedule data exported successfully', 'success');
+    }
+
     function startAutoRefresh() {
-        // Clear existing timer if any
-        if (refreshTimer) {
-            clearInterval(refreshTimer);
-        }
-
-        // Set new timer
+        if (refreshTimer) clearInterval(refreshTimer);
         refreshTimer = setInterval(() => {
             loadDashboard();
         }, REFRESH_INTERVAL);
     }
 
-    // Initialize dashboard
+    function cleanupAnimations() {
+        animationFrames.forEach(frame => cancelAnimationFrame(frame));
+        animationFrames = [];
+    }
+
     loadDashboard();
     startAutoRefresh();
 
-    // Cleanup on page unload
-    window.addEventListener('unload', () => {
-        if (refreshTimer) {
-            clearInterval(refreshTimer);
+    window.addEventListener('beforeunload', () => {
+        if (refreshTimer) clearInterval(refreshTimer);
+        cleanupAnimations();
+    });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            cleanupAnimations();
+        } else {
+            loadDashboard();
         }
     });
 });

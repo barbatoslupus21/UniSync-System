@@ -19,9 +19,10 @@ urlpatterns = [
     path('dcf/', include('dcf.urls')),
     path('ecis/', include('ecis.urls')),
     path('overtime/', include('overtime.urls')),
-
-    # Direct access to ECIS chart data API
     path('ecis/api/chart-data/', ecis_views.ecis_chart_data, name='ecis_chart_data_direct'),
+    path('wip-inventory/', include('wip.urls')),
+    path('quality-control/', include('qualitycontrol.urls')),
+    path('stock-declaration/', include('stockdeclaration.urls')),
 ]
 
 if settings.DEBUG:

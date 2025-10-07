@@ -29,6 +29,83 @@
         {% block modal %}{% endblock modal %}
     </div>
 
+    <!-- Stock Declaration Notification Modal -->
+    {% if user_has_stock_declarations %}
+    <div class="JO-modal" id="stock-notification-modal">
+        <div class="JO-modal-content modal-lg">
+            <div class="JO-modal-header">
+                <h3>Stock Declaration Notifications</h3>
+                <button class="JO-modal-close" onclick="closeStockNotificationModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="JO-modal-body">
+                
+                <div class="stock-notif-info-card">
+                    <p>
+                        <i class="fas fa-info-circle"></i>
+                        You have <strong>{{ stock_notifications|length }}</strong> stock declaration(s) requiring your attention.
+                    </p>
+                </div>
+
+                
+                <div class="stock-notif-list-container">
+                    {% for notification in stock_notifications %}
+                    <div class="stock-notif-card">
+
+                        <div class="stock-notif-content">
+
+                            <h4 class="stock-notif-title">
+                                {{ notification.product_name }}
+                            </h4>
+                            
+                            <p class="stock-notif-subtitle">
+                                <i class="fas fa-barcode"></i>
+                                {{ notification.product_number }} • {{ notification.control_number }}
+                            </p>
+                        </div>
+                        
+                        <!-- Time/Duration Badge -->
+                        <div class="stock-notif-time">
+                                {% if notification.stock_type_value == 'out_of_stock' %}
+                                    <span class="stock-notif-badge stock-notif-badge-outofstock">
+                                        {{ notification.stock_type }}
+                                    </span>
+                                {% elif notification.stock_type_value == 'critical' %}
+                                    <span class="stock-notif-badge stock-notif-badge-critical">
+                                        {{ notification.stock_type }}
+                                    </span>
+                                {% elif notification.stock_type_value == 'overstock' %}
+                                    <span class="stock-notif-badge stock-notif-badge-overstock">
+                                        {{ notification.stock_type }}
+                                    </span>
+                                {% else %}
+                                    <span class="stock-notif-badge stock-notif-badge-default">
+                                        {{ notification.stock_type }}
+                                    </span>
+                                {% endif %}
+                                
+                                <!-- Quantity Badge (only for critical/overstock) -->
+                                {% if notification.stock_type_value == 'critical' or notification.stock_type_value == 'overstock' %}
+                                    <span class="stock-notif-badge stock-notif-badge-quantity">
+                                        Qty: {{ notification.quantity }}
+                                    </span>
+                                {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-primary" onclick="goToStockDeclaration()">
+                    <i class="fas fa-external-link-alt" style="margin-right: 6px;"></i>
+                    Go to Stock Declaration
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Toast Notification Component -->
     <div class="toast-container" id="toast-container">
         {% if messages %}
@@ -58,6 +135,144 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{% static "js/script2.js" %}"></script>
+    
+    <!-- Stock Notification Modal Script -->
+    <script>
+        let stockNotificationShownOnce = false;  // Track if modal was shown in this session
+        
+        // Function to close the modal
+        function closeStockNotificationModal() {
+            const modal = document.getElementById('stock-notification-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        // Function to redirect to Stock Declaration page
+        function goToStockDeclaration() {
+            window.location.href = "{% url 'stock_declaration_home' %}";
+        }
+
+        // Function to render a single notification card
+        function renderNotificationCard(notification) {
+            // Determine badge class based on stock type
+            let badgeClass = 'stock-notif-badge-default';
+            if (notification.stock_type_value === 'out_of_stock') {
+                badgeClass = 'stock-notif-badge-outofstock';
+            } else if (notification.stock_type_value === 'critical') {
+                badgeClass = 'stock-notif-badge-critical';
+            } else if (notification.stock_type_value === 'overstock') {
+                badgeClass = 'stock-notif-badge-overstock';
+            }
+
+            // Build quantity badge HTML if applicable
+            let quantityBadge = '';
+            if (notification.stock_type_value === 'critical' || notification.stock_type_value === 'overstock') {
+                quantityBadge = `<span class="stock-notif-badge stock-notif-badge-quantity">Qty: ${notification.quantity}</span>`;
+            }
+
+            return `
+                <div class="stock-notif-card">
+                    <div class="stock-notif-content">
+                        <h4 class="stock-notif-title">${notification.product_name}</h4>
+                        <p class="stock-notif-subtitle">
+                            <i class="fas fa-barcode"></i>
+                            ${notification.product_number} • ${notification.control_number}
+                        </p>
+                    </div>
+                    <div class="stock-notif-time">
+                        <span class="stock-notif-badge ${badgeClass}">
+                            ${notification.stock_type}
+                        </span>
+                        ${quantityBadge}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to update modal content with notifications
+        function updateStockNotifications(notifications) {
+            const modal = document.getElementById('stock-notification-modal');
+            if (!modal) return;
+
+            const infoCard = modal.querySelector('.stock-notif-info-card p');
+            const listContainer = modal.querySelector('.stock-notif-list-container');
+
+            if (!infoCard || !listContainer) return;
+
+            // Update info card count
+            infoCard.innerHTML = `
+                <i class="fas fa-info-circle"></i>
+                You have <strong>${notifications.length}</strong> stock declaration(s) requiring your attention.
+            `;
+
+            // Update notification list
+            listContainer.innerHTML = notifications.map(n => renderNotificationCard(n)).join('');
+
+            // Show modal if not already shown in this session and there are notifications
+            if (notifications.length > 0 && !stockNotificationShownOnce && !modal.classList.contains('active')) {
+                setTimeout(() => {
+                    modal.classList.add('active');
+                    stockNotificationShownOnce = true;
+                }, 300);
+            }
+        }
+
+        // Function to fetch notifications from API
+        async function fetchStockNotifications() {
+            try {
+                const response = await fetch("{% url 'stock_notifications_api' %}");
+                if (!response.ok) {
+                    console.error('Failed to fetch stock notifications:', response.status);
+                    return;
+                }
+                
+                const data = await response.json();
+                if (data.success && data.notifications) {
+                    updateStockNotifications(data.notifications);
+                }
+            } catch (error) {
+                console.error('Error fetching stock notifications:', error);
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initial fetch
+            {% if has_stock_notifications %}
+            // Show modal immediately on first load if context processor found notifications
+            const modal = document.getElementById('stock-notification-modal');
+            if (modal) {
+                setTimeout(() => {
+                    modal.classList.add('active');
+                    stockNotificationShownOnce = true;
+                }, 300);
+            }
+            {% endif %}
+            
+            // Start polling immediately (will also act as initial fetch for dynamic updates)
+            fetchStockNotifications();
+            
+            // Poll every 5 minutes (300000 milliseconds)
+            setInterval(fetchStockNotifications, 300000);
+        });
+
+        // Close modal when clicking outside of it
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('stock-notification-modal');
+            if (event.target === modal) {
+                closeStockNotificationModal();
+            }
+        });
+
+        // Close modal on Escape key press
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeStockNotificationModal();
+            }
+        });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

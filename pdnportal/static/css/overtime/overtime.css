@@ -794,6 +794,1166 @@
 }
 
 /* ==========================================================================
+   Buttons & Form Elements
+   ========================================================================== */
+
+.OT-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--ot-transition);
+    border: none;
+    font-size: 0.9rem;
+}
+
+.OT-primary-button {
+    background-color: var(--ot-primary);
+    color: white;
+}
+
+.OT-primary-button:hover {
+    background-color: var(--ot-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.OT-secondary-button {
+    background-color: var(--ot-bg-color);
+    color: var(--ot-text);
+    border: 1px solid var(--ot-border);
+}
+
+.OT-secondary-button:hover {
+    background-color: var(--ot-border);
+}
+
+.OT-text-button {
+    background: none;
+    color: var(--ot-text);
+    padding: 5px 10px;
+}
+
+.OT-text-button:hover {
+    background-color: var(--ot-bg-color);
+}
+
+.OT-danger-button {
+    background-color: var(--ot-danger);
+    color: white;
+}
+
+.OT-danger-button:hover {
+    background-color: #e43c5a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(241, 70, 104, 0.3);
+}
+
+.OT-success-button {
+    background-color: var(--ot-success);
+    color: white;
+}
+
+.OT-success-button:hover {
+    background-color: #3bb164;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(72, 199, 116, 0.3);
+}
+
+.OT-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--ot-text-light);
+    cursor: pointer;
+    transition: var(--ot-transition);
+}
+
+.OT-icon-button:hover {
+    background-color: var(--ot-primary-light);
+    color: var(--ot-primary);
+}
+
+.OT-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--ot-transition);
+}
+
+.OT-input:focus {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.OT-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    transition: var(--ot-transition);
+    resize: vertical;
+}
+
+.OT-textarea:focus {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.OT-select-container {
+    position: relative;
+}
+
+.OT-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--ot-transition);
+    background-color: white;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+.OT-select:focus {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.OT-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: var(--ot-transition);
+}
+
+.OT-search-container:focus-within {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.OT-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    width: 250px;
+}
+
+.OT-search-input.OT-full-width {
+    width: 100%;
+}
+
+.OT-search-button {
+    background: none;
+    border: none;
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ot-text-light);
+}
+
+.OT-filter-container {
+    display: flex;
+    align-items: center;
+}
+
+/* Radio and Checkbox styles */
+.OT-radio-container, .OT-checkbox-container {
+    display: inline-flex;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.OT-radio-container input[type="radio"],
+.OT-checkbox-container input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.OT-radio-label, .OT-checkbox-label {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: var(--ot-transition);
+    background-color: var(--ot-bg-color);
+    border: 1px solid transparent;
+}
+
+.OT-radio-container:hover .OT-radio-label,
+.OT-checkbox-container:hover .OT-checkbox-label {
+    background-color: var(--ot-border);
+}
+
+.OT-radio-container input:checked + .OT-radio-label,
+.OT-checkbox-container input:checked + .OT-checkbox-label {
+    background-color: var(--ot-primary-light);
+    color: var(--ot-primary);
+    border: 1px solid var(--ot-primary);
+    font-weight: 500;
+}
+
+.OT-checkbox-text {
+    margin-left: 8px;
+}
+
+/* Status-specific styles */
+.OT-status-ot {
+    background-color: var(--ot-status-ot-light);
+    color: var(--ot-status-ot);
+}
+
+.OT-status-not-ot {
+    background-color: var(--ot-status-not-ot-light);
+    color: var(--ot-status-not-ot);
+}
+
+.OT-status-absent {
+    background-color: var(--ot-status-absent-light);
+    color: var(--ot-status-absent);
+}
+
+.OT-status-leave {
+    background-color: var(--ot-status-leave-light);
+    color: var(--ot-status-leave);
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.OT-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Higher z-index for modals that need to appear on top of other modals */
+#default-status-modal, #ot-review-modal, #password-modal {
+    z-index: 1200;
+}
+
+.OT-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.OT-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.OT-small-modal {
+    max-width: 500px;
+}
+
+.OT-large-modal {
+    max-width: 900px;
+}
+
+.OT-modal.active .OT-modal-content {
+    transform: translateY(0);
+    animation: OT-modal-appear 0.3s ease-out;
+}
+
+.OT-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ot-border);
+}
+
+.OT-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ot-text);
+}
+
+.OT-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--ot-transition);
+}
+
+.OT-modal-close:hover {
+    background-color: var(--ot-bg-color);
+    color: var(--ot-primary);
+}
+
+.OT-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#review-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.OT-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--ot-border);
+}
+
+.OT-confirmation-content {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.OT-confirmation-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    color: var(--ot-success);
+    animation: OT-icon-pulse 1.5s infinite alternate;
+}
+
+.OT-icon-warning {
+    color: var(--ot-status-absent);
+}
+
+.OT-warning-text {
+    color: var(--ot-text-light);
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+/* Review Modal Styles */
+.OT-review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.OT-review-type {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.OT-review-type h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.OT-review-date {
+    font-size: 0.9rem;
+    color: var(--ot-text-light);
+}
+
+.OT-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.OT-type-shifting {
+    background-color: var(--ot-type-shifting-light);
+    color: var(--ot-type-shifting);
+}
+
+.OT-type-daily {
+    background-color: var(--ot-type-daily-light);
+    color: var(--ot-type-daily);
+}
+
+.OT-review-section {
+    margin-bottom: 24px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid var(--ot-border);
+    overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.OT-review-section h4 {
+    margin: 0;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--ot-border);
+    background-color: var(--ot-bg-color);
+}
+
+.OT-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 15px;
+}
+
+.OT-details-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.OT-details-label {
+    font-size: 0.85rem;
+    color: var(--ot-text-light);
+}
+
+.OT-details-value {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.OT-details-reason {
+    padding: 15px;
+    border-top: 1px solid var(--ot-border);
+}
+
+.OT-details-reason .OT-details-value {
+    margin-top: 5px;
+    line-height: 1.5;
+}
+
+.OT-status-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+}
+
+.OT-status-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.OT-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   Buttons & Form Elements
+   ========================================================================== */
+
+.OT-button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--ot-transition);
+    border: none;
+    font-size: 0.9rem;
+}
+
+.OT-primary-button {
+    background-color: var(--ot-primary);
+    color: white;
+}
+
+.OT-primary-button:hover {
+    background-color: var(--ot-primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(51, 102, 255, 0.3);
+}
+
+.OT-secondary-button {
+    background-color: var(--ot-bg-color);
+    color: var(--ot-text);
+    border: 1px solid var(--ot-border);
+}
+
+.OT-secondary-button:hover {
+    background-color: var(--ot-border);
+}
+
+.OT-text-button {
+    background: none;
+    color: var(--ot-text);
+    padding: 5px 10px;
+}
+
+.OT-text-button:hover {
+    background-color: var(--ot-bg-color);
+}
+
+.OT-danger-button {
+    background-color: var(--ot-danger);
+    color: white;
+}
+
+.OT-danger-button:hover {
+    background-color: #e43c5a;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(241, 70, 104, 0.3);
+}
+
+.OT-success-button {
+    background-color: var(--ot-success);
+    color: white;
+}
+
+.OT-success-button:hover {
+    background-color: #3bb164;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(72, 199, 116, 0.3);
+}
+
+.OT-icon-button {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: var(--ot-text-light);
+    cursor: pointer;
+    transition: var(--ot-transition);
+}
+
+.OT-icon-button:hover {
+    background-color: var(--ot-primary-light);
+    color: var(--ot-primary);
+}
+
+.OT-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--ot-transition);
+}
+
+.OT-input:focus {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.OT-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-family: 'Poppins', sans-serif;
+    transition: var(--ot-transition);
+    resize: vertical;
+}
+
+.OT-textarea:focus {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.OT-select-container {
+    position: relative;
+}
+
+.OT-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--ot-transition);
+    background-color: white;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+.OT-select:focus {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.OT-search-container {
+    display: flex;
+    align-items: center;
+    border: 1px solid var(--ot-border);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: var(--ot-transition);
+}
+
+.OT-search-container:focus-within {
+    border-color: var(--ot-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
+.OT-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    width: 250px;
+}
+
+.OT-search-input.OT-full-width {
+    width: 100%;
+}
+
+.OT-search-button {
+    background: none;
+    border: none;
+    height: 36px;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ot-text-light);
+}
+
+.OT-filter-container {
+    display: flex;
+    align-items: center;
+}
+
+/* Radio and Checkbox styles */
+.OT-radio-container, .OT-checkbox-container {
+    display: inline-flex;
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.OT-radio-container input[type="radio"],
+.OT-checkbox-container input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.OT-radio-label, .OT-checkbox-label {
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 4px;
+    transition: var(--ot-transition);
+    background-color: var(--ot-bg-color);
+    border: 1px solid transparent;
+}
+
+.OT-radio-container:hover .OT-radio-label,
+.OT-checkbox-container:hover .OT-checkbox-label {
+    background-color: var(--ot-border);
+}
+
+.OT-radio-container input:checked + .OT-radio-label,
+.OT-checkbox-container input:checked + .OT-checkbox-label {
+    background-color: var(--ot-primary-light);
+    color: var(--ot-primary);
+    border: 1px solid var(--ot-primary);
+    font-weight: 500;
+}
+
+.OT-checkbox-text {
+    margin-left: 8px;
+}
+
+/* Status-specific styles */
+.OT-status-ot {
+    background-color: var(--ot-status-ot-light);
+    color: var(--ot-status-ot);
+}
+
+.OT-status-not-ot {
+    background-color: var(--ot-status-not-ot-light);
+    color: var(--ot-status-not-ot);
+}
+
+.OT-status-absent {
+    background-color: var(--ot-status-absent-light);
+    color: var(--ot-status-absent);
+}
+
+.OT-status-leave {
+    background-color: var(--ot-status-leave-light);
+    color: var(--ot-status-leave);
+}
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+.OT-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Higher z-index for modals that need to appear on top of other modals */
+#default-status-modal, #ot-review-modal, #password-modal {
+    z-index: 1200;
+}
+
+.OT-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.OT-modal-content {
+    background-color: white;
+    border-radius: 12px;
+    max-width: 700px;
+    width: 90%;
+    max-height: 95vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform: translateY(20px);
+    transition: transform 0.3s ease;
+    overflow: hidden;
+}
+
+.OT-small-modal {
+    max-width: 500px;
+}
+
+.OT-large-modal {
+    max-width: 900px;
+}
+
+.OT-modal.active .OT-modal-content {
+    transform: translateY(0);
+    animation: OT-modal-appear 0.3s ease-out;
+}
+
+.OT-modal-header {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--ot-border);
+}
+
+.OT-modal-header h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--ot-text);
+}
+
+.OT-modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--ot-transition);
+}
+
+.OT-modal-close:hover {
+    background-color: var(--ot-bg-color);
+    color: var(--ot-primary);
+}
+
+.OT-modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#review-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.OT-modal-footer {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    border-top: 1px solid var(--ot-border);
+}
+
+.OT-confirmation-content {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.OT-confirmation-icon {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    color: var(--ot-success);
+    animation: OT-icon-pulse 1.5s infinite alternate;
+}
+
+.OT-icon-warning {
+    color: var(--ot-status-absent);
+}
+
+.OT-warning-text {
+    color: var(--ot-text-light);
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+/* Review Modal Styles */
+.OT-review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.OT-review-type {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.OT-review-type h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.OT-review-date {
+    font-size: 0.9rem;
+    color: var(--ot-text-light);
+}
+
+.OT-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.OT-type-shifting {
+    background-color: var(--ot-type-shifting-light);
+    color: var(--ot-type-shifting);
+}
+
+.OT-type-daily {
+    background-color: var(--ot-type-daily-light);
+    color: var(--ot-type-daily);
+}
+
+.OT-review-section {
+    margin-bottom: 24px;
+    background-color: white;
+    border-radius: 8px;
+    border: 1px solid var(--ot-border);
+    overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.OT-review-section h4 {
+    margin: 0;
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--ot-border);
+    background-color: var(--ot-bg-color);
+}
+
+.OT-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    padding: 15px;
+}
+
+.OT-details-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.OT-details-label {
+    font-size: 0.85rem;
+    color: var(--ot-text-light);
+}
+
+.OT-details-value {
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.OT-details-reason {
+    padding: 15px;
+    border-top: 1px solid var(--ot-border);
+}
+
+.OT-details-reason .OT-details-value {
+    margin-top: 5px;
+    line-height: 1.5;
+}
+
+.OT-status-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    padding: 15px;
+}
+
+.OT-status-count {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.OT-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   Overtime Details Modal Redesign
+   ========================================================================== */
+
+.OT-details-animated {
+    animation: OT-modal-appear 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 8px 32px rgba(51,102,255,0.08), 0 1.5px 6px rgba(0,0,0,0.04);
+    border-radius: 18px;
+    background: #fff;
+    padding: 0;
+    overflow: hidden;
+    transition: box-shadow 0.3s;
+}
+
+.OT-details-header {
+    border-bottom: 1px solid var(--ot-border);
+    padding: 24px 32px 16px 32px;
+    background: linear-gradient(90deg, var(--ot-primary-light) 0%, #fff 100%);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.OT-details-header h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--ot-primary);
+    margin: 0;
+}
+
+.OT-details-header.no-gradient {
+    background: #fff !important;
+}
+
+.OT-details-header.no-gradient h2 {
+    color: #222 !important;
+}
+
+.OT-details-body {
+    padding: 28px 32px 0 32px;
+    background: #fff;
+    min-height: 220px;
+    transition: background 0.3s;
+}
+
+.OT-details-section {
+    margin-bottom: 28px;
+    animation: OT-fade-in 0.5s;
+}
+
+.OT-details-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--ot-text);
+    margin-bottom: 12px;
+}
+
+.OT-details-grid, .OT-details-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px 32px;
+}
+
+.OT-details-label {
+    color: var(--ot-text-light);
+    font-weight: 500;
+    margin-right: 6px;
+}
+
+.OT-details-value {
+    color: var(--ot-text);
+    font-weight: 600;
+}
+
+.OT-details-employee-table-container {
+    background: var(--ot-bg-color);
+    border-radius: 8px;
+    padding: 12px 0 0 0;
+    box-shadow: 0 1px 4px rgba(51,102,255,0.04);
+    overflow-x: auto;
+}
+
+.OT-details-footer {
+    border-top: 1px solid var(--ot-border);
+    padding: 18px 32px;
+    background: #fafbff;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.OT-modal-close {
+    background: none;
+    border: none;
+    color: var(--ot-text-light);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.OT-modal-close:hover {
+    color: var(--ot-primary);
+}
+
+@media (max-width: 768px) {
+    .OT-details-header, .OT-details-body, .OT-details-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .OT-details-grid, .OT-details-summary-grid {
+        grid-template-columns: 1fr;
+        gap: 10px 0;
+    }
+}
+
+/* ==========================================================================
    Table Styles
    ========================================================================== */
 
@@ -2476,17 +3636,7 @@
 
 .OT-view-details-btn {
     font-size: 0.8rem;
-    padding: 4px 8px;
-    border-radius: 8px;
-    background-color: var(--ot-primary-light);
-    color: var(--ot-primary);
-    border: 1px solid var(--ot-primary-light);
-    transition: all 0.2s ease;
-}
-
-.OT-view-details-btn:hover {
-    background-color: var(--ot-primary);
-    color: white;
+    padding: 5px 10px;
 }
 
 .OT-empty-activity {

@@ -233,17 +233,30 @@
 }
 
 .JO-chart-wrapper {
-    padding: 20px;
-    height: 85% !important;
-    animation: JO-chart-appear 0.8s ease-out forwards;
-    opacity: 0;
-    display: flex;
-    align-items: end;
+    width: 100%;
+    height: 400px;
+    box-sizing: border-box;
+    padding-left: 20px;
+    padding-right: 20px;
 }
 
 #jo-stats-chart {
     width: 100% !important;
     height: 100% !important;
+    display: block;
+}
+
+/* Status Chart Styles */
+.JO-status-chart-wrapper {
+    padding: 20px;
+    height: 300px;
+    position: relative;
+}
+
+#jo-status-chart {
+    width: 100% !important;
+    height: 100% !important;
+    animation: JO-chart-appear 0.8s ease-out;
 }
 
 @keyframes JO-chart-appear {
@@ -668,6 +681,12 @@
     justify-content: center;
     cursor: pointer;
     color: var(--jo-text-light);
+    transition: var(--jo-transition);
+}
+
+.JO-search-button:hover {
+    background-color: var(--jo-primary-light);
+    color: var(--jo-primary);
 }
 
 .JO-select {
@@ -748,6 +767,7 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     transform: translateY(20px);
     transition: transform 0.3s ease;
+    overflow: hidden;
 }
 
 .JO-modal.active .JO-modal-content {
@@ -791,10 +811,8 @@
 
 .JO-modal-body {
     padding: 20px;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
+    overflow-y: auto;
     flex: 1;
-    max-height: calc(90vh - 140px); /* Subtract header and footer height */
 }
 
 .JO-modal-footer {
@@ -1394,17 +1412,6 @@
         grid-template-columns: repeat(2, 1fr);
     }
 
-    /* Modal adjustments for tablets */
-    .JO-modal-content {
-        max-width: 90%;
-        width: 90%;
-    }
-
-    .JO-modal-body {
-        max-height: calc(90vh - 140px);
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-    }
 }
 
 @media (max-width: 768px) {
@@ -1515,27 +1522,193 @@
         flex-direction: column;
         gap: 8px;
     }
+}
 
-    /* Modal adjustments for mobile */
-    .JO-modal-content {
-        max-width: 95%;
-        width: 95%;
-        max-height: 95vh;
-    }
+/* ==========================================================================
+   Status Chart Styles (New)
+   ========================================================================== */
+.JO-status-chart-wrapper {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    height: 430px;
+    box-sizing: border-box;
+    padding: 20px;
+}
 
-    .JO-modal-body {
-        max-height: calc(95vh - 140px);
+#jo-status-chart {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* ==========================================================================
+   Job Order Details Modal Styles (New)
+   ========================================================================== */
+.JO-details-container {
+    padding: 0;
+}
+
+.JO-details-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.JO-details-header h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: var(--jo-text);
+}
+
+.JO-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.JO-details-section {
+    margin-bottom: 20px;
+}
+
+.JO-details-section h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--jo-text);
+    margin: 0 0 12px 0;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--jo-primary-light);
+}
+
+.JO-details-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.JO-details-row:last-child {
+    border-bottom: none;
+}
+
+.JO-details-label {
+    font-weight: 500;
+    color: var(--jo-text-light);
+    min-width: 120px;
+}
+
+.JO-details-value {
+    font-weight: 400;
+    color: var(--jo-text);
+    text-align: right;
+}
+
+.JO-details-description {
+    background-color: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 4px solid var(--jo-primary);
+    margin: 0;
+    line-height: 1.6;
+    color: var(--jo-text);
+}
+
+/* ==========================================================================
+   Routing History Styles (New)
+   ========================================================================== */
+.JO-routing-history {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.JO-routing-item {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--jo-primary);
+}
+
+.JO-routing-item:last-child {
+    margin-bottom: 0;
+}
+
+.JO-routing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.JO-routing-approver {
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.JO-routing-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.JO-routing-remarks {
+    background-color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin: 8px 0;
+    font-style: italic;
+    color: var(--jo-text-light);
+    border-left: 3px solid var(--jo-primary);
+}
+
+.JO-routing-dates {
+    display: flex;
+    gap: 16px;
+    font-size: 0.85rem;
+    color: var(--jo-text-light);
+}
+
+.JO-routing-dates span {
+    display: flex;
+    align-items: center;
+}
+
+.JO-routing-dates span:before {
+    content: '📅';
+    margin-right: 4px;
+}
+
+/* ==========================================================================
+   Responsive Styles for Status Chart (New)
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .JO-status-chart-wrapper {
+        height: 250px;
         padding: 15px;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
     }
+}
 
-    .JO-modal-header,
-    .JO-modal-footer {
-        padding: 12px 15px;
+@media (max-width: 768px) {
+    .JO-status-chart-wrapper {
+        height: 200px;
+        padding: 10px;
     }
+    
+    .JO-details-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
 
-    .JO-modal-header h2 {
-        font-size: 1.1rem;
+@media (max-width: 480px) {
+    .JO-status-chart-wrapper {
+        height: 180px;
+        padding: 8px;
     }
 }

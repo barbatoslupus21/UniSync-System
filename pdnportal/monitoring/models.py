@@ -1,11 +1,10 @@
 from django.db import models
 from django.utils import timezone
-from portalusers.models import Users
-from settings.models import Line
-from django.db import models
-from django.db.models import Sum, F
+from django.contrib.auth.models import AbstractUser
+from django.db.models import Sum, F, Q
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
+from portalusers.models import Users
 from settings.models import Line
 
 class Monitoring(models.Model):
@@ -15,7 +14,7 @@ class Monitoring(models.Model):
         ('Stopped', 'Stopped')
     )
 
-    created_by = models.ForeignKey(Users, on_delete=models.CASCADE)
+    created_by = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='created_monitoring_groups')
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Running')
@@ -47,35 +46,72 @@ class Monitoring(models.Model):
             
         return round((total_produced / total_planned) * 100)
 
+    @property
+    def total_products(self):
+        return self.monitoring_product.count()
+
+    @property
+    def total_schedules(self):
+        return self.monitoring_schedule.count()
+
+    @property
+    def active_schedules(self):
+        return self.monitoring_schedule.filter(status='Planned').count()
+
+    @property
+    def completed_schedules(self):
+        return self.monitoring_schedule.filter(
+            balance=0
+        ).count()
+
+    @property
+    def total_output_today(self):
+        today = timezone.now().date()
+        return ProductionOutput.objects.filter(
+            monitoring=self,
+            recorded_at__date=today
+        ).aggregate(total=Sum('quantity_produced'))['total'] or 0
+
     class Meta:
         ordering = ['status', '-created_at']
 
 class SupervisorToMonitor(models.Model):
     monitoring = models.ForeignKey(Monitoring, on_delete=models.CASCADE, related_name="monitoring_supervisors")
     supervisor = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="assigned_supervisors")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.monitoring.title} - {self.supervisor.username}'
+
+    class Meta:
+        unique_together = ['monitoring', 'supervisor']
     
 class LineToMonitor(models.Model):
     monitoring = models.ForeignKey(Monitoring, on_delete=models.CASCADE, related_name="monitoring_lines")
     line = models.ForeignKey(Line, on_delete=models.CASCADE, related_name="assigned_lines")
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f'{self.monitoring.title} - {self.line.line_name}'
+
+    class Meta:
+        unique_together = ['monitoring', 'line']
     
 class Product(models.Model):
     monitoring = models.ForeignKey(Monitoring, on_delete=models.CASCADE, related_name='monitoring_product')
     product_name = models.CharField(max_length=100)
     line = models.ForeignKey(Line, on_delete=models.CASCADE, related_name='product_line')
-    description = models.TextField(blank=True)
-    qty_per_box = models.IntegerField()
-    qty_per_hour = models.IntegerField()
+    description = models.TextField()
+    qty_per_box = models.PositiveIntegerField()
+    qty_per_hour = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.product_name} - {self.description}: {self.line.line_name}"
+        return f"{self.product_name} - {self.line.line_name}"
+
+    class Meta:
+        unique_together = ['monitoring', 'product_name', 'line']
 
 class ProductionSchedulePlan(models.Model):
     STATUS_CHOICES = (
@@ -93,7 +129,7 @@ class ProductionSchedulePlan(models.Model):
     date_planned = models.DateField()
     product_number = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product_schedule')
     shift = models.CharField(max_length=2, choices=SHIFT_CHOICES, default='AM')
-    planned_qty = models.IntegerField(default=0)
+    planned_qty = models.PositiveIntegerField()
     balance = models.IntegerField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Planned')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -102,16 +138,25 @@ class ProductionSchedulePlan(models.Model):
     def __str__(self):
         return f'{self.date_planned} - {self.product_number.product_name} : {self.product_number.line.line_name} - {self.shift}'
 
+    @property
+    def progress_percentage(self):
+        if self.planned_qty == 0:
+            return 0
+        produced = self.outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+        return min(round((produced / self.planned_qty) * 100, 1), 100)
+
     def save(self, *args, **kwargs):
         if not self.pk:
-            return super().save(*args, **kwargs)
-
-        outputs = self.outputs.all()
-        total_produced = outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
-        self.balance = self.planned_qty - total_produced
+            self.balance = self.planned_qty
+        else:
+            outputs = self.outputs.all()
+            total_produced = outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+            self.balance = max(0, self.planned_qty - total_produced)
         
         super().save(*args, **kwargs)
 
+    class Meta:
+        unique_together = ['monitoring', 'date_planned', 'product_number', 'shift']
 
 class ProductionOutput(models.Model):
     SHIFT_CHOICES = (
@@ -124,7 +169,7 @@ class ProductionOutput(models.Model):
     line = models.ForeignKey(Line, on_delete=models.CASCADE, related_name='output_line', null=True)
     shift = models.CharField(max_length=2, choices=SHIFT_CHOICES, default="AM")
     inspector = models.CharField(max_length=500, null=True, blank=True)
-    quantity_produced = models.IntegerField(default=0)
+    quantity_produced = models.PositiveIntegerField(default=0)
     recorded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -151,10 +196,10 @@ class OutputLog(models.Model):
         ('Not Met', 'Not Met')
     )
     outputlog = models.ForeignKey(ProductionOutput, on_delete=models.CASCADE, related_name='production_output')
-    output = models.IntegerField(default=True)
+    output = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, null=True)
+    operator = models.CharField(max_length=100, null=True, blank=True)
     time_recorded = models.DateTimeField(auto_now_add=True)
-    # time_recorded = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
           return f'{self.time_recorded} - {self.outputlog.line}: {self.output}'
@@ -190,8 +235,6 @@ class RecentActivity(models.Model):
         ordering = ['-created_at']
         verbose_name_plural = 'Recent Activities'
 
-
-# WorkCenter
 class WorkCenter(models.Model):
     monitoring = models.ForeignKey(Monitoring, on_delete=models.CASCADE, related_name='monitoring_workcenter')
     work_center = models.CharField(max_length=100)
@@ -220,7 +263,7 @@ class ProductionSheet(models.Model):
     verified_by = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='sheets_verifier')
     monitoring_schedule = models.ForeignKey('ProductionSchedulePlan', on_delete=models.CASCADE, related_name='schedule_sheets')
     shift = models.CharField(max_length=2, choices=SHIFT_CHOICES, default='AM')
-    total_output = models.IntegerField(default=0)
+    total_output = models.PositiveIntegerField(default=0)
     manpower = models.ManyToManyField('ProductionSheetManpower', related_name='sheet_manpower')
     date_prepared = models.DateField(auto_now_add=True)
     date_verified = models.DateField(auto_now=True)
@@ -228,12 +271,11 @@ class ProductionSheet(models.Model):
     def __str__(self):
         return f"{self.prepared_by} - {self.monitoring_schedule.monitoring.title}"
 
-
 class HourlyOutput(models.Model):
     production_sheet = models.ForeignKey('ProductionSheet', on_delete=models.CASCADE, related_name='hourly_outputs')
     time_hourly = models.TimeField(null=True)
-    target = models.IntegerField()
-    actual = models.IntegerField()
+    target = models.PositiveIntegerField()
+    actual = models.PositiveIntegerField()
     
     def __str__(self):
         return f"{self.production_sheet} @ {self.time_hourly}: Actual = {self.actual}"

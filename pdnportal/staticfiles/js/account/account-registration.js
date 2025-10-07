@@ -25,6 +25,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const ecisUser = document.getElementById('ecis-user');
     const ecisRoles = document.getElementById('ecis-roles');
     const ecisRoleValidation = document.getElementById('ecis-role-validation');
+    const qualityControlUser = document.getElementById('quality-control-user');
+    const qualityControlRoles = document.getElementById('quality-control-roles');
+    const stockDeclarationUser = document.getElementById('stock-declaration-user');
+    const stockDeclarationRoles = document.getElementById('stock-declaration-roles');
 
     // Permissions checkboxes and submenus - Edit form
     const editJobOrderUser = document.getElementById('edit-job-order-user');
@@ -39,6 +43,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const editEcisUser = document.getElementById('edit-ecis-user');
     const editEcisRoles = document.getElementById('edit-ecis-roles');
     const editEcisRoleValidation = document.getElementById('edit-ecis-role-validation');
+    const editQualityControlUser = document.getElementById('edit-quality-control-user');
+    const editQualityControlRoles = document.getElementById('edit-quality-control-roles');
+    const editStockDeclarationUser = document.getElementById('edit-stock-declaration-user');
+    const editStockDeclarationRoles = document.getElementById('edit-stock-declaration-roles');
 
     // Password toggle - Add form
     const passwordField = document.getElementById('password');
@@ -260,6 +268,45 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset radio buttons when unchecked
             if (!this.checked) {
                 const radioButtons = monitoringRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // Quality Control user checkbox
+    if (qualityControlUser) {
+        qualityControlUser.addEventListener('change', function() {
+            toggleSubpermissions(this, qualityControlRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = qualityControlRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // Stock Declaration user checkbox
+    if (stockDeclarationUser) {
+        // Set initial state if checkbox is pre-checked
+        if (stockDeclarationUser.checked && stockDeclarationRoles) {
+            stockDeclarationRoles.style.display = 'block';
+            // Force reflow then add visible class for transition
+            // eslint-disable-next-line no-unused-expressions
+            void stockDeclarationRoles.offsetHeight;
+            stockDeclarationRoles.classList.add('visible');
+        }
+
+        stockDeclarationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, stockDeclarationRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = stockDeclarationRoles.querySelectorAll('input[type="radio"]');
                 radioButtons.forEach(radio => {
                     radio.checked = false;
                 });
@@ -822,6 +869,74 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
+            // Quality Control
+            if (userData.quality_control_user && editQualityControlUser) {
+                editQualityControlUser.checked = true;
+                
+                // Explicitly show the subpermissions
+                if (editQualityControlRoles) {
+                    editQualityControlRoles.style.display = 'block';
+                    void editQualityControlRoles.offsetHeight;
+                    editQualityControlRoles.classList.add('visible');
+                }
+
+                // Set Quality Control role
+                if (editQualityControlRoles) {
+                    const qualityControlRoleRadios = editQualityControlRoles.querySelectorAll('input[type="radio"]');
+                    qualityControlRoleRadios.forEach(radio => {
+                        if (radio.value === 'warehouse' && userData.quality_control_warehouse) {
+                            radio.checked = true;
+                        } else if (radio.value === 'engineering' && userData.quality_control_engineering) {
+                            radio.checked = true;
+                        } else if (radio.value === 'production' && userData.quality_control_production) {
+                            radio.checked = true;
+                        } else if (radio.value === 'qa' && userData.quality_control_qa) {
+                            radio.checked = true;
+                        }
+                    });
+                }
+            }
+
+            // Stock Declaration
+            console.log('Stock Declaration Debug:', {
+                stock_declaration_user: userData.stock_declaration_user,
+                editStockDeclarationUser: editStockDeclarationUser,
+                editStockDeclarationRoles: editStockDeclarationRoles
+            });
+            
+            if (userData.stock_declaration_user && editStockDeclarationUser) {
+                console.log('Setting Stock Declaration checkbox to checked');
+                editStockDeclarationUser.checked = true;
+                
+                // Explicitly show the subpermissions
+                if (editStockDeclarationRoles) {
+                    console.log('Showing Stock Declaration subpermissions');
+                    editStockDeclarationRoles.style.display = 'block';
+                    void editStockDeclarationRoles.offsetHeight;
+                    editStockDeclarationRoles.classList.add('visible');
+                }
+
+                // Set Stock Declaration role
+                if (editStockDeclarationRoles) {
+                    const stockDeclarationRoleRadios = editStockDeclarationRoles.querySelectorAll('input[type="radio"]');
+                    console.log('Found radio buttons:', stockDeclarationRoleRadios.length);
+                    stockDeclarationRoleRadios.forEach(radio => {
+                        if (radio.value === 'production' && userData.stock_declaration_production) {
+                            radio.checked = true;
+                            console.log('Checked production radio');
+                        } else if (radio.value === 'warehouse' && userData.stock_declaration_warehouse) {
+                            radio.checked = true;
+                            console.log('Checked warehouse radio');
+                        } else if (radio.value === 'purchasing' && userData.stock_declaration_purchasing) {
+                            radio.checked = true;
+                            console.log('Checked purchasing radio');
+                        }
+                    });
+                }
+            } else {
+                console.log('Stock Declaration NOT set');
+            }
+
             // Set approvers
             if (editApproversList) {
                 // Clear existing approvers
@@ -920,6 +1035,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editEcisRoles) {
             editEcisRoles.style.display = 'none';
             if (editEcisRoleValidation) editEcisRoleValidation.style.display = 'none';
+        }
+        if (editQualityControlRoles) {
+            editQualityControlRoles.style.display = 'none';
+        }
+        if (editStockDeclarationRoles) {
+            editStockDeclarationRoles.style.display = 'none';
         }
 
         // Reset avatar
@@ -1070,8 +1191,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add to container
         approversList.appendChild(newRow);
 
-        // Clone select options from the first approver row
-        const firstApproverSelect = document.querySelector('#approver-user-0');
+        // Clone select options from the first approver row or from the hidden template
+        let firstApproverSelect = document.querySelector('#approver-user-0');
+        if (!firstApproverSelect || firstApproverSelect.options.length <= 1) {
+            firstApproverSelect = document.getElementById('approver-user-template');
+        }
         const newApproverSelect = newRow.querySelector(`#approver-user-${index}`);
 
         if (firstApproverSelect && newApproverSelect) {
@@ -1164,8 +1288,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add to container
         editApproversList.appendChild(newRow);
 
-        // Clone select options from the first approver row in the add form
-        const firstApproverSelect = document.querySelector('#approver-user-0');
+        // Clone select options from the first approver row in the add form or from template
+        let firstApproverSelect = document.querySelector('#approver-user-0');
+        if (!firstApproverSelect || firstApproverSelect.options.length <= 1) {
+            firstApproverSelect = document.getElementById('approver-user-template');
+        }
         const newApproverSelect = newRow.querySelector(`#edit-approver-user-${index}`);
 
         if (firstApproverSelect && newApproverSelect) {

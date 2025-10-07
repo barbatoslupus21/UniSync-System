@@ -1043,7 +1043,7 @@ function initializeActivityRefresh() {
                                     <i class="far fa-clock"></i> ${activity.date}
                                 </div>
                                 <button class="OT-button OT-view-details-btn" data-id="${activity.id}">
-                                    <i class="fas fa-eye"></i> View Details
+                                    View Details
                                 </button>
                             </div>
                         </div>
@@ -2368,56 +2368,51 @@ function loadOTDetails(filingId) {
         .then(data => {
             // Format details HTML
             let html = `
-                <div class="OT-details-header">
-                    <div class="OT-details-id">
-                        <span class="OT-type-badge OT-type-${data.type.toLowerCase()}">${data.type}</span>
-                        <h3>${data.id}</h3>
+                <div class="JO-details-header">
+                    <div class="JO-details-id">
+                        <h3>${data.id || 'N/A'}</h3>
+                        <span class="JO-category-pill OT-type-${data.type.toLowerCase()}">${data.type}</span>
                     </div>
-                    <span class="OT-details-date">${data.date}</span>
+
+                    <div class="JO-details-date">
+                        <p>Date Filled: ${data.filing_date || 'N/A'}</p>
+                    </div>
                 </div>
 
-                <div class="OT-details-section">
+                <div class="JO-details-section">
                     <h4>Request Information</h4>
-                    <div class="OT-details-grid">
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Requestor</span>
-                            <span class="OT-details-value">${data.requestor}</span>
+                    <div class="JO-details-grid">
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Group:</span>
+                            <span class="JO-details-value">${data.group || 'N/A'}</span>
                         </div>
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Group</span>
-                            <span class="OT-details-value">${data.group}</span>
-                        </div>
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Filing Date</span>
-                            <span class="OT-details-value">${data.filing_date}</span>
-                        </div>
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Status</span>
-                            <span class="OT-details-value">${data.status}</span>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Reason:</span>
+                            <span class="JO-details-value">${data.reason || 'N/A'}</span>
                         </div>
             `;
 
             // Add type-specific fields
             if (data.type === 'Shifting') {
                 html += `
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Date Range</span>
-                            <span class="OT-details-value">${data.start_date || ''} to ${data.end_date || ''}</span>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Date Range:</span>
+                            <span class="JO-details-value">${data.start_date || ''} to ${data.end_date || ''}</span>
                         </div>
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Shift Type</span>
-                            <span class="OT-details-value">${data.shift_type || ''}</span>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Shift Type</span>
+                            <span class="JO-details-value">${data.shift_type || ''}</span>
                         </div>
                 `;
             } else {
                 html += `
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Schedule Type</span>
-                            <span class="OT-details-value">${data.schedule_type || ''}</span>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Schedule:</span>
+                            <span class="JO-details-value">${data.schedule_type || 'N/A'}</span>
                         </div>
-                        <div class="OT-details-item">
-                            <span class="OT-details-label">Time</span>
-                            <span class="OT-details-value">${data.start_time || ''} to ${data.end_time || ''}</span>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Working Time:</span>
+                            <span class="JO-details-value">${data.start_time || ''} to ${data.end_time || ''}</span>
                         </div>
                 `;
             }
@@ -2427,20 +2422,10 @@ function loadOTDetails(filingId) {
                 </div>
             `;
 
-            // Add reason if available (for Daily OT)
-            if (data.reason) {
-                html += `
-                    <div class="OT-details-section">
-                        <h4>Reason</h4>
-                        <p class="OT-details-text">${data.reason}</p>
-                    </div>
-                `;
-            }
-
             // Add employees table with checkboxes for selection
             html += `
                 <div class="OT-details-section">
-                    <div class="OT-details-header-with-actions">
+                    <div class="JO-details-section">
                         <h4>Team Members (${data.employees.length})</h4>
                         <button id="change-status-btn" class="OT-button OT-primary-button">
                             <i class="fas fa-exchange-alt"></i> Change Status

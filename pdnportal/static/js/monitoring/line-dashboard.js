@@ -1,233 +1,102 @@
-/**
- * UniSync Production Monitoring Dashboard JavaScript
- */
-
-// Chart instance
 let productionChart;
-
-// Chart auto-refresh timer
 let chartRefreshTimer;
-
-// Status indicator related variables
 let currentStatus = "Not Met";
 let lastOutputValue = 0;
 
-// Target check constants
-const TARGET_MET_THRESHOLD = 100; // 100% target achievement
-const ALMOST_MET_THRESHOLD = 90; // 90% target achievement
+const TARGET_MET_THRESHOLD = 100;
+const ALMOST_MET_THRESHOLD = 90;
 
-// CSRF token for AJAX requests
 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 
-// Document ready function
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Chart if it exists
+    addPrefilledStyles();
+    
     const chartCanvas = document.getElementById('production-chart');
     if (chartCanvas) {
         initProductionChart();
     }
     
-    // Initialize Event Listeners
     initEventListeners();
-    
-    // Add animation to the table rows
     animateTableRows();
-    
-    // Highlight prefilled operator field
     highlightPrefilled();
-    
-    // Set up chart auto-refresh (every 60 seconds)
     startChartAutoRefresh();
-    
-    // Check if target is met for celebration
     checkTargetMet();
 });
 
-/**
- * Initialize and render the production chart with data from Django
- */
 function initProductionChart() {
     const ctx = document.getElementById('production-chart').getContext('2d');
     
-    // Create gradient for the output line - blue (target met)
     const gradientStrokeBlue = ctx.createLinearGradient(0, 0, 0, 400);
     gradientStrokeBlue.addColorStop(0, 'rgba(51, 102, 255, 0.8)');
     gradientStrokeBlue.addColorStop(1, 'rgba(51, 102, 255, 0.2)');
     
-    // Create red gradient for below target
     const gradientStrokeRed = ctx.createLinearGradient(0, 0, 0, 400);
     gradientStrokeRed.addColorStop(0, 'rgba(244, 67, 54, 0.8)');
     gradientStrokeRed.addColorStop(1, 'rgba(244, 67, 54, 0.2)');
     
-    // Get shift type
-    const shiftSelector = document.getElementById('shift-selector');
-    const isAMShift = !shiftSelector || shiftSelector.value === 'am';
-    
-    // Generate hourly labels based on shift
-    let hourlyLabels = [];
-    if (isAMShift) {
-        // AM shift: 7:00 AM to 6:00 PM
-        for (let hour = 7; hour <= 18; hour++) {
-            const formattedHour = hour > 12 ? (hour - 12) + ':00 PM' : hour + ':00 AM';
-            hourlyLabels.push(formattedHour);
-        }
-    } else {
-        // PM shift: 7:00 PM to 6:00 AM (next day)
-        for (let hour = 19; hour <= 24; hour++) {
-            hourlyLabels.push((hour - 12) + ':00 PM');
-        }
-        for (let hour = 1; hour <= 6; hour++) {
-            hourlyLabels.push(hour + ':00 AM');
-        }
-    }
-    
-    // Get the target line data from chartData
-    const targetLineData = chartData.datasets[1].data;
-    
-    // Compare each output data point with the target and set color
     const outputData = chartData.datasets[0].data;
+    const targetData = chartData.datasets[1].data;
+    const labels = chartData.labels;
     
-    // Create 30 min interval labels
-    let thirtyMinLabels = [];
-    
-    // Convert hourly labels to 30-min intervals
-    hourlyLabels.forEach(hour => {
-        const timeParts = hour.split(':');
-        const hourNum = parseInt(timeParts[0], 10);
-        const ampm = hour.includes('AM') ? 'AM' : 'PM';
-        
-        // Create 30 min intervals
-        thirtyMinLabels.push(`${hourNum}:00 ${ampm}`);
-        thirtyMinLabels.push(`${hourNum}:30 ${ampm}`);
-    });
-    
-    // Duplicate the data for 30-min intervals (interpolate)
-    let interpolatedOutputData = [];
-    let interpolatedTargetData = [];
-    
-    for (let i = 0; i < outputData.length; i++) {
-        // Get current and next data point
-        const currentOutput = outputData[i];
-        const nextOutput = outputData[i + 1] !== undefined ? outputData[i + 1] : currentOutput;
-        
-        const currentTarget = targetLineData[i];
-        const nextTarget = targetLineData[i + 1] !== undefined ? targetLineData[i + 1] : currentTarget;
-        
-        // Add original hour data
-        interpolatedOutputData.push(currentOutput);
-        interpolatedTargetData.push(currentTarget);
-        
-        // Add interpolated 30-min data (midpoint between this hour and next)
-        const midOutputValue = Math.round((currentOutput + nextOutput) / 2);
-        const midTargetValue = Math.round((currentTarget + nextTarget) / 2);
-        
-        interpolatedOutputData.push(midOutputValue);
-        interpolatedTargetData.push(midTargetValue);
-    }
-    
-    // Remove extra interpolated point at the end if needed
-    if (interpolatedOutputData.length > thirtyMinLabels.length) {
-        interpolatedOutputData.pop();
-        interpolatedTargetData.pop();
-    }
-    
-    // Initialize chart with 3D-like effect
     productionChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: thirtyMinLabels,
+            labels: labels,
             datasets: [
                 {
                     label: 'Output',
-                    data: interpolatedOutputData,
-                    borderWidth: 5,
+                    data: outputData,
+                    borderWidth: 4,
                     pointBackgroundColor: function(context) {
                         const index = context.dataIndex;
-                        const value = interpolatedOutputData[index];
-                        const target = interpolatedTargetData[index];
+                        const value = outputData[index];
+                        const target = targetData[index];
                         return value >= target ? 'rgba(51, 102, 255, 1)' : 'rgba(244, 67, 54, 1)';
                     },
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
                     pointRadius: 6,
                     pointHoverRadius: 8,
-                    tension: 0.4,
-                    fill: true,
+                    tension: 0.3,
+                    fill: true, // Enable fill under the Output line
                     backgroundColor: function(context) {
                         const chart = context.chart;
                         const {ctx, chartArea} = chart;
-                        
-                        if (!chartArea) {
-                            return null;
-                        }
-                        
-                        let index = context.dataIndex;
-                        
-                        if (index === undefined) {
-                            index = 0;
-                            
-                            if (context.p0 && context.p0.parsed) {
-                                const x = context.p0.parsed.x;
-                                
-                                for (let i = 0; i < chart.getDatasetMeta(context.datasetIndex).data.length; i++) {
-                                    if (chart.getDatasetMeta(context.datasetIndex).data[i].x >= x) {
-                                        index = i;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                        
-                        const value = interpolatedOutputData[index] || 0;
-                        const target = interpolatedTargetData[index] || 0;
-                        
-                        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-                        
-                        if (value >= target) {
-                            gradient.addColorStop(0, 'rgba(51, 102, 255, 0.1)');
-                            gradient.addColorStop(1, 'rgba(51, 102, 255, 0.5)');
-                            return gradient;
-                        } else {
-                            gradient.addColorStop(0, 'rgba(51, 102, 255, 0.1)');
-                            gradient.addColorStop(1, 'rgba(51, 102, 255, 0.5)');
-                            return gradient;
-                        }
+                        if (!chartArea) return 'rgba(51, 102, 255, 0.1)';
+                        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                        gradient.addColorStop(0, 'rgba(51, 102, 255, 0.25)');
+                        gradient.addColorStop(1, 'rgba(51, 102, 255, 0.05)');
+                        return gradient;
                     },
                     borderColor: function(context) {
-                        const index = context.dataIndex;
-                        if (index === undefined) return 'rgba(51, 102, 255, 1)';
-                        
-                        const value = interpolatedOutputData[index];
-                        const target = interpolatedTargetData[index];
-                        return value >= target ? 'rgba(51, 102, 255, 1)' : 'rgba(244, 67, 54, 1)';
+                        const chart = context.chart;
+                        const {ctx, chartArea} = chart;
+                        if (!chartArea) return 'rgba(51, 102, 255, 1)';
+                        const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                        gradient.addColorStop(0, 'rgba(51, 102, 255, 1)');
+                        gradient.addColorStop(1, 'rgba(51, 102, 255, 0.8)');
+                        return gradient;
                     },
+                    // Set legend color to blue
+                    borderCapStyle: 'butt',
+                    borderJoinStyle: 'miter',
                     segment: {
-                        borderColor: function(ctx) {
-                            const index = ctx.p0DataIndex;
-                            if (
-                                (index < interpolatedOutputData.length && interpolatedOutputData[index] < interpolatedTargetData[index]) ||
-                                (index + 1 < interpolatedOutputData.length && interpolatedOutputData[index + 1] < interpolatedTargetData[index + 1])
-                            ) {
-                                return 'rgba(244, 67, 54, 1)'; // Red
-                            }
-                            return 'rgba(51, 102, 255, 1)'; // Blue
-                        },
-                        borderWidth: 5
+                        borderColor: 'rgba(51, 102, 255, 1)'
                     }
                 },
                 {
                     label: 'Target',
-                    data: interpolatedTargetData,
+                    data: targetData,
                     borderColor: 'rgba(255, 193, 7, 1)',
                     backgroundColor: 'rgba(255, 193, 7, 0.1)',
                     borderWidth: 3,
-                    borderDash: [5, 5],
+                    borderDash: [8, 4],
                     pointBackgroundColor: 'rgba(255, 193, 7, 1)',
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
-                    pointRadius: 5,
-                    pointHoverRadius: 7,
-                    tension: 0.3,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0,
                     fill: false
                 }
             ]
@@ -238,6 +107,10 @@ function initProductionChart() {
             animation: {
                 duration: 1000,
                 easing: 'easeOutQuad'
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
             },
             plugins: {
                 legend: {
@@ -261,9 +134,9 @@ function initProductionChart() {
                     bodyColor: '#333',
                     borderColor: '#ddd',
                     borderWidth: 1,
-                    cornerRadius: 6,
-                    padding: 10,
-                    boxPadding: 4,
+                    cornerRadius: 8,
+                    padding: 12,
+                    boxPadding: 5,
                     titleFont: {
                         family: 'Poppins',
                         size: 13,
@@ -276,7 +149,7 @@ function initProductionChart() {
                     displayColors: true,
                     callbacks: {
                         title: function(tooltipItems) {
-                            return tooltipItems[0].label;
+                            return `Time: ${tooltipItems[0].label}`;
                         },
                         label: function(context) {
                             let label = context.dataset.label || '';
@@ -293,6 +166,7 @@ function initProductionChart() {
             },
             scales: {
                 x: {
+                    type: 'category',
                     grid: {
                         color: 'rgba(0, 0, 0, 0.05)',
                         display: true,
@@ -305,11 +179,17 @@ function initProductionChart() {
                             size: 10
                         },
                         padding: 8,
+                        maxTicksLimit: 12,
                         callback: function(value, index, values) {
-                            // Only display labels for full hours (skip 30-min labels)
-                            const label = thirtyMinLabels[index];
-                            if (label && label.includes(':00')) {
-                                return label;
+                            const label = this.getLabelForValue(value);
+                            if (label) {
+                                const parts = label.split(':');
+                                if (parts.length === 2) {
+                                    const minutes = parts[1];
+                                    if (minutes === '00' || index % 2 === 0) {
+                                        return label;
+                                    }
+                                }
                             }
                             return '';
                         }
@@ -332,8 +212,7 @@ function initProductionChart() {
                             return value;
                         }
                     },
-                    suggestedMin: 0,
-                    suggestedMax: 90
+                    beginAtZero: true
                 }
             },
             elements: {
@@ -341,18 +220,15 @@ function initProductionChart() {
                     tension: 0.3
                 },
                 point: {
-                    radius: 3,
-                    hitRadius: 8,
-                    hoverRadius: 5
+                    radius: 4,
+                    hitRadius: 10,
+                    hoverRadius: 6
                 }
             }
         }
     });
 }
 
-/**
- * Start auto-refresh timer for the chart (60 seconds)
- */
 function startChartAutoRefresh() {
     if (chartRefreshTimer) {
         clearInterval(chartRefreshTimer);
@@ -365,9 +241,6 @@ function startChartAutoRefresh() {
     }, 60000);
 }
 
-/**
- * Fetch latest production data from the server
- */
 function fetchLatestData() {
     fetch(window.location.href, {
         headers: {
@@ -380,7 +253,6 @@ function fetchLatestData() {
         if (data.status === 'success') {
             updateChartData(data.chart_data);
             updateStats(data.total_produced, data.completion_percentage, data.balance);
-            createToast('Dashboard data refreshed', 'info');
         }
     })
     .catch(error => {
@@ -388,36 +260,42 @@ function fetchLatestData() {
     });
 }
 
-/**
- * Update chart with new data
- */
 function updateChartData(newChartData) {
-    if (productionChart) {
-        // Generate date labels for x-axis
-        productionChart.data.labels = dateLabels;
+    if (productionChart && newChartData) {
+        productionChart.data.labels = newChartData.labels;
+        productionChart.data.datasets[0].data = newChartData.datasets[0].data;
+        productionChart.data.datasets[1].data = newChartData.datasets[1].data;
         
-        // Extract data for color setting
-        const outputData = newChartData.datasets[0].data;
-        const targetData = newChartData.datasets[1].data;
-        
-        // Update datasets
-        productionChart.data.datasets[0].data = outputData;
-        productionChart.data.datasets[1].data = targetData;
-        
-        // Update y-axis max value
-        productionChart.options.scales.y.suggestedMax = 100;
-        
-        // Re-render the chart with animation
         productionChart.update({
-            duration: 800,
-            easing: 'easeOutQuad'
+            duration: 600,
+            easing: 'easeOutQuart'
         });
     }
 }
 
-/**
- * Update stats display with new data
- */
+function addDataPointToChart(quantity, target) {
+    if (!productionChart) return;
+    
+    const now = new Date();
+    const timeLabel = now.toLocaleTimeString('en-US', { 
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    productionChart.data.labels.push(timeLabel);
+    productionChart.data.datasets[0].data.push(quantity);
+    productionChart.data.datasets[1].data.push(target);
+    
+    if (productionChart.data.labels.length > 50) {
+        productionChart.data.labels.shift();
+        productionChart.data.datasets[0].data.shift();
+        productionChart.data.datasets[1].data.shift();
+    }
+    
+    productionChart.update('active');
+}
+
 function updateStats(totalProduced, completionPercentage, balance) {
     const currentOutputElement = document.getElementById('current-output');
     if (currentOutputElement) {
@@ -450,9 +328,6 @@ function updateStats(totalProduced, completionPercentage, balance) {
     checkTargetMet();
 }
 
-/**
- * Initialize all event listeners
- */
 function initEventListeners() {
     const addOutputBtn = document.getElementById('add-output-btn');
     const addOutputModal = document.getElementById('add-output-modal');
@@ -465,6 +340,20 @@ function initEventListeners() {
     if (addOutputBtn && addOutputModal) {
         addOutputBtn.addEventListener('click', function() {
             addOutputModal.classList.add('active');
+            
+            setTimeout(() => {
+                const savedOperatorName = localStorage.getItem('saved_operator_name');
+                const operatorInput = document.getElementById('output-operator');
+                if (operatorInput && savedOperatorName && !operatorInput.value) {
+                    operatorInput.value = savedOperatorName;
+                    highlightPrefilled();
+                }
+                
+                const quantityInput = document.getElementById('output-quantity');
+                if (quantityInput) {
+                    quantityInput.focus();
+                }
+            }, 100);
             
             this.classList.add('clicked');
             setTimeout(() => {
@@ -487,35 +376,69 @@ function initEventListeners() {
     
     if (outputForm) {
         outputForm.addEventListener('submit', function(e) {
-            const quantityField = document.getElementById('output-quantity');
-            if (!quantityField) return true;
-            
-            const quantity = parseInt(quantityField.value, 10);
-            if (isNaN(quantity) || quantity <= 0) return true;
-            
-            localStorage.setItem('last_output_quantity', quantity);
-            localStorage.setItem('last_output_timestamp', new Date().getTime());
-            localStorage.setItem('show_target_modal', 'true');
+            e.preventDefault();
             
             const submitBtn = document.getElementById('submit-output');
             if (submitBtn) {
                 submitBtn.classList.add('loading');
             }
             
-            return true;
+            const formData = new FormData(outputForm);
+            
+            fetch(outputForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (submitBtn) {
+                    submitBtn.classList.remove('loading');
+                }
+                
+                if (data.status === 'success') {
+                    addOutputModal.classList.remove('active');
+                    
+                    const quantity = data.quantity;
+                    const target = data.target;
+                    const operatorName = data.operator;
+                    
+                    localStorage.setItem('saved_operator_name', operatorName);
+                    
+                    addNewTableRow(quantity, target, data.evaluation, data.operator, data.line_name, data.time_recorded);
+                    addDataPointToChart(quantity, target, data.time_recorded);
+                    updateStatsImmediately(quantity);
+                    createToast(data.message, 'success');
+                    
+                    setTimeout(() => {
+                        if (data.evaluation === 'Met') {
+                            showTargetMetModal(quantity, target);
+                        } else {
+                            showTargetNotMetModal(quantity, target);
+                        }
+                    }, 300);
+                    
+                    outputForm.reset();
+                    const operatorInput = outputForm.querySelector('input[name="operator"]');
+                    if (operatorInput) {
+                        operatorInput.value = operatorName;
+                    }
+                } else {
+                    createToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                if (submitBtn) {
+                    submitBtn.classList.remove('loading');
+                }
+                createToast('Failed to record output. Please try again.', 'error');
+                console.error('Error:', error);
+            });
         });
     }
-    
-    document.addEventListener('click', function(e) {
-        if (e.target.id === 'submit-output' || e.target.closest('#submit-output')) {
-            const btn = e.target.id === 'submit-output' ? e.target : e.target.closest('#submit-output');
-            
-            btn.classList.add('loading');
-            setTimeout(() => {
-                btn.classList.remove('loading');
-            }, 1000);
-        }
-    });
     
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
@@ -625,22 +548,85 @@ function initEventListeners() {
     }
 }
 
-/**
- * Highlight prefilled operator input
- */
+function addPrefilledStyles() {
+    if (document.getElementById('prefilled-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'prefilled-styles';
+    style.textContent = `
+        .JO-input.prefilled {
+            animation: prefilled-glow 2s ease-in-out;
+            transition: all 0.3s ease;
+        }
+        
+        @keyframes prefilled-glow {
+            0% {
+                background-color: rgba(51, 102, 255, 0.1);
+                border-color: rgba(51, 102, 255, 0.4);
+                box-shadow: 0 0 0 3px rgba(51, 102, 255, 0.1);
+            }
+            50% {
+                background-color: rgba(51, 102, 255, 0.05);
+                border-color: rgba(51, 102, 255, 0.3);
+                box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.05);
+            }
+            100% {
+                background-color: transparent;
+                border-color: var(--jo-border);
+                box-shadow: none;
+            }
+        }
+        
+        .operator-auto-filled::before {
+            content: "✓ Auto-filled";
+            position: absolute;
+            top: -20px;
+            left: 0;
+            font-size: 0.75rem;
+            color: rgba(51, 102, 255, 0.8);
+            font-weight: 500;
+            opacity: 0;
+            animation: fade-in-out 3s ease-in-out;
+        }
+        
+        @keyframes fade-in-out {
+            0%, 100% { opacity: 0; transform: translateY(5px); }
+            20%, 80% { opacity: 1; transform: translateY(0); }
+        }
+        
+        .prefilled-field-container {
+            position: relative;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 function highlightPrefilled() {
+    addPrefilledStyles();
+    
     const operatorInput = document.getElementById('output-operator');
-    if (operatorInput && operatorInput.value) {
+    const savedOperatorName = localStorage.getItem('saved_operator_name');
+    
+    if (operatorInput && (operatorInput.value || savedOperatorName)) {
+        if (!operatorInput.value && savedOperatorName) {
+            operatorInput.value = savedOperatorName;
+        }
+        
+        const container = operatorInput.parentElement;
+        if (container) {
+            container.classList.add('operator-auto-filled');
+            setTimeout(() => {
+                container.classList.remove('operator-auto-filled');
+            }, 3000);
+        }
+        
         operatorInput.classList.add('prefilled');
         setTimeout(() => {
             operatorInput.classList.remove('prefilled');
-        }, 1500);
+        }, 2000);
     }
 }
 
-/**
- * Check if target is met for output and show celebration modal
- */
 function checkTargetMetForOutput(quantity) {
     const targetPerHour = typeof window.targetPerHour !== 'undefined' ? window.targetPerHour : 100;
     
@@ -653,9 +639,6 @@ function checkTargetMetForOutput(quantity) {
     }
 }
 
-/**
- * Check if recent output submission and show appropriate modal
- */
 function checkTargetMet() {
     const showTargetModal = localStorage.getItem('show_target_modal');
     
@@ -720,9 +703,6 @@ function checkTargetMet() {
     }
 }
 
-/**
- * Update the status indicator in the chart area
- */
 function updateStatusIndicator(outputValue, targetValue) {
     const statusIndicator = document.querySelector('.PM-status-indicator');
     const statusIcon = statusIndicator?.querySelector('i');
@@ -753,10 +733,10 @@ function updateStatusIndicator(outputValue, targetValue) {
     }, 10);
 }
 
-/**
- * Show the target met celebration modal
- */
 function showTargetMetModal(actual, target, isDaily = false) {
+    const addOutputModal = document.getElementById('add-output-modal');
+    if (addOutputModal) addOutputModal.classList.remove('active');
+    
     const targetMetModal = document.getElementById('target-met-modal');
     if (!targetMetModal) return;
     
@@ -802,13 +782,13 @@ function showTargetMetModal(actual, target, isDaily = false) {
             targetMetModal.classList.remove('active');
             stopConfetti();
         }
-    }, 8000);
+    }, 3000);
 }
 
-/**
- * Show the target not met feedback modal
- */
 function showTargetNotMetModal(actual, target) {
+    const addOutputModal = document.getElementById('add-output-modal');
+    if (addOutputModal) addOutputModal.classList.remove('active');
+    
     const targetNotMetModal = document.getElementById('target-not-met-modal');
     if (!targetNotMetModal) return;
     
@@ -843,12 +823,9 @@ function showTargetNotMetModal(actual, target) {
         if (targetNotMetModal.classList.contains('active')) {
             targetNotMetModal.classList.remove('active');
         }
-    }, 8000);
+    }, 3000);
 }
 
-/**
- * Start confetti animation
- */
 function startConfetti() {
     const canvas = document.getElementById('confetti-canvas');
     if (!canvas) return;
@@ -920,9 +897,6 @@ function startConfetti() {
     window.confettiAnimation = animationFrame;
 }
 
-/**
- * Stop confetti animation
- */
 function stopConfetti() {
     if (window.confettiAnimation) {
         cancelAnimationFrame(window.confettiAnimation);
@@ -935,9 +909,112 @@ function stopConfetti() {
     }
 }
 
-/**
- * Reverse the order of logs to show newest first
- */
+function updateStatsImmediately(newQuantity) {
+    const currentOutputElement = document.getElementById('current-output');
+    const balanceElement = document.getElementById('balance');
+    const completionBarElement = document.getElementById('completion-bar');
+    const outputPercentageElements = document.querySelectorAll('#output-percentage');
+    
+    if (currentOutputElement) {
+        const currentOutput = parseInt(currentOutputElement.textContent.replace(/,/g, '')) || 0;
+        const newTotal = currentOutput + newQuantity;
+        currentOutputElement.textContent = newTotal.toLocaleString();
+        currentOutputElement.classList.add('highlight-animation');
+        setTimeout(() => {
+            currentOutputElement.classList.remove('highlight-animation');
+        }, 1500);
+    }
+    
+    if (balanceElement) {
+        const currentBalance = parseInt(balanceElement.textContent.replace(/,/g, '')) || 0;
+        const newBalance = Math.max(0, currentBalance - newQuantity);
+        balanceElement.textContent = newBalance.toLocaleString();
+        balanceElement.classList.add('highlight-animation');
+        setTimeout(() => {
+            balanceElement.classList.remove('highlight-animation');
+        }, 1500);
+    }
+    
+    const plannedQtyElement = document.getElementById('planned-qty');
+    if (plannedQtyElement && currentOutputElement && completionBarElement) {
+        const plannedQty = parseInt(plannedQtyElement.textContent.replace(/,/g, '')) || 1;
+        const totalProduced = parseInt(currentOutputElement.textContent.replace(/,/g, '')) || 0;
+        const completionPercentage = (totalProduced / plannedQty) * 100;
+        
+        completionBarElement.style.width = `${Math.min(completionPercentage, 100)}%`;
+        
+        outputPercentageElements.forEach(el => {
+            el.textContent = `${completionPercentage.toFixed(1)}%`;
+        });
+    }
+}
+
+function addNewTableRow(quantity, target, evaluation, operatorName, lineName) {
+    const tableBody = document.getElementById('output-log-tbody');
+    if (!tableBody) return;
+    
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+    });
+    
+    const variance = quantity - target;
+    const status = evaluation;
+    
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td data-label="Time">${timeStr}</td>
+        <td data-label="Operator">${operatorName}</td>
+        <td data-label="Line">${lineName}</td>
+        <td data-label="Output">${quantity}</td>
+        <td data-label="Target">${target}</td>
+        <td data-label="Variance">
+            <span class="${variance >= 0 ? 'PM-positive' : 'PM-negative'}">
+                ${variance >= 0 ? '+' : ''}${variance}
+            </span>
+        </td>
+        <td data-label="Status">
+            <span class="JO-status ${status === 'Met' ? 'JO-status-approved' : 'JO-status-rejected'}">
+                ${status}
+            </span>
+        </td>
+    `;
+    
+    newRow.style.opacity = '0';
+    newRow.style.transform = 'translateY(-10px)';
+    newRow.style.backgroundColor = 'rgba(51, 102, 255, 0.1)';
+    
+    if (tableBody.children.length === 0 || (tableBody.children.length === 1 && tableBody.children[0].querySelector('.JO-empty-table'))) {
+        tableBody.innerHTML = '';
+    }
+    
+    tableBody.insertBefore(newRow, tableBody.firstChild);
+    
+    setTimeout(() => {
+        newRow.style.transition = 'all 0.5s ease';
+        newRow.style.opacity = '1';
+        newRow.style.transform = 'translateY(0)';
+    }, 100);
+    
+    setTimeout(() => {
+        newRow.style.backgroundColor = '';
+    }, 2000);
+    
+    newRow.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = 'rgba(51, 102, 255, 0.05)';
+        this.style.transform = 'translateX(5px)';
+        this.style.boxShadow = '-3px 0 0 var(--jo-primary)';
+    });
+    
+    newRow.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = '';
+        this.style.transform = '';
+        this.style.boxShadow = '';
+    });
+}
+
 function reverseTableRows() {
     const logsTable = document.getElementById('output-log-tbody');
     if (!logsTable) return;
@@ -957,9 +1034,6 @@ function reverseTableRows() {
     });
 }
 
-/**
- * Animate table rows on load
- */
 function animateTableRows() {
     reverseTableRows();
     
@@ -977,9 +1051,6 @@ function animateTableRows() {
     });
 }
 
-/**
- * Create and display toast notifications
- */
 function createToast(message, type = 'info', duration = 3000) {
     const toastContainer = document.getElementById('toast-container');
     if (!toastContainer) return;
@@ -1016,9 +1087,6 @@ function createToast(message, type = 'info', duration = 3000) {
     }, duration);
 }
 
-/**
- * Remove toast notification
- */
 function removeToast(toast) {
     toast.style.animation = 'fadeOut 0.3s ease';
     setTimeout(() => {
@@ -1026,7 +1094,6 @@ function removeToast(toast) {
     }, 300);
 }
 
-// Initialize on window load
 window.addEventListener('load', function() {
     const loadingElements = document.querySelectorAll('.JO-loading');
     loadingElements.forEach(el => {
@@ -1065,6 +1132,12 @@ window.addEventListener('load', function() {
         hiddenTarget.className = 'hidden-info';
         hiddenTarget.textContent = window.targetPerHour || '';
         document.body.appendChild(hiddenTarget);
+    }
+    
+    const operatorInput = document.getElementById('output-operator');
+    const savedOperatorName = localStorage.getItem('saved_operator_name');
+    if (operatorInput && savedOperatorName && !operatorInput.value) {
+        operatorInput.value = savedOperatorName;
     }
     
     if (document.referrer && document.referrer.includes(window.location.pathname)) {

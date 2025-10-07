@@ -1,0 +1,184 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - WIP Checker Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/wip/wip.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">WIP Inventory Verifier</h1>
+            <p class="JO-subtitle">Review and verify WIP inventory counting sessions</p>
+        </div>
+    </div>
+
+    <div class="JO-table-section">
+        <div class="JO-card JO-user-sessions">
+            <div class="JO-card-header">
+                <h2>My Sessions For Verifying</h2>
+            </div>
+            <div class="JO-table-container">
+                <table class="JO-table">
+                    <thead>
+                        <tr>
+                            <th>Session ID</th>
+                            <th>Line</th>
+                            <th>Person Responsible</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in sessions %}
+                        <tr>
+                            <td data-label="Session ID">WIP-{{ session.id }}</td>
+                            <td data-label="Line">{{ session.line.line_name }}</td>
+                            <td data-label="Person Responsible">{{ session.person_responsible }}</td>
+                            <td data-label="Status">
+                                {% if session.status == 'FOR_CHECKING' %}
+                                    <span class="JO-status JO-status-pending">For Checking</span>
+                                {% elif session.status == 'CHECKED' %}
+                                    <span class="JO-status JO-status-approved">Checked</span>
+                                {% else %}
+                                    {{ session.status }}
+                                {% endif %}
+                            <td data-label="Created">{{ session.created_at|date:"M d, Y" }}</td>
+                            <td data-label="Actions">
+                                <button class="JO-icon-button" title="View Details" onclick="window.location.href='{% url 'session_details' session.id %}'">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr class="JO-empty-table no-session-row">
+                            <td colspan="8">
+                                <div class="no-data-message">
+                                    <div class="no-data-icon"><i class="fas fa-search"></i></div>
+                                    <div class="no-data-title">No sessions for checking</div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="JO-table-section">
+        <div class="JO-card JO-all-requests">
+            <div class="JO-card-header">
+                <h2>Lines with WIP Sessions</h2>
+                <div class="JO-card-actions">
+                    <div class="JO-search-container">
+                        <input type="text" class="JO-search-input" placeholder="Search by line name...">
+                        <button class="JO-search-button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div class="JO-filter-container">
+                        <select class="JO-select JO-filter-select">
+                            <option value="all">All Lines</option>
+                            <option value="pending">With Pending Sessions</option>
+                            <option value="checked">With Checked Sessions</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-table-container">
+                <table class="JO-table">
+                    <thead>
+                        <tr>
+                            <th>Line Name</th>
+                            <th>Responsible Person</th>
+                            <th>Created At</th>
+                            <th>Checked By</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if lines %}
+                            {% for line in lines %}
+                            <tr>
+                                <td data-label="Line Name">{{ line.line.line_name }}</td>
+                                <td data-label="Responsible Person">{{ line.person_responsible }}</td>
+                                <td data-label="Created At">{{ line.created_at|date:"M d, Y" }}</td>
+                                <td data-label="Checked By">
+                                    {% if line.checked_by %}
+                                        {{ line.checked_by.name }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td data-label="Status">
+                                    {% if line.status == 'FOR_CHECKING' %}
+                                        <span class="JO-status JO-status-pending">For Checking</span>
+                                    {% elif line.status == 'CHECKED' %}
+                                        <span class="JO-status JO-status-approved">Checked</span>
+                                    {% else %}
+                                        <span class="JO-status JO-status-{{ line.status|lower }}">{{ line.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Actions">
+                                    <button class="JO-icon-button JO-claim-session-btn" data-session-id="{{ line.id }}" title="Claim for Checking">
+                                        <i class="fas fa-check-circle"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                        <tr class="JO-empty-table no-session-row">
+                                <td colspan="8">
+                                    <div class="no-data-message">
+                                        <div class="no-data-icon"><i class="fas fa-search"></i></div>
+                                        <div class="no-data-title">No WIP sessions created yet</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    
+</main>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Confirmation Modal for Claiming Session -->
+<div class="JO-modal JO-confirmation-modal" id="claim-session-modal" style="display:none;">
+    <div class="JO-modal-content normal-modal">
+        <div class="JO-modal-header">
+            <h2>Claim Session for Checking</h2>
+            <button class="JO-modal-close" id="close-claim-modal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div style="text-align: center;">
+                <i class="fas fa-question-circle JO-confirmation-icon"></i>
+                <p class="JO-confirmation-message">Are you sure you want to get this session?</p>
+                <p class="JO-confirmation-submessage">This action will assign this session to you for checking. Other checkers will not be able to get it.</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-claim-session">Cancel</button>
+            <button class="JO-button JO-primary-button" id="confirm-claim-session">Yes, Get Session</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/wip/wip-checker.js' %}"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+{% endblock %}

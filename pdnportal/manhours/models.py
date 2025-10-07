@@ -1,3 +1,4 @@
+from enum import unique
 from django.db import models
 from portalusers.models import Users
 from decimal import Decimal
@@ -11,9 +12,15 @@ class Machine(models.Model):
         return self.machine_name
     
 class Operators(models.Model):
-    operator_name = models.CharField(max_length=500, null=True)
+    id_number = models.CharField(max_length=200, null=True)
+    name = models.CharField(max_length=200, null=True)
+    
     def __str__(self):
-        return self.operator_name
+        return self.name
+        
+    @property
+    def full_name(self):
+        return self.name
     
 class ManhoursLogsheet(models.Model):
     SHIFTS = {

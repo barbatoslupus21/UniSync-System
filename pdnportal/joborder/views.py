@@ -125,12 +125,19 @@ def job_order_chart_data(request, period):
             elif category == 'orange':
                 orange_data[idx] += 1
 
+    # After calculating green_data, yellow_data, white_data, orange_data
+    total_data = [
+        green_data[i] + yellow_data[i] + white_data[i] + orange_data[i]
+        for i in range(len(green_data))
+    ]
+
     return JsonResponse({
         'labels': months,
         'green': green_data,
         'yellow': yellow_data,
         'white': white_data,
-        'orange': orange_data
+        'orange': orange_data,
+        'total': total_data
     })
 
 @login_required(login_url="user-login")
@@ -2437,3 +2444,166 @@ def complete_job_order(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+# Spectator Page
+@login_required(login_url="user-login")
+def spectator_page(request):
+    current_month = now().month
+    current_year = now().year
+
+    all_requests = JOLogsheet.objects.all().order_by("-date_created")
+    
+    pendingJO = JOLogsheet.objects.filter(
+        Q(status="Routing") | Q(status="Completed") | Q(status="Checked"),
+    ).order_by("-date_created")
+
+    joRequestsCount = JOLogsheet.objects.filter(
+        date_created__year=current_year, 
+        date_created__month=current_month
+    ).count()
+    
+    pendingJOCount = JOLogsheet.objects.filter(
+        status="Routing",
+        date_created__year=current_year, 
+        date_created__month=current_month
+    ).count()
+    
+    approvedJOCount = JOLogsheet.objects.filter(
+        status="Closed",
+        date_created__year=current_year, 
+        date_created__month=current_month
+    ).count()
+
+    lines = Line.objects.all()
+
+    context = {
+        'pendingJO': pendingJO,
+        'all_requests': all_requests,
+        'joRequestsCount': joRequestsCount,
+        'pendingJOCount': pendingJOCount,
+        'approvedJOCount': approvedJOCount,
+        'lines': lines,
+    }
+    
+    return render(request, 'joborder/jo-spectator.html', context)
+
+@login_required
+@require_GET
+def spectator_chart_data(request, period):
+    """API endpoint for job order category chart data"""
+    try:
+        today = timezone.now().date()
+        
+        if period == '3month':
+            months_back = 3
+        elif period == '6month':
+            months_back = 6
+        elif period == '1year':
+            months_back = 12
+        else:
+            months_back = 6
+
+        start_date = today.replace(day=1)
+        for _ in range(months_back - 1):
+            prev_month = start_date.month - 1
+            year = start_date.year
+            if prev_month == 0:
+                prev_month = 12
+                year -= 1
+            start_date = start_date.replace(year=year, month=prev_month, day=1)
+
+        months = []
+        month_year_map = {}
+        current = start_date
+        index = 0
+        while current <= today.replace(day=28):
+            month_name = calendar.month_name[current.month][:3]
+            year = current.year
+            month_year = f"{month_name} {year}"
+            months.append(month_year)
+            month_year_map[f"{current.year}-{current.month:02d}"] = index
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+            index += 1
+
+        green_data = [0] * len(months)
+        yellow_data = [0] * len(months)
+        white_data = [0] * len(months)
+        orange_data = [0] * len(months)
+
+        job_orders = JOLogsheet.objects.filter(
+            prepared_by=request.user,
+            date_created__gte=timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time())),
+            date_created__lte=timezone.now()
+        )
+
+        for order in job_orders:
+            order_date = order.date_created.date()
+            month_year_key = f"{order_date.year}-{order_date.month:02d}"
+            if month_year_key in month_year_map:
+                idx = month_year_map[month_year_key]
+                category = order.jo_color.lower() if order.jo_color else "unknown"
+                if category == 'green':
+                    green_data[idx] += 1
+                elif category == 'yellow':
+                    yellow_data[idx] += 1
+                elif category == 'white':
+                    white_data[idx] += 1
+                elif category == 'orange':
+                    orange_data[idx] += 1
+
+        total_data = [
+            green_data[i] + yellow_data[i] + white_data[i] + orange_data[i]
+            for i in range(len(green_data))
+        ]
+
+        return JsonResponse({
+            'labels': months,
+            'green': green_data,
+            'yellow': yellow_data,
+            'white': white_data,
+            'orange': orange_data,
+            'total': total_data
+        })
+
+    except Exception as e:
+        print(f"Error in spectator_chart_data: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@login_required
+@require_GET
+def spectator_status_chart_data(request):
+    """API endpoint for job order status bar chart data with period filtering"""
+    try:
+        period = request.GET.get('period', 'month')
+        now_dt = timezone.now()
+        start_date = None
+        if period == 'week':
+            start_date = now_dt - timedelta(days=now_dt.weekday())  # Start of week (Monday)
+        elif period == 'quarter':
+            current_month = now_dt.month
+            quarter_start_month = 3 * ((current_month - 1) // 3) + 1
+            start_date = now_dt.replace(month=quarter_start_month, day=1)
+        else:  # Default to month
+            start_date = now_dt.replace(day=1)
+
+        all_job_orders = JOLogsheet.objects.filter(
+            prepared_by=request.user,
+            date_created__gte=start_date
+        )
+        total_requests = all_job_orders.count()
+        status_counts = {
+            'Routing': all_job_orders.filter(status='Routing').count(),
+            'Completed': all_job_orders.filter(status='Completed').count(),
+            'Checked': all_job_orders.filter(status='Checked').count(),
+            'Closed': all_job_orders.filter(status='Closed').count(),
+        }
+        return JsonResponse({
+            'labels': list(status_counts.keys()),
+            'data': list(status_counts.values()),
+            'total': total_requests
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)

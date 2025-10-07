@@ -1,0 +1,789 @@
+let outputChart;
+let currentProductToEdit = null;
+let currentScheduleToEdit = null;
+let currentItemToDelete = null;
+let currentDeleteType = null;
+
+const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initOutputChart();
+    initEventListeners();
+    initTabs();
+    initFilters();
+    loadChartData();
+});
+
+function initOutputChart() {
+    const ctx = document.getElementById('output-chart')?.getContext('2d');
+    if (!ctx) return;
+
+    outputChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Target',
+                    data: [],
+                    borderColor: 'rgba(255, 193, 7, 1)',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    borderWidth: 3,
+                    borderDash: [5, 5],
+                    pointBackgroundColor: 'rgba(255, 193, 7, 1)',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    tension: 0.3,
+                    fill: false
+                },
+                {
+                    label: 'Actual',
+                    data: [],
+                    borderColor: 'rgba(51, 102, 255, 1)',
+                    backgroundColor: 'rgba(51, 102, 255, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: 'rgba(51, 102, 255, 1)',
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    tension: 0.3,
+                    fill: true
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20,
+                        font: {
+                            family: 'Poppins',
+                            size: 12
+                        }
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#333',
+                    bodyColor: '#333',
+                    borderColor: '#ddd',
+                    borderWidth: 1,
+                    cornerRadius: 6,
+                    padding: 10,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' units';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        color: '#666',
+                        font: {
+                            family: 'Poppins',
+                            size: 10
+                        }
+                    }
+                },
+                y: {
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        color: '#666',
+                        font: {
+                            family: 'Poppins',
+                            size: 10
+                        },
+                        callback: function(value) {
+                            return value.toLocaleString();
+                        }
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function loadChartData() {
+    const date = document.getElementById('date-filter')?.value;
+    const line = document.getElementById('line-filter')?.value || 'all';
+    const shift = document.getElementById('shift-filter')?.value || 'all';
+
+    const url = new URL(chartDataUrl, window.location.origin);
+    if (date) url.searchParams.set('date', date);
+    url.searchParams.set('line', line);
+    url.searchParams.set('shift', shift);
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            outputChart.data.labels = data.labels;
+            outputChart.data.datasets[0].data = data.target;
+            outputChart.data.datasets[1].data = data.actual;
+            // Add animation for chart update
+            outputChart.options.animation = {
+                duration: 800,
+                easing: 'easeInOutQuart'
+            };
+            outputChart.update();
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+            showToast('Error loading chart data', 'error');
+        });
+}
+
+function initEventListeners() {
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', () => {
+            window.location.href = facilitatorDashboardUrl;
+        });
+    }
+
+    // Use event delegation for edit product buttons
+    document.getElementById('products-tbody')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-product-btn');
+        if (editBtn) {
+            handleEditProductClick(e);
+        }
+    });
+
+    // Use event delegation for delete product buttons
+    document.getElementById('products-tbody')?.addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('.delete-product-btn');
+        if (deleteBtn) {
+            handleDeleteProductClick(e);
+        }
+    });
+
+    const exportDataBtn = document.getElementById('export-data-btn');
+    const exportDataModal = document.getElementById('export-data-modal');
+    if (exportDataBtn && exportDataModal) {
+        exportDataBtn.addEventListener('click', () => {
+            exportDataModal.classList.add('active');
+        });
+    }
+
+    const exportDataForm = document.getElementById('export-data-form');
+    if (exportDataForm) {
+        exportDataForm.addEventListener('submit', handleExportData);
+    }
+
+    const addProductBtn = document.getElementById('add-product-btn');
+    const addProductModal = document.getElementById('add-product-modal');
+    if (addProductBtn && addProductModal) {
+        addProductBtn.addEventListener('click', () => {
+            addProductModal.classList.add('active');
+        });
+    }
+
+    const addScheduleBtn = document.getElementById('add-schedule-btn');
+    const addScheduleModal = document.getElementById('add-schedule-modal');
+    if (addScheduleBtn && addScheduleModal) {
+        addScheduleBtn.addEventListener('click', () => {
+            addScheduleModal.classList.add('active');
+        });
+    }
+
+    document.querySelectorAll('.JO-modal-close, #cancel-export, #cancel-add-product, #cancel-edit-product, #cancel-add-schedule, #cancel-edit-schedule, #cancel-import-products, #cancel-import-schedules, #cancel-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.target.closest('.JO-modal').classList.remove('active');
+        });
+    });
+
+    const addProductForm = document.getElementById('add-product-form');
+    if (addProductForm) {
+        addProductForm.addEventListener('submit', handleAddProduct);
+    }
+
+    const editProductForm = document.getElementById('edit-product-form');
+    if (editProductForm) {
+        editProductForm.addEventListener('submit', handleEditProduct);
+    }
+
+    const addScheduleForm = document.getElementById('add-schedule-form');
+    if (addScheduleForm) {
+        addScheduleForm.addEventListener('submit', handleAddSchedule);
+    }
+
+    const editScheduleForm = document.getElementById('edit-schedule-form');
+    if (editScheduleForm) {
+        editScheduleForm.addEventListener('submit', handleEditSchedule);
+    }
+
+    // Use event delegation for edit schedule buttons
+    document.getElementById('schedules-tbody')?.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-schedule-btn');
+        if (editBtn) {
+            handleEditScheduleClick(e);
+            return;
+        }
+        const deleteBtn = e.target.closest('.delete-schedule-btn');
+        if (deleteBtn) {
+            handleDeleteScheduleClick(e);
+            return;
+        }
+    });
+
+    const confirmDeleteBtn = document.getElementById('confirm-delete');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+    }
+
+    const importProductsBtn = document.getElementById('import-products-btn');
+    const importProductsModal = document.getElementById('import-products-modal');
+    if (importProductsBtn && importProductsModal) {
+        importProductsBtn.addEventListener('click', () => {
+            importProductsModal.classList.add('active');
+        });
+    }
+
+    const importSchedulesBtn = document.getElementById('import-schedules-btn');
+    const importSchedulesModal = document.getElementById('import-schedules-modal');
+    if (importSchedulesBtn && importSchedulesModal) {
+        importSchedulesBtn.addEventListener('click', () => {
+            importSchedulesModal.classList.add('active');
+        });
+    }
+
+    const exportProductsBtn = document.getElementById('export-products-btn');
+    if (exportProductsBtn) {
+        exportProductsBtn.addEventListener('click', () => {
+            window.location.href = `${exportProductTemplateUrl}?monitoring_id=${monitoringId}`;
+        });
+    }
+
+    const exportSchedulesBtn = document.getElementById('export-schedules-btn');
+    if (exportSchedulesBtn) {
+        exportSchedulesBtn.addEventListener('click', () => {
+            window.location.href = `${exportScheduleTemplateUrl}?monitoring_id=${monitoringId}`;
+        });
+    }
+
+    const downloadProductTemplateBtn = document.getElementById('download-product-template');
+    if (downloadProductTemplateBtn) {
+        downloadProductTemplateBtn.addEventListener('click', () => {
+            window.location.href = `${exportProductTemplateUrl}?monitoring_id=${monitoringId}`;
+        });
+    }
+
+    const downloadScheduleTemplateBtn = document.getElementById('download-schedule-template');
+    if (downloadScheduleTemplateBtn) {
+        downloadScheduleTemplateBtn.addEventListener('click', () => {
+            window.location.href = `${exportScheduleTemplateUrl}?monitoring_id=${monitoringId}`;
+        });
+    }
+
+    const chartFilters = ['date-filter', 'line-filter', 'shift-filter'];
+    chartFilters.forEach(filterId => {
+        const filter = document.getElementById(filterId);
+        if (filter) {
+            filter.addEventListener('change', loadChartData);
+        }
+    });
+}
+
+function initTabs() {
+    const tabBtns = document.querySelectorAll('.FGD-tab-btn');
+    const tabContents = document.querySelectorAll('.FGD-tab-content');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const targetTab = btn.dataset.tab;
+
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabContents.forEach(c => c.classList.remove('active'));
+
+            btn.classList.add('active');
+            document.getElementById(`${targetTab}-tab`).classList.add('active');
+        });
+    });
+}
+
+function initFilters() {
+    const productsSearch = document.getElementById('products-search');
+    const productsLineFilter = document.getElementById('products-line-filter');
+    
+    if (productsSearch) {
+        productsSearch.addEventListener('input', filterProducts);
+    }
+    
+    if (productsLineFilter) {
+        productsLineFilter.addEventListener('change', filterProducts);
+    }
+
+    const schedulesSearch = document.getElementById('schedules-search');
+    const schedulesDateFilter = document.getElementById('schedules-date-filter');
+    const schedulesShiftFilter = document.getElementById('schedules-shift-filter');
+    const schedulesStatusFilter = document.getElementById('schedules-status-filter');
+
+    [schedulesSearch, schedulesDateFilter, schedulesShiftFilter, schedulesStatusFilter].forEach(filter => {
+        if (filter) {
+            filter.addEventListener(filter.type === 'text' ? 'input' : 'change', filterSchedules);
+        }
+    });
+}
+
+function filterProducts() {
+    const searchTerm = document.getElementById('products-search')?.value.toLowerCase() || '';
+    const lineFilter = document.getElementById('products-line-filter')?.value.toLowerCase() || '';
+    
+    const rows = document.querySelectorAll('#products-tbody tr');
+    
+    rows.forEach(row => {
+        const productName = row.dataset.productName || '';
+        const line = row.dataset.line || '';
+        
+        const matchesSearch = productName.includes(searchTerm);
+        const matchesLine = !lineFilter || line.includes(lineFilter);
+        
+        if (matchesSearch && matchesLine) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function filterSchedules() {
+    const searchTerm = document.getElementById('schedules-search')?.value.toLowerCase() || '';
+    const dateFilter = document.getElementById('schedules-date-filter')?.value || '';
+    const shiftFilter = document.getElementById('schedules-shift-filter')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('schedules-status-filter')?.value.toLowerCase() || '';
+    
+    const rows = document.querySelectorAll('#schedules-tbody tr');
+    
+    rows.forEach(row => {
+        const date = row.dataset.date || '';
+        const shift = row.dataset.shift || '';
+        const status = row.dataset.status || '';
+        const text = row.textContent.toLowerCase();
+        
+        const matchesSearch = text.includes(searchTerm);
+        const matchesDate = !dateFilter || date === dateFilter;
+        const matchesShift = !shiftFilter || shift === shiftFilter;
+        const matchesStatus = !statusFilter || status === statusFilter;
+        
+        if (matchesSearch && matchesDate && matchesShift && matchesStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function handleExportData(e) {
+    e.preventDefault();
+    
+    const fromDate = document.getElementById('export-from-date').value;
+    const toDate = document.getElementById('export-to-date').value;
+    const line = document.getElementById('export-line').value;
+    const shift = document.getElementById('export-shift').value;
+    const exportType = document.getElementById('export-type')?.value || 'hourly';
+    
+    const url = new URL(exportDataUrl, window.location.origin);
+    url.searchParams.set('from_date', fromDate);
+    url.searchParams.set('to_date', toDate);
+    url.searchParams.set('line', line);
+    url.searchParams.set('shift', shift);
+    url.searchParams.set('export_type', exportType);
+    
+    window.location.href = url.toString();
+    
+    document.getElementById('export-data-modal').classList.remove('active');
+    showToast('Export started', 'success');
+}
+
+function handleAddProduct(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch(e.target.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            showToast('Product added successfully!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error('Failed to add product');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error adding product', 'error');
+    });
+}
+
+function handleEditProductClick(e) {
+    const button = e.target.closest('.edit-product-btn');
+    if (!button) return;
+    const productId = button.dataset.productId;
+    if (!productId) {
+        showToast('Invalid product selected for editing.', 'error');
+        return;
+    }
+    currentProductToEdit = productId;
+    // Use the correct get product URL from Django urls.py
+    // Should be /monitoring/product/<id>/
+    const url = `/monitoring/product/${productId}/`;
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to fetch product details');
+            return response.json();
+        })
+        .then(data => {
+            document.getElementById('edit-product-name').value = data.product_name;
+            document.getElementById('edit-product-description').value = data.description;
+            document.getElementById('edit-product-line').value = data.line_id;
+            document.getElementById('edit-product-qty-box').value = data.qty_per_box;
+            document.getElementById('edit-product-qty-hour').value = data.qty_per_hour;
+            document.getElementById('edit-product-modal').classList.add('active');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error loading product data', 'error');
+        });
+}
+
+function handleEditProduct(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    if (!currentProductToEdit) {
+        showToast('No product selected for update.', 'error');
+        return;
+    }
+    // Always use the correct edit product URL: /monitoring/product/<id>/edit/
+    const url = `/monitoring/product/${currentProductToEdit}/edit/`;
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            showToast('Product updated successfully!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error('Failed to update product');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating product', 'error');
+    });
+}
+
+function handleDeleteProductClick(e) {
+    const productId = e.target.closest('.delete-product-btn').dataset.productId;
+    const row = e.target.closest('tr');
+    const productName = row.querySelector('td[data-label="Product Name"]').textContent;
+    
+    currentItemToDelete = productId;
+    currentDeleteType = 'product';
+    
+    document.getElementById('delete-title').textContent = 'Delete Product?';
+    document.getElementById('delete-message').textContent = `Are you sure you want to delete "${productName}"? This action cannot be undone.`;
+    document.getElementById('delete-confirmation-modal').classList.add('active');
+}
+
+function handleAddSchedule(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch(e.target.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            showToast('Schedule added successfully!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error('Failed to add schedule');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error adding schedule', 'error');
+    });
+}
+
+function handleEditScheduleClick(e) {
+    const scheduleId = e.target.closest('.edit-schedule-btn').dataset.scheduleId;
+    currentScheduleToEdit = scheduleId;
+    
+    fetch(`${getScheduleUrl}${scheduleId}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit-schedule-product').value = data.product_id;
+            document.getElementById('edit-schedule-date').value = data.date_planned;
+            document.getElementById('edit-schedule-shift').value = data.shift;
+            document.getElementById('edit-schedule-qty').value = data.planned_qty;
+            document.getElementById('edit-schedule-status').value = data.status;
+            
+            document.getElementById('edit-schedule-modal').classList.add('active');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error loading schedule data', 'error');
+        });
+}
+
+function handleEditSchedule(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch(`${editScheduleUrl}${currentScheduleToEdit}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            showToast('Schedule updated successfully!', 'success');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            throw new Error('Failed to update schedule');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating schedule', 'error');
+    });
+}
+
+function handleDeleteScheduleClick(e) {
+    const scheduleId = e.target.closest('.delete-schedule-btn').dataset.scheduleId;
+    const row = e.target.closest('tr');
+    const product = row.querySelector('td[data-label="Product"]').textContent;
+    const date = row.querySelector('td[data-label="Date"]').textContent;
+    
+    currentItemToDelete = scheduleId;
+    currentDeleteType = 'schedule';
+    
+    document.getElementById('delete-title').textContent = 'Delete Schedule?';
+    document.getElementById('delete-message').textContent = `Are you sure you want to delete the schedule for "${product}" on ${date}? This action cannot be undone.`;
+    document.getElementById('delete-confirmation-modal').classList.add('active');
+}
+
+function handleConfirmDelete() {
+    if (!currentItemToDelete || !currentDeleteType) return;
+    let url;
+    if (currentDeleteType === 'product') {
+        url = `/monitoring/product/${currentItemToDelete}/delete/`;
+    } else if (currentDeleteType === 'schedule') {
+        url = `/monitoring/schedule/${currentItemToDelete}/delete/`;
+    } else {
+        showToast('Invalid delete type', 'error');
+        return;
+    }
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (response.ok) {
+            // Only show one toast after successful deletion
+            if (currentDeleteType === 'schedule') {
+                const row = document.querySelector(`.delete-schedule-btn[data-schedule-id="${currentItemToDelete}"]`)?.closest('tr');
+                if (row) row.remove();
+            } else if (currentDeleteType === 'product') {
+                const row = document.querySelector(`.delete-product-btn[data-product-id="${currentItemToDelete}"]`)?.closest('tr');
+                if (row) row.remove();
+            }
+            document.getElementById('delete-confirmation-modal').classList.remove('active');
+            filterSchedules();
+            filterProducts();
+            showToast(`${currentDeleteType === 'product' ? 'Product' : 'Schedule'} deleted successfully!`, 'success');
+        } else {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Failed to delete item');
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast(error.message || `Error deleting ${currentDeleteType}`, 'error');
+    });
+}
+
+function showToast(message, type = 'info', duration = 3000) {
+    const toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    let iconClass = 'fa-info-circle';
+    if (type === 'success') iconClass = 'fa-check-circle';
+    if (type === 'error') iconClass = 'fa-exclamation-circle';
+    if (type === 'warning') iconClass = 'fa-exclamation-triangle';
+    
+    toast.innerHTML = `
+        <div class="toast-content">
+            <i class="fas ${iconClass} toast-icon"></i>
+            <span>${message}</span>
+        </div>
+        <button class="close-btn">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+    
+    const closeBtn = toast.querySelector('.close-btn');
+    closeBtn.addEventListener('click', () => {
+        removeToast(toast);
+    });
+    
+    setTimeout(() => {
+        removeToast(toast);
+    }, duration);
+}
+
+function removeToast(toast) {
+    toast.classList.add('hiding');
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 300);
+}
+
+// Drag & drop for import products file input
+(function() {
+    var dropArea = document.getElementById('product-file-drop-area');
+    var fileInput = document.getElementById('product-file');
+    if (!dropArea || !fileInput) return;
+
+    dropArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropArea.classList.add('dragover');
+    });
+    dropArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+    });
+    dropArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            // Optionally trigger change event
+            var event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        }
+    });
+    // Optional: clicking the drop area triggers file input
+    dropArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    var fileNameLabel = document.createElement('div');
+    fileNameLabel.className = 'JO-file-input-filename';
+    fileNameLabel.style.marginTop = '8px';
+    fileNameLabel.style.fontSize = '0.95em';
+    fileNameLabel.style.color = 'var(--jo-text-light)';
+    dropArea.appendChild(fileNameLabel);
+
+    function updateFileName() {
+        if (fileInput.files && fileInput.files.length > 0) {
+            fileNameLabel.textContent = fileInput.files[0].name;
+        } else {
+            fileNameLabel.textContent = '';
+        }
+    }
+    fileInput.addEventListener('change', updateFileName);
+    // Also update on drop
+    dropArea.addEventListener('drop', updateFileName);
+})();
+
+// Drag & drop for import schedules file input
+(function() {
+    var dropArea = document.getElementById('schedule-file-drop-area');
+    var fileInput = document.getElementById('schedule-file');
+    if (!dropArea || !fileInput) return;
+
+    dropArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        dropArea.classList.add('dragover');
+    });
+    dropArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+    });
+    dropArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropArea.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            var event = new Event('change', { bubbles: true });
+            fileInput.dispatchEvent(event);
+        }
+    });
+    dropArea.addEventListener('click', function() {
+        fileInput.click();
+    });
+
+    var fileNameLabel = document.createElement('div');
+    fileNameLabel.className = 'JO-file-input-filename';
+    fileNameLabel.style.marginTop = '8px';
+    fileNameLabel.style.fontSize = '0.95em';
+    fileNameLabel.style.color = 'var(--jo-text-light)';
+    dropArea.appendChild(fileNameLabel);
+
+    function updateFileName() {
+        if (fileInput.files && fileInput.files.length > 0) {
+            fileNameLabel.textContent = fileInput.files[0].name;
+        } else {
+            fileNameLabel.textContent = '';
+        }
+    }
+    fileInput.addEventListener('change', updateFileName);
+    dropArea.addEventListener('drop', updateFileName);
+})();

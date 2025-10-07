@@ -29,7 +29,7 @@ class EmployeeGroupForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['employees'].queryset = Employee.objects.filter(is_active=True)
+        self.fields['employees'].queryset = Employee.objects.all()
         self.fields['employees'].widget = forms.CheckboxSelectMultiple()
 
     def save(self, commit=True):
