@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static "css/style-ver2.css" %}">
     <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+    <link rel="stylesheet" href="{% static 'css/stockdeclaration/stockdeclaration.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -100,6 +101,87 @@
                 <button type="button" class="btn btn-primary" onclick="goToStockDeclaration()">
                     <i class="fas fa-external-link-alt" style="margin-right: 6px;"></i>
                     Go to Stock Declaration
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Document Notification Modal -->
+    {% if user_has_document_due_dates %}
+    <div class="JO-modal" id="document-notification-modal">
+        <div class="JO-modal-content modal-lg">
+            <div class="JO-modal-header">
+                <h3>Document Due Date Notifications</h3>
+                <button class="JO-modal-close" onclick="closeDocumentNotificationModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="JO-modal-body">
+                
+                <div class="stock-notif-info-card">
+                    <p>
+                        <i class="fas fa-file-alt"></i>
+                        You have <strong>{{ document_notifications|length }}</strong> document(s) requiring your attention.
+                    </p>
+                </div>
+
+                
+                <div class="stock-notif-list-container">
+                    {% for notification in document_notifications %}
+                    <div class="stock-notif-card">
+
+                        <div class="stock-notif-content">
+
+                            <h4 class="stock-notif-title">
+                                {{ notification.title }}
+                            </h4>
+                            
+                            <p class="stock-notif-subtitle">
+                                <i class="fas fa-hashtag"></i>
+                                {{ notification.reference_number }}
+                            </p>
+                            
+                            <p class="stock-notif-subtitle" style="margin-top: 4px;">
+                                <i class="fas fa-folder"></i>
+                                {{ notification.category }}
+                            </p>
+                        </div>
+                        
+                        <!-- Urgency Badge -->
+                        <div class="stock-notif-time">
+                                {# Map days_until_due to badge class: expired/0 -> outofstock, 1 -> critical, 2 -> overstock, else default #}
+                                {% if notification.days_until_due < 0 or notification.days_until_due == 0 %}
+                                    <span class="stock-notif-badge stock-notif-badge-outofstock">
+                                        {{ notification.urgency }}
+                                    </span>
+                                {% elif notification.days_until_due == 1 %}
+                                    <span class="stock-notif-badge stock-notif-badge-critical">
+                                        {{ notification.urgency }}
+                                    </span>
+                                {% elif notification.days_until_due == 2 %}
+                                    <span class="stock-notif-badge stock-notif-badge-overstock">
+                                        {{ notification.urgency }}
+                                    </span>
+                                {% else %}
+                                    <span class="stock-notif-badge stock-notif-badge-default">
+                                        {{ notification.urgency }}
+                                    </span>
+                                {% endif %}
+                                
+                                <!-- Status Badge -->
+                                <span class="stock-notif-badge stock-notif-badge-quantity">
+                                    {{ notification.status }}
+                                </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-primary" onclick="goToDocumentNotification()">
+                    <i class="fas fa-external-link-alt" style="margin-right: 6px;"></i>
+                    Go to Document Notifications
                 </button>
             </div>
         </div>
@@ -269,6 +351,169 @@
         document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 closeStockNotificationModal();
+            }
+        });
+    </script>
+
+    <!-- Document Notification Modal Script -->
+    <script>
+        let documentNotificationShownOnce = false;  // Track if modal was shown in this session
+        
+        // Function to close the document modal
+        function closeDocumentNotificationModal() {
+            const modal = document.getElementById('document-notification-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+        }
+
+        // Function to redirect to Document Notification page
+        // Set a session flag so the document modal won't auto-open on the destination page
+        function goToDocumentNotification() {
+            try {
+                sessionStorage.setItem('suppress_document_notification_modal', '1');
+            } catch (e) {
+                // ignore storage errors
+            }
+            window.location.href = "{% url 'docunotification' %}";
+        }
+
+        // Function to render a single document notification card
+        function renderDocumentNotificationCard(notification) {
+            // Determine badge class based on urgency
+            let badgeClass = 'stock-notif-badge-default';
+            let iconClass = 'fa-calendar';
+            // Use days_until_due mapping for badge classes (expired/0 -> outofstock, 1 -> critical, 2 -> overstock)
+            if (typeof notification.days_until_due !== 'undefined') {
+                if (notification.days_until_due < 0 || notification.days_until_due === 0) {
+                    badgeClass = 'stock-notif-badge-outofstock';
+                    iconClass = 'fa-exclamation-circle';
+                } else if (notification.days_until_due === 1) {
+                    badgeClass = 'stock-notif-badge-critical';
+                    iconClass = 'fa-clock';
+                } else if (notification.days_until_due === 2) {
+                    badgeClass = 'stock-notif-badge-overstock';
+                    iconClass = 'fa-calendar-day';
+                }
+            }
+
+            return `
+                <div class="stock-notif-card">
+                    <div class="stock-notif-content">
+                        <h4 class="stock-notif-title">${notification.title}</h4>
+                        <p class="stock-notif-subtitle">
+                            <i class="fas fa-hashtag"></i>
+                            ${notification.reference_number}
+                        </p>
+                        <p class="stock-notif-subtitle" style="margin-top: 4px;">
+                            <i class="fas fa-folder"></i>
+                            ${notification.category}
+                        </p>
+                    </div>
+                    <div class="stock-notif-time">
+                        <span class="stock-notif-badge ${badgeClass}">
+                            <i class="fas ${iconClass}"></i>
+                            ${notification.urgency}
+                        </span>
+                        <span class="stock-notif-badge stock-notif-badge-quantity">
+                            ${notification.status}
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Function to update modal content with document notifications
+        function updateDocumentNotifications(notifications) {
+            const modal = document.getElementById('document-notification-modal');
+            if (!modal) return;
+
+            const infoCard = modal.querySelector('.stock-notif-info-card p');
+            const listContainer = modal.querySelector('.stock-notif-list-container');
+
+            if (!infoCard || !listContainer) return;
+
+            // Update info card count
+            infoCard.innerHTML = `
+                <i class="fas fa-file-alt"></i>
+                You have <strong>${notifications.length}</strong> document(s) requiring your attention.
+            `;
+
+            // Update notification list
+            listContainer.innerHTML = notifications.map(n => renderDocumentNotificationCard(n)).join('');
+
+            // Show modal if not already shown in this session and there are notifications
+            if (notifications.length > 0 && !documentNotificationShownOnce && !modal.classList.contains('active')) {
+                setTimeout(() => {
+                    modal.classList.add('active');
+                    documentNotificationShownOnce = true;
+                }, 600);  // Show after stock notification (300ms + 300ms delay)
+            }
+        }
+
+        // Function to fetch document notifications from API
+        async function fetchDocumentNotifications() {
+            try {
+                const response = await fetch("{% url 'document_notifications_api' %}");
+                if (!response.ok) {
+                    console.error('Failed to fetch document notifications:', response.status);
+                    return;
+                }
+                
+                const data = await response.json();
+                if (data.success && data.notifications) {
+                    updateDocumentNotifications(data.notifications);
+                }
+            } catch (error) {
+                console.error('Error fetching document notifications:', error);
+            }
+        }
+
+            // Initialize document notifications on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Do not auto-show the document modal if the user just clicked "Go to Document Notifications"
+            let suppress = false;
+            try {
+                suppress = sessionStorage.getItem('suppress_document_notification_modal') === '1';
+                if (suppress) {
+                    // clear the flag so it doesn't persist beyond the navigation
+                    sessionStorage.removeItem('suppress_document_notification_modal');
+                }
+            } catch (e) {
+                suppress = false;
+            }
+
+            // Initial fetch
+            {% if has_document_notifications %}
+            // Show modal immediately on first load if context processor found notifications and not suppressed
+            const modal = document.getElementById('document-notification-modal');
+            if (modal && !suppress) {
+                setTimeout(() => {
+                    modal.classList.add('active');
+                    documentNotificationShownOnce = true;
+                }, 600);  // Delay to show after stock notification
+            }
+            {% endif %}
+            
+            // Start polling immediately (will also act as initial fetch for dynamic updates)
+            fetchDocumentNotifications();
+            
+            // Poll every 5 minutes (300000 milliseconds)
+            setInterval(fetchDocumentNotifications, 300000);
+        });
+
+        // Close document modal when clicking outside of it
+        document.addEventListener('click', function(event) {
+            const modal = document.getElementById('document-notification-modal');
+            if (event.target === modal) {
+                closeDocumentNotificationModal();
+            }
+        });
+
+        // Close document modal on Escape key press
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeDocumentNotificationModal();
             }
         });
     </script>

@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'wip.apps.WipConfig',
     'qualitycontrol.apps.QualitycontrolConfig',
     'stockdeclaration.apps.StockdeclarationConfig',
+    'docunotification.apps.DocunotificationConfig',
 ]
 
 AUTH_USER_MODEL ='portalusers.users'
@@ -73,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'stockdeclaration.context_processors.stock_notifications',
+                'docunotification.context_processors.document_notifications',
             ],
         },
     },
@@ -139,3 +141,59 @@ MEDIA_ROOT = BASE_DIR / 'static/images'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'mis.repco.it@gmail.com'
+EMAIL_HOST_PASSWORD = 'piqghkngsohhzclg'
+DEFAULT_FROM_EMAIL = 'mis.repco.it@gmail.com'
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs/django.log',
+            'formatter': 'verbose',
+        },
+        'email_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs/email_notifications.log',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'docunotification.email': {
+            'handlers': ['email_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}

@@ -1949,3 +1949,8 @@
 .stock-notif-list-container::-webkit-scrollbar-thumb:hover {
     background: var(--jo-text-light);
 }
+
+.chart-filters {
+    display: flex !important;
+    gap: 12px;
+}

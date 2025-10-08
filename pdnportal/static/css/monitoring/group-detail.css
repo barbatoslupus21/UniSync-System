@@ -275,10 +275,10 @@
 }
 
 .FGD-chart-filters {
-    display: flex;
+    display: flex !important;
     gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
+    align-items: center !important;
+    flex-wrap: wrap !important;
 }
 
 .FGD-chart-container {
@@ -798,11 +798,6 @@
     animation-delay: 0.4s;
 }
 
-.FGD-chart-filters .JO-input,
-.FGD-chart-filters .JO-select {
-    min-width: 120px;
-}
-
 .FGD-date-filter {
     min-width: 140px;
     max-width: 200px;
@@ -835,7 +830,7 @@
 }
 .FGD-product-controls-row {
     display: flex;
-    flex-direction: row;
+    justify-content: space-between;
     gap: 8px;
     width: 100%;
     flex-wrap: wrap;

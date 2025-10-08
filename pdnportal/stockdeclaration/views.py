@@ -13,15 +13,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.db.models import Q
 
-# Create your views here.
 def stock_declaration_home(request):
-    # Get search query from GET parameters
     search_query = request.GET.get('search', '').strip()
     
-    # Get all stock declarations with related data
     stock_declarations_list = StockDeclaration.objects.select_related('created_by').prefetch_related('lines').all()
     
-    # Apply search filter if search query exists
     if search_query:
         from django.db.models import Q
         stock_declarations_list = stock_declarations_list.filter(

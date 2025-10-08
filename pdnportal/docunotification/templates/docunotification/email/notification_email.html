@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Notification - {{ urgency }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 28px;
+        }
+        .urgency-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .reminder { background-color: #fff3cd; color: #856404; }
+        .urgent { background-color: #f8d7da; color: #721c24; }
+        .due-today { background-color: #d4edda; color: #155724; }
+        .document-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .document-info h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 5px 0;
+            border-bottom: 1px dotted #ddd;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .info-value {
+            color: #333;
+        }
+        .description-box {
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .action-section {
+            background-color: #e9ecef;
+            border-radius: 5px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .due-date-highlight {
+            font-size: 18px;
+            font-weight: bold;
+            color: #dc3545;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 12px;
+        }
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status-active { background-color: #d4edda; color: #155724; }
+        .status-due-soon { background-color: #fff3cd; color: #856404; }
+        .status-expired { background-color: #f8d7da; color: #721c24; }
+        
+        @media only screen and (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 20px;
+            }
+            .info-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Document Notification</h1>
+            <div class="urgency-badge {% if days_before == 2 %}reminder{% elif days_before == 1 %}urgent{% else %}due-today{% endif %}">
+                {{ urgency }}
+            </div>
+        </div>
+
+        <div class="document-info">
+            <h3>Document Information</h3>
+            
+            <div class="info-row">
+                <span class="info-label">Reference Number:</span>
+                <span class="info-value"><strong>{{ document.reference_number }}</strong></span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Title:</span>
+                <span class="info-value">{{ document.title }}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Category:</span>
+                <span class="info-value">{{ document.category.name|default:"N/A" }}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Status:</span>
+                <span class="info-value">
+                    <span class="status-indicator status-{{ document.status }}">
+                        {{ document.get_status_display }}
+                    </span>
+                </span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Created By:</span>
+                <span class="info-value">{{ document.created_by.get_full_name|default:document.created_by.username }}</span>
+            </div>
+            
+            <div class="info-row">
+                <span class="info-label">Created Date:</span>
+                <span class="info-value">{{ document.created_date|date:"F d, Y" }}</span>
+            </div>
+        </div>
+
+        {% if document.description %}
+        <div class="description-box">
+            <h4>Description:</h4>
+            <p>{{ document.description }}</p>
+        </div>
+        {% endif %}
+
+        <div class="action-section">
+            <h3>Due Date Information</h3>
+            <div class="due-date-highlight">
+                Due Date: {{ document.due_date|date:"F d, Y" }}
+            </div>
+            
+            {% if days_before == 0 %}
+                <p style="color: #dc3545; font-weight: bold;">
+                    🚨 This document is <strong>DUE TODAY</strong>! Please take immediate action.
+                </p>
+            {% elif days_before == 1 %}
+                <p style="color: #fd7e14; font-weight: bold;">
+                    ⚠️ This document will be due <strong>TOMORROW</strong>. Please prepare accordingly.
+                </p>
+            {% else %}
+                <p style="color: #ffc107; font-weight: bold;">
+                    📅 This document will be due in <strong>{{ days_before }} days</strong>. Please prepare accordingly.
+                </p>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification from the <strong>UniSync - DocuWatcher</strong>.</p>
+            <hr style="border: none; border-top: 1px solid #ddd; margin: 15px 0;">
+            <p style="font-size: 11px; color: #999;">
+                If you believe you received this email in error, please contact the system administrator.<br>
+                This email was sent to ensure compliance with document management policies.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

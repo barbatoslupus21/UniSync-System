@@ -23,6 +23,7 @@ urlpatterns = [
     path('wip-inventory/', include('wip.urls')),
     path('quality-control/', include('qualitycontrol.urls')),
     path('stock-declaration/', include('stockdeclaration.urls')),
+    path('docu-notification/', include('docunotification.urls')),
 ]
 
 if settings.DEBUG:

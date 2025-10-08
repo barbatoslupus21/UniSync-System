@@ -1,0 +1,13 @@
+INFO 2025-10-08 12:30:50,636 scheduler 17920 23972 Starting document notification scheduler loop
+INFO 2025-10-08 12:30:50,636 scheduler 17920 7320 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-10-08 12:30:50,636 apps 17920 7320 Document notification scheduler initialized successfully
+INFO 2025-10-08 12:30:51,869 email_service 17920 7320 Found 1 documents for notification 2 days before due
+INFO 2025-10-08 12:30:51,884 email_service 17920 7320 Found 0 documents for notification 1 days before due
+INFO 2025-10-08 12:30:51,895 email_service 17920 7320 Found 0 documents for notification 0 days before due
+INFO 2025-10-08 12:31:09,201 scheduler 24736 26560 Starting document notification scheduler loop
+INFO 2025-10-08 12:31:09,201 scheduler 24736 2288 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-10-08 12:31:09,202 apps 24736 2288 Document notification scheduler initialized successfully
+INFO 2025-10-08 12:31:10,296 email_service 24736 2288 Found 1 documents for notification 2 days before due
+INFO 2025-10-08 12:31:13,848 email_service 24736 2288 Email sent successfully to zen.mis@repco.ph for document DOC-20251008-001
+INFO 2025-10-08 12:31:13,863 email_service 24736 2288 Notification batch complete for 2 days before due: {'total_documents': 1, 'total_emails_sent': 1, 'total_emails_failed': 0, 'documents_processed': 1}
+INFO 2025-10-08 12:31:13,865 send_document_notifications 24736 2288 Notification batch completed: {'total_documents': 1, 'total_emails_sent': 1, 'total_emails_failed': 0, 'documents_processed': 1}

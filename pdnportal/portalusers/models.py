@@ -77,6 +77,11 @@ class Users(AbstractUser):
     wip_checker = models.BooleanField(default=False)
     wip_facilitator = models.BooleanField(default=False)
 
+    # Document Notification Permission 
+    docunotification_user = models.BooleanField(default=False)
+    docunotification_requestor = models.BooleanField(default=False)
+    docunotification_admin = models.BooleanField(default=False)
+
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
 

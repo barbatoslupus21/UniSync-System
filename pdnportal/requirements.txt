@@ -108,3 +108,10 @@ wsproto==1.2.0
 xhtml2pdf==0.2.17
 yarl==1.17.1
 zopfli==0.2.3
+amqp==5.3.1
+billiard==4.2.2
+celery==5.5.3
+django-celery-beat==2.8.1
+kombu==5.5.4
+redis==5.1.1
+vine==5.1.0
