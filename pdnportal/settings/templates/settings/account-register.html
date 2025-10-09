@@ -150,6 +150,10 @@
                                             {% if user.ecis_user %}
                                             <span class="UM-permission-pill UM-ecis-pill">ECIS</span>
                                             {% endif %}
+
+                                            {% if user.docunotification_user %}
+                                            <span class="UM-permission-pill UM-docunotification-pill">DocuWatcher</span>
+                                            {% endif %}
                                         </div>
                                     </td>
                                     <td class="text-center" data-label="Status">
@@ -553,6 +557,33 @@
                         </div>
                     </div>
 
+                    <!-- Document Notification Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="docunotification-user" name="docunotification_user">
+                                <span class="UM-checkbox-label UM-category-label">Document Notification Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="docunotification-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="docunotification_role" value="user">
+                                    <span class="UM-radio-label">User</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="docunotification_role" value="admin">
+                                    <span class="UM-radio-label">Admin</span>
+                                </label>
+                            </div>
+                            <div class="UM-validation-message" id="docunotification-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
+                                Please select either User or Admin role
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- User Approvers Section -->
@@ -943,6 +974,33 @@
                                     <span class="UM-radio-label">Purchasing</span>
                                 </label>
 
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Document Notification Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-docunotification-user" name="docunotification_user">
+                                <span class="UM-checkbox-label UM-category-label">Document Notification Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-docunotification-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="docunotification_role" value="user">
+                                    <span class="UM-radio-label">User</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="docunotification_role" value="admin">
+                                    <span class="UM-radio-label">Admin</span>
+                                </label>
+                            </div>
+                            <div class="UM-validation-message" id="edit-docunotification-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
+                                Please select either User or Admin role
                             </div>
                         </div>
                     </div>

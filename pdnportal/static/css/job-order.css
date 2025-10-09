@@ -1952,5 +1952,7 @@
 
 .chart-filters {
     display: flex !important;
-    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
 }

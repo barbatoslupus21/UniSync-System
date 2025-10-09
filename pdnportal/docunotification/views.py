@@ -85,8 +85,11 @@ def docunotification_view(request):
             document = get_object_or_404(DocumentNotification, id=request.POST['document_id'], created_by=request.user)
             form = DocumentNotificationForm(request.POST, request.FILES, instance=document, user=request.user if request.user.is_authenticated else None)
             if form.is_valid():
-                form.save()
-                return JsonResponse({'success': True, 'message': 'Document updated successfully!'})
+                try:
+                    form.save()
+                    return JsonResponse({'success': True, 'message': 'Document updated successfully!'})
+                except Exception as e:
+                    return JsonResponse({'success': False, 'message': f'Error updating document: {str(e)}'})
             else:
                 errors = {}
                 for field, field_errors in form.errors.items():
@@ -95,8 +98,11 @@ def docunotification_view(request):
         else:  # Create operation
             form = DocumentNotificationForm(request.POST, request.FILES, user=request.user if request.user.is_authenticated else None)
             if form.is_valid():
-                form.save()
-                return JsonResponse({'success': True, 'message': 'Document created successfully!'})
+                try:
+                    form.save()
+                    return JsonResponse({'success': True, 'message': 'Document created successfully!'})
+                except Exception as e:
+                    return JsonResponse({'success': False, 'message': f'Error creating document: {str(e)}'})
             else:
                 errors = {}
                 for field, field_errors in form.errors.items():
@@ -249,11 +255,21 @@ def document_notifications_api(request):
             today + timedelta(days=2),  # Due in 2 days
         ]
         
+        # Import the confirmation model
+        from .models import DocumentNotificationConfirmation
+        
+        # Get document IDs that the user has already confirmed
+        confirmed_document_ids = DocumentNotificationConfirmation.objects.filter(
+            user=request.user
+        ).values_list('document_id', flat=True)
+        
         recipients = NotificationRecipient.objects.filter(
             user=request.user,
             notify_via_system=True,
             document__due_date__in=target_dates,
             document__is_active=True
+        ).exclude(
+            document_id__in=confirmed_document_ids
         ).select_related('document', 'document__category', 'document__created_by').distinct()
         
         for recipient in recipients:
@@ -298,3 +314,64 @@ def document_notifications_api(request):
         'notifications': notifications,
         'count': len(notifications)
     })
+
+
+def confirm_document_notification(request):
+    """
+    API endpoint to mark document notifications as confirmed/seen by the user.
+    Once confirmed, the document will not appear in the notification modal again for this user.
+    """
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'POST method required'}, status=405)
+    
+    if not request.user.is_authenticated:
+        return JsonResponse({'success': False, 'error': 'Authentication required'}, status=401)
+    
+    try:
+        import json
+        data = json.loads(request.body)
+        document_ids = data.get('document_ids', [])
+        
+        if not document_ids:
+            return JsonResponse({'success': False, 'error': 'No document IDs provided'}, status=400)
+        
+        # Import the confirmation model
+        from .models import DocumentNotificationConfirmation
+        
+        confirmed_count = 0
+        errors = []
+        
+        for doc_id in document_ids:
+            try:
+                # Get the document
+                document = DocumentNotification.objects.get(id=doc_id, is_active=True)
+                
+                # Create or update confirmation
+                confirmation, created = DocumentNotificationConfirmation.objects.get_or_create(
+                    document=document,
+                    user=request.user
+                )
+                
+                if created:
+                    confirmed_count += 1
+                
+            except DocumentNotification.DoesNotExist:
+                errors.append(f"Document {doc_id} not found")
+            except Exception as e:
+                errors.append(f"Error confirming document {doc_id}: {str(e)}")
+        
+        response_data = {
+            'success': True,
+            'confirmed_count': confirmed_count,
+            'message': f'Successfully confirmed {confirmed_count} document(s)'
+        }
+        
+        if errors:
+            response_data['errors'] = errors
+        
+        return JsonResponse(response_data)
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)

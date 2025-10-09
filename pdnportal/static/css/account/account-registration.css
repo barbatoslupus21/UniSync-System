@@ -1308,6 +1308,11 @@
     color: var(--um-stock-color, #f57f17);
 }
 
+.UM-docunotification-pill {
+    background-color: var(--um-docu-light, #e8f5e9);
+    color: var(--um-docu-color, #2e7d32);
+}
+
 /* Status */
 .UM-status {
     display: inline-flex;

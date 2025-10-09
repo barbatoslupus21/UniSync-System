@@ -1,4 +1,5 @@
 from django import forms
+from django.utils import timezone
 from .models import DocumentNotification, DocumentCategory, NotificationRecipient
 
 class DocumentNotificationForm(forms.ModelForm):
@@ -37,7 +38,6 @@ class DocumentNotificationForm(forms.ModelForm):
         notify_email = cleaned.get('notify_via_email')
         email = cleaned.get('email_address')
 
-        # If send-via-email is checked, enforce that an email address is provided
         if notify_email and not email:
             self.add_error('email_address', 'Notification Email Address is required when Send via Email is checked.')
 
@@ -91,20 +91,16 @@ class DocumentNotificationForm(forms.ModelForm):
         if self.user and self.user.is_authenticated:
             instance.created_by = self.user
         
-        # Auto-generate reference number
         if not instance.reference_number:
             from django.utils import timezone
             today = timezone.now().date()
-            # Format: DOC-YYYYMMDD-XXX (where XXX is sequential number)
             date_str = today.strftime('%Y%m%d')
             base_ref = f'DOC-{date_str}-'
             
-            # Find the next available number for today
             existing_refs = DocumentNotification.objects.filter(
                 reference_number__startswith=base_ref
             ).values_list('reference_number', flat=True)
             
-            # Extract numbers and find the max
             numbers = []
             for ref in existing_refs:
                 try:
@@ -118,9 +114,6 @@ class DocumentNotificationForm(forms.ModelForm):
         
         if commit:
             instance.save()
-            
-            # Create notification recipient if email settings are provided
-            # Update or create notification recipient for this document
             try:
                 nr_defaults = {
                     'user': self.user if self.user and self.user.is_authenticated else None,
@@ -135,8 +128,8 @@ class DocumentNotificationForm(forms.ModelForm):
                     user=nr_defaults['user'],
                     defaults=nr_defaults
                 )
+                
             except Exception:
-                # Fallback: ensure saving doesn't break if recipient creation fails
                 pass
         
         return instance

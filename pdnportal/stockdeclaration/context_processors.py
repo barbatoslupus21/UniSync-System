@@ -19,19 +19,16 @@ def stock_notifications(request):
         user_line = request.user.line
         today = timezone.now().date()
         
-        # Query for stock declarations that meet the conditions
-        # Condition 1: Created today OR
-        # Condition 2: received_by_production is False
-        # AND the user's line is in the lines field
+        # Query for stock declarations that meet the conditions.
+        # To match the API behavior, only include declarations created today AND not yet received.
         stock_declarations = StockDeclaration.objects.filter(
-            lines=user_line
-        ).filter(
-            models.Q(created_at__date=today) | models.Q(received_by_production=False)
+            lines=user_line,
+            created_at__date=today,
+            received_by_production=False
         ).distinct().select_related('created_by').prefetch_related('lines')
-        
-        user_has_stock_declarations = StockDeclaration.objects.filter(
-            lines=user_line
-        ).filter(created_at__date=today, received_by_production=False).distinct().select_related('created_by').prefetch_related('lines').exclude(status='cancelled')
+
+        # Flag indicating whether there are any declarations to show (consistent with API)
+        user_has_stock_declarations = stock_declarations.exists()
 
         # Convert to list of dictionaries for template use
         for declaration in stock_declarations:
@@ -50,7 +47,7 @@ def stock_notifications(request):
 
         # Sort notifications so that 'out_of_stock' come first, then 'critical', then 'overstock'
         order_map = {'out_of_stock': 0, 'critical': 1, 'overstock': 2}
-        notifications.sort(key=lambda n: (order_map.get(n.get('stock_type_value'), 99), n.get('created_at')))
+        notifications.sort(key=lambda n: (order_map.get(n['stock_type_value'], 99), n['created_at']))
     
     return {
         'stock_notifications': notifications,

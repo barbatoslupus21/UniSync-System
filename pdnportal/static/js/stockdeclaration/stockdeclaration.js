@@ -532,6 +532,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Update In Transit Notes Modal functionality
+    const updateIntransitNotesModal = document.getElementById('update-intransit-notes-modal');
+    const updateIntransitNotesModalClose = document.getElementById('update-intransit-notes-modal-close');
+    const updateIntransitNotesCancel = document.getElementById('update-intransit-notes-cancel');
+
+    document.addEventListener('click', function(event) {
+        const updateIntransitBtn = event.target.closest('.add-intransit-declaration-btn');
+        if (updateIntransitBtn) {
+            const declarationId = updateIntransitBtn.getAttribute('data-declaration-id');
+            showUpdateIntransitNotesModal(declarationId);
+        }
+    });
+
+    if (updateIntransitNotesModalClose) {
+        updateIntransitNotesModalClose.addEventListener('click', function() {
+            updateIntransitNotesModal.classList.remove('active');
+        });
+    }
+
+    if (updateIntransitNotesCancel) {
+        updateIntransitNotesCancel.addEventListener('click', function() {
+            updateIntransitNotesModal.classList.remove('active');
+        });
+    }
+
     // Function to view stock declaration details
     function viewStockDeclaration(declarationId) {
         // Get the data from the table row
@@ -742,6 +767,57 @@ document.addEventListener('DOMContentLoaded', function() {
         intransitStockDeclarationModal.classList.add('active');
     }
 
+    // Function to show update in transit notes modal
+    function showUpdateIntransitNotesModal(declarationId) {
+        // Get the data from the table row
+        const row = document.querySelector(`button[data-declaration-id="${declarationId}"]`).closest('tr');
+
+        document.getElementById('update-intransit-notes-declaration-id').value = declarationId;
+        document.getElementById('update-intransit-notes-control-number').textContent = row.cells[0].textContent;
+        document.getElementById('update-intransit-notes-product-number').textContent = row.getAttribute('data-product-number');
+        document.getElementById('update-intransit-notes-product-name').textContent = row.cells[3].textContent;
+        document.getElementById('update-intransit-notes-quantity').textContent = row.getAttribute('data-quantity') || 'N/A';
+        document.getElementById('update-intransit-notes-stock-type').textContent = row.cells[4].textContent;
+        document.getElementById('update-intransit-notes-lines').innerHTML = row.cells[5].innerHTML;
+        document.getElementById('update-intransit-notes-created-by').textContent = row.getAttribute('data-created-by') || 'N/A';
+
+        // Update date display based on whether record has been updated
+        const isUpdated = row.getAttribute('data-is-updated') === 'true';
+        const dateLabelElement = document.getElementById('update-intransit-notes-date-label');
+        const dateValueElement = document.getElementById('update-intransit-notes-date-value');
+
+        if (isUpdated) {
+            dateLabelElement.textContent = 'Updated:';
+            dateValueElement.textContent = row.getAttribute('data-updated-at');
+        } else {
+            dateLabelElement.textContent = 'Declared:';
+            dateValueElement.textContent = row.getAttribute('data-created-at');
+        }
+
+        // Update status display
+        const statusElement = document.getElementById('update-intransit-notes-status');
+        const status = row.getAttribute('data-status');
+        if (status === 'arrived') {
+            statusElement.textContent = 'Arrived';
+            statusElement.className = 'JO-status JO-status-approved';
+        } else if (status === 'cancelled') {
+            statusElement.textContent = 'Cancelled';
+            statusElement.className = 'JO-status JO-status-cancelled';
+        } else if (status === 'filed') {
+            statusElement.textContent = 'Filed';
+            statusElement.className = 'JO-status JO-status-filed';
+        } else {
+            statusElement.textContent = 'In Transit';
+            statusElement.className = 'JO-status JO-status-pending';
+        }
+
+        // Pre-populate the notes field with existing in-transit details
+        const existingNotes = row.getAttribute('data-in-transit') || '';
+        document.getElementById('update-intransit-notes').value = existingNotes;
+
+        updateIntransitNotesModal.classList.add('active');
+    }
+
     // Edit form submission
     const editForm = document.getElementById('edit-stock-declaration-form');
     if (editForm) {
@@ -828,6 +904,51 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 console.error('Error:', error);
                 showToast('An error occurred while updating the declaration', 'error');
+            });
+        });
+    }
+
+    // Update In Transit Notes form submission
+    const updateIntransitNotesForm = document.getElementById('update-intransit-notes-form');
+    if (updateIntransitNotesForm) {
+        updateIntransitNotesForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const declarationId = document.getElementById('update-intransit-notes-declaration-id').value;
+            const formData = new FormData(updateIntransitNotesForm);
+
+            // Validate notes
+            const notes = document.getElementById('update-intransit-notes').value.trim();
+            if (!notes) {
+                showToast('Please enter in transit notes', 'error');
+                document.getElementById('update-intransit-notes').focus();
+                return;
+            }
+
+            // Make AJAX call to update in transit notes
+            fetch(`/stock-declaration/update-intransit-notes/${declarationId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    updateIntransitNotesModal.classList.remove('active');
+                    // Reload the page to reflect changes
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while updating the in transit notes', 'error');
             });
         });
     }

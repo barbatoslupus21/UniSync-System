@@ -429,17 +429,6 @@
     color: var(--jo-red);
 }
 
-.JO-search-input {
-    border: 1px solid var(--jo-border);
-    border-radius: 6px;
-    padding: 8px 14px 8px 36px;
-    font-size: 1rem;
-    color: var(--jo-text);
-    background: var(--jo-card-bg) url('data:image/svg+xml;utf8,<svg fill="%236c757d" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242 1.106a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>') no-repeat 10px center/16px 16px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    box-shadow: none;
-}
-
 .JO-search-input:focus {
     border-color: var(--jo-primary);
     outline: none;
@@ -597,6 +586,23 @@
     flex: 0 1 auto;
     min-width: 120px;
 }
+
+.JO-select {
+    flex-wrap: wrap !important;
+    padding: 11px 12px !important;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+    transition: var(--jo-transition);
+}
+
+.JO-select:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+}
+
 @media (max-width: 800px) {
     .FGD-product-actions-row {
         flex-direction: row !important;
@@ -816,7 +822,7 @@
 /* --- Product Management Actions Two-Row Layout --- */
 .FGD-product-actions-col {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
 }
 .FGD-product-search-row {
@@ -833,7 +839,6 @@
     justify-content: space-between;
     gap: 8px;
     width: 100%;
-    flex-wrap: wrap;
 }
 .FGD-product-controls-row > * {
     flex: 0 1 auto;

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField, Value
 
 def stock_declaration_home(request):
     search_query = request.GET.get('search', '').strip()
@@ -19,7 +19,6 @@ def stock_declaration_home(request):
     stock_declarations_list = StockDeclaration.objects.select_related('created_by').prefetch_related('lines').all()
     
     if search_query:
-        from django.db.models import Q
         stock_declarations_list = stock_declarations_list.filter(
             Q(control_number__icontains=search_query) |
             Q(product_number__icontains=search_query) |
@@ -30,15 +29,26 @@ def stock_declaration_home(request):
             Q(lines__line_name__icontains=search_query)
         ).distinct()
     
+    # Ordering: if the current user is in purchasing, show 'filed' first then 'in_transit'
+    if getattr(request.user, 'stock_declaration_purchasing', False):
+        status_priority = Case(
+            When(status='filed', then=Value(0)),
+            When(status='in_transit', then=Value(1)),
+            default=Value(2),
+            output_field=IntegerField()
+        )
+        stock_declarations_list = stock_declarations_list.annotate(_status_order=status_priority).order_by('_status_order', '-created_at')
+    else:
+        # Default ordering: newest first
+        stock_declarations_list = stock_declarations_list.order_by('-created_at')
+
     # Pagination
-    paginator = Paginator(stock_declarations_list, 10)  # Show 10 declarations per page
+    paginator = Paginator(stock_declarations_list, 10)
     page_number = request.GET.get('page')
     stock_declarations = paginator.get_page(page_number)
     
-    # Get all available lines for the form
     lines = Line.objects.all()
     
-    # Handle form submission
     if request.method == 'POST':
         form = StockDeclarationForm(request.POST, user=request.user)
         if form.is_valid():
@@ -187,6 +197,42 @@ def mark_intransit_stock_declaration(request, declaration_id):
         return JsonResponse({
             'success': False,
             'message': f'Error updating declaration: {str(e)}'
+        }, status=500)
+
+
+@login_required
+@require_POST
+def update_intransit_notes(request, declaration_id):
+    """Update in transit notes for a stock declaration"""
+    declaration = get_object_or_404(StockDeclaration, id=declaration_id)
+
+    # Check if declaration is in transit status
+    if declaration.status != 'in_transit':
+        return JsonResponse({
+            'success': False,
+            'message': f'Only declarations with "In Transit" status can have their notes updated.'
+        }, status=400)
+
+    # Get in transit notes
+    intransit_notes = request.POST.get('intransit_notes', '').strip()
+    if not intransit_notes:
+        return JsonResponse({
+            'success': False,
+            'message': 'In transit notes are required.'
+        }, status=400)
+
+    try:
+        declaration.in_transit = intransit_notes
+        declaration.save()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'In transit notes for {declaration.control_number} have been updated successfully.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error updating in transit notes: {str(e)}'
         }, status=500)
 
 
@@ -700,7 +746,7 @@ def stock_notifications_api(request):
         
         # Sort notifications by stock type priority
         order_map = {'out_of_stock': 0, 'critical': 1, 'overstock': 2}
-        notifications.sort(key=lambda n: (order_map.get(n.get('stock_type_value'), 99), n.get('created_at')))
+        notifications.sort(key=lambda n: (order_map.get(n['stock_type_value'], 99), n['created_at']))
     
     return JsonResponse({
         'success': True,

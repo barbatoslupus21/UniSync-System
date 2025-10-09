@@ -113,18 +113,25 @@
         <div class="FGD-tab-content active" id="products-tab">
             <div class="JO-card">
                 <div class="JO-card-header">
-                    <h2>Product Management</h2>
-                    <div class="FGD-product-actions-col">
-                        <div class="FGD-product-search-row">
-                            <input type="text" id="products-search" class="JO-search-input" placeholder="Search products...">
-                        </div>
-                        <div class="FGD-product-controls-row">
-                            <select id="products-line-filter" class="JO-select JO-product-line-filter">
+                    <h2>Schedule Management</h2>
+                    <div class="FGD-schedule-actions-col">
+                        
+                        <div class="FGD-schedule-filters-row">
+                            <div class="JO-search-container">
+                                <input type="text" id="products-search" class="JO-search-input" placeholder="Search products..." >
+                                <button class="JO-search-button">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+
+                            <select id="products-line-filter" class="JO-select">
                                 <option value="">All Lines</option>
                                 {% for line in available_lines %}
                                 <option value="{{ line.line_name }}">{{ line.line_name }}</option>
                                 {% endfor %}
                             </select>
+                        </div>
+                        <div class="FGD-schedule-buttons-row">
                             <button id="import-products-btn" class="JO-button JO-secondary-button">
                                 <i class="fas fa-upload"></i> Import
                             </button>

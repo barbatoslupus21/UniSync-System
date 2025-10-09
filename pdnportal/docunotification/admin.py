@@ -9,7 +9,8 @@ from .models import (
     NotificationRecipient,
     NotificationHistory,
     ReminderStage,
-    DocumentRenewal
+    DocumentRenewal,
+    DocumentNotificationConfirmation
 )
 
 @admin.register(DocumentCategory)
@@ -566,6 +567,52 @@ class DocumentRenewalAdmin(admin.ModelAdmin):
             )
         return '-'
     new_document_link.short_description = 'New Document'
+
+@admin.register(DocumentNotificationConfirmation)
+class DocumentNotificationConfirmationAdmin(admin.ModelAdmin):
+    list_display = [
+        'document_ref',
+        'user_name',
+        'confirmed_at'
+    ]
+    list_filter = [
+        'confirmed_at',
+        'document__status',
+        'document__category'
+    ]
+    search_fields = [
+        'document__reference_number',
+        'document__title',
+        'user__username',
+        'user__first_name',
+        'user__last_name'
+    ]
+    readonly_fields = ['document', 'user', 'confirmed_at']
+    date_hierarchy = 'confirmed_at'
+    
+    def document_ref(self, obj):
+        return format_html(
+            '<a href="{}">{}</a>',
+            reverse('admin:docunotification_documentnotification_change', args=[obj.document.id]),
+            obj.document.reference_number
+        )
+    document_ref.short_description = 'Document'
+    
+    def user_name(self, obj):
+        if hasattr(obj.user, 'get_full_name'):
+            full_name = obj.user.get_full_name()
+            if full_name:
+                return full_name
+        return obj.user.username
+    user_name.short_description = 'User'
+    
+    def has_add_permission(self, request):
+        # Prevent manual creation of confirmations through admin
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        # Prevent editing confirmations through admin
+        return False
 
 admin.site.site_header = "UniSync Document Notification Administration"
 admin.site.site_title = "UniSync Admin"

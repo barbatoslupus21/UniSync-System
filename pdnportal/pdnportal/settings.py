@@ -23,7 +23,6 @@ INSTALLED_APPS = [
     'joborder.apps.JoborderConfig',
     'notification.apps.NotificationConfig',
     'manhours.apps.ManhoursConfig',
-    'naganuma.apps.NaganumaConfig',
     'monitoring.apps.MonitoringConfig',
     'settings.apps.SettingsConfig',
     'chat.apps.ChatConfig',

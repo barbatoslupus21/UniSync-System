@@ -260,6 +260,17 @@ def create_user(request):
                 elif stock_declaration_role == 'purchasing':
                     user.stock_declaration_purchasing = True
 
+            # Document Notification permissions
+            docunotification_user = request.POST.get('docunotification_user') == 'on'
+            user.docunotification_user = docunotification_user
+
+            if docunotification_user:
+                docunotification_role = request.POST.get('docunotification_role')
+                if docunotification_role == 'user':
+                    user.docunotification_requestor = True
+                elif docunotification_role == 'admin':
+                    user.docunotification_admin = True
+
             user.set_password(password)
             user.save()
 
@@ -451,6 +462,17 @@ def edit_user(request, user_id):
                 elif stock_declaration_role == 'purchasing':
                     user.stock_declaration_purchasing = True
 
+            # Document Notification permissions
+            docunotification_user = request.POST.get('docunotification_user') == 'on'
+            user.docunotification_user = docunotification_user
+
+            if docunotification_user:
+                docunotification_role = request.POST.get('docunotification_role')
+                if docunotification_role == 'user':
+                    user.docunotification_requestor = True
+                elif docunotification_role == 'admin':
+                    user.docunotification_admin = True
+
             user.save()
 
             UserApprovers.objects.filter(user=user).delete()
@@ -562,6 +584,13 @@ def get_user_data(request, user_id):
         elif user.stock_declaration_purchasing:
             stock_declaration_role = 'purchasing'
 
+        # Determine Document Notification role
+        docunotification_role = None
+        if user.docunotification_requestor:
+            docunotification_role = 'user'
+        elif user.docunotification_admin:
+            docunotification_role = 'admin'
+
         user_data = {
             'id': user.id,
             'id_number': user.id_number,
@@ -597,6 +626,10 @@ def get_user_data(request, user_id):
             'stock_declaration_production': user.stock_declaration_production,
             'stock_declaration_warehouse': user.stock_declaration_warehouse,
             'stock_declaration_purchasing': user.stock_declaration_purchasing,
+            'docunotification_user': user.docunotification_user,
+            'docunotification_role': docunotification_role,
+            'docunotification_requestor': user.docunotification_requestor,
+            'docunotification_admin': user.docunotification_admin,
             'approvers': approvers_data
         }
 

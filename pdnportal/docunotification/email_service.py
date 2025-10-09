@@ -24,6 +24,7 @@ class DocumentNotificationEmailService:
     def get_documents_for_notification(self, days_before: int) -> List[DocumentNotification]:
         """
         Get documents that need notification based on days before due date.
+        Only returns documents where the notification has NOT been sent yet.
         
         Args:
             days_before (int): Number of days before due date (2, 1, or 0)
@@ -33,10 +34,23 @@ class DocumentNotificationEmailService:
         """
         target_date = date.today() + timedelta(days=days_before)
         
+        # Build filter to check if notification already sent for this stage
+        filters = {
+            'due_date': target_date,
+            'is_active': True,
+            'status__in': ['active', 'due_soon']
+        }
+        
+        # Add tracking field filter to avoid duplicate sends
+        if days_before == 2:
+            filters['notification_sent_2days'] = False
+        elif days_before == 1:
+            filters['notification_sent_1day'] = False
+        else:  # days_before == 0
+            filters['notification_sent_duedate'] = False
+        
         documents = DocumentNotification.objects.filter(
-            due_date=target_date,
-            is_active=True,
-            status__in=['active', 'due_soon']
+            **filters
         ).select_related('created_by', 'category').prefetch_related('recipients')
         
         logger.info(f"Found {documents.count()} documents for notification {days_before} days before due")
@@ -235,7 +249,21 @@ This is an automated notification from the PDN Portal Document Notification Syst
                 # Update document notification tracking
                 document.last_notification_sent = timezone.now()
                 document.notification_count += 1
-                document.save(update_fields=['last_notification_sent', 'notification_count'])
+                
+                # Mark the appropriate notification stage as sent
+                update_fields = ['last_notification_sent', 'notification_count']
+                
+                if days_before == 2:
+                    document.notification_sent_2days = True
+                    update_fields.append('notification_sent_2days')
+                elif days_before == 1:
+                    document.notification_sent_1day = True
+                    update_fields.append('notification_sent_1day')
+                else:  # days_before == 0
+                    document.notification_sent_duedate = True
+                    update_fields.append('notification_sent_duedate')
+                
+                document.save(update_fields=update_fields)
                 
                 stats['documents_processed'] += 1
         

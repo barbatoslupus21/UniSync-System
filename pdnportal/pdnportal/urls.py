@@ -11,7 +11,6 @@ urlpatterns = [
     path('joborder/', include('joborder.urls')),
     path('notification/', include('notification.urls')),
     path('manhours/', include('manhours.urls')),
-    path('kanban/', include('naganuma.urls')),
     path('monitoring/', include('monitoring.urls')),
     path('settings/', include('settings.urls')),
     path('material/', include('materialrequest.urls')),

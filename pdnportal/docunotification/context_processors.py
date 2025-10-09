@@ -1,39 +1,39 @@
 from django.utils import timezone
 from datetime import timedelta
-from .models import DocumentNotification, NotificationRecipient
+from .models import DocumentNotification, NotificationRecipient, DocumentNotificationConfirmation
 
 
 def document_notifications(request):
-    """
-    Context processor to check for document notifications that need user attention.
-    Returns notifications for documents that are:
-    - Due today, in 1 day, or 2 days
-    - User is a recipient with notify_via_system=True
-    """
+
     notifications = []
     user_has_document_due_dates = False
     
-    # Only check for authenticated users
     if request.user.is_authenticated:
         today = timezone.now().date()
         
-        # Calculate date range: today, tomorrow, and day after tomorrow
         target_dates = [
-            today,  # Due today
-            today + timedelta(days=1),  # Due in 1 day
-            today + timedelta(days=2),  # Due in 2 days
+            today,
+            today + timedelta(days=1), 
+            today + timedelta(days=2),
         ]
+        
+        confirmed_document_ids = DocumentNotificationConfirmation.objects.filter(
+            user=request.user
+        ).values_list('document_id', flat=True)
         
         # Query for document notifications where:
         # 1. User is a recipient
         # 2. notify_via_system is True
         # 3. Due date is within target dates
         # 4. Document is active
+        # 5. User has not confirmed the notification
         recipients = NotificationRecipient.objects.filter(
             user=request.user,
             notify_via_system=True,
             document__due_date__in=target_dates,
             document__is_active=True
+        ).exclude(
+            document_id__in=confirmed_document_ids
         ).select_related('document', 'document__category', 'document__created_by').distinct()
         
         user_has_document_due_dates = recipients.exists()
@@ -74,7 +74,6 @@ def document_notifications(request):
             }
             notifications.append(notification_data)
         
-        # Sort notifications by urgency (due today first, then tomorrow, then 2 days)
         notifications.sort(key=lambda n: n['days_until_due'])
     
     return {

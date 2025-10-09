@@ -48,6 +48,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const editQualityControlRoles = document.getElementById('edit-quality-control-roles');
     const editStockDeclarationUser = document.getElementById('edit-stock-declaration-user');
     const editStockDeclarationRoles = document.getElementById('edit-stock-declaration-roles');
+    const docunotificationUser = document.getElementById('docunotification-user');
+    const docunotificationRoles = document.getElementById('docunotification-roles');
+    const docunotificationRoleValidation = document.getElementById('docunotification-role-validation');
+    const editDocunotificationUser = document.getElementById('edit-docunotification-user');
+    const editDocunotificationRoles = document.getElementById('edit-docunotification-roles');
+    const editDocunotificationRoleValidation = document.getElementById('edit-docunotification-role-validation');
 
     // Password toggle - Add form
     const passwordField = document.getElementById('password');
@@ -382,6 +388,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Document Notification user checkbox
+    if (docunotificationUser) {
+        // Set initial state
+        if (docunotificationUser.checked && docunotificationRoles) {
+            docunotificationRoles.style.display = 'block';
+        }
+
+        docunotificationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, docunotificationRoles);
+
+            // Reset radio buttons and validation message when unchecked
+            if (!this.checked) {
+                const radioButtons = docunotificationRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+                if (docunotificationRoleValidation) {
+                    docunotificationRoleValidation.style.display = 'none';
+                }
+            }
+        });
+
+        // Add event listeners to Document Notification role radio buttons
+        const docunotificationRoleRadios = docunotificationRoles.querySelectorAll('input[type="radio"]');
+        docunotificationRoleRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (docunotificationRoleValidation) {
+                    docunotificationRoleValidation.style.display = 'none';
+                }
+            });
+        });
+    }
+
     // Toggle subpermissions when main permission checkbox is clicked - Edit form
     if (editJobOrderUser) {
         editJobOrderUser.addEventListener('change', function() {
@@ -530,6 +569,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Document Notification user checkbox for edit form
+    if (editDocunotificationUser) {
+        // Set initial state
+        if (editDocunotificationUser.checked && editDocunotificationRoles) {
+            editDocunotificationRoles.style.display = 'block';
+        }
+
+        editDocunotificationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editDocunotificationRoles);
+
+            // Reset radio buttons and validation message when unchecked
+            if (!this.checked) {
+                const radioButtons = editDocunotificationRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+                if (editDocunotificationRoleValidation) {
+                    editDocunotificationRoleValidation.style.display = 'none';
+                }
+            }
+        });
+
+        // Add event listeners to Document Notification role radio buttons
+        const editDocunotificationRoleRadios = editDocunotificationRoles.querySelectorAll('input[type="radio"]');
+        editDocunotificationRoleRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (editDocunotificationRoleValidation) {
+                    editDocunotificationRoleValidation.style.display = 'none';
+                }
+            });
+        });
+    }
+
     // Delete user event listeners - using event delegation for dynamically added rows
     document.addEventListener('click', function(e) {
         const deleteButton = e.target.closest('.UM-delete-user');
@@ -613,6 +685,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Check if Document Notification user is checked but no role is selected
+            if (docunotificationUser && docunotificationUser.checked) {
+                const docunotificationRoleRadios = docunotificationRoles.querySelectorAll('input[type="radio"]:checked');
+                if (docunotificationRoleRadios.length === 0) {
+                    e.preventDefault();
+                    if (docunotificationRoleValidation) {
+                        docunotificationRoleValidation.style.display = 'block';
+                    }
+                    // Scroll to the validation message if previous validations didn't fail
+                    if (isValid) {
+                        docunotificationRoles.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    isValid = false;
+                }
+            }
+
             return isValid;
         });
     }
@@ -647,6 +735,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Scroll to the validation message if DCF validation didn't fail
                     if (isValid) {
                         editEcisRoles.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    isValid = false;
+                }
+            }
+
+            // Check if Document Notification user is checked but no role is selected
+            if (editDocunotificationUser && editDocunotificationUser.checked) {
+                const editDocunotificationRoleRadios = editDocunotificationRoles.querySelectorAll('input[type="radio"]:checked');
+                if (editDocunotificationRoleRadios.length === 0) {
+                    e.preventDefault();
+                    if (editDocunotificationRoleValidation) {
+                        editDocunotificationRoleValidation.style.display = 'block';
+                    }
+                    // Scroll to the validation message if previous validations didn't fail
+                    if (isValid) {
+                        editDocunotificationRoles.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                     isValid = false;
                 }
@@ -998,6 +1102,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     !userData.stock_declaration_user ? 'userData.stock_declaration_user is false/undefined' : 'editStockDeclarationUser element not found');
             }
 
+            // Document Notification
+            if (userData.docunotification_user && editDocunotificationUser) {
+                editDocunotificationUser.checked = true;
+                toggleSubpermissions(editDocunotificationUser, editDocunotificationRoles);
+
+                // Set Document Notification role
+                const docunotificationRoleRadios = editDocunotificationRoles.querySelectorAll('input[type="radio"]');
+                docunotificationRoleRadios.forEach(radio => {
+                    if (radio.value === 'user' && userData.docunotification_requestor) {
+                        radio.checked = true;
+                    } else if (radio.value === 'admin' && userData.docunotification_admin) {
+                        radio.checked = true;
+                    }
+                });
+            }
+
             // Set approvers
             if (editApproversList) {
                 // Clear existing approvers
@@ -1043,6 +1163,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (ecisRoles) {
             ecisRoles.style.display = 'none';
             if (ecisRoleValidation) ecisRoleValidation.style.display = 'none';
+        }
+        if (docunotificationRoles) {
+            docunotificationRoles.style.display = 'none';
+            if (docunotificationRoleValidation) docunotificationRoleValidation.style.display = 'none';
         }
         if (qualityControlRoles) {
             qualityControlRoles.style.display = 'none';
@@ -1093,6 +1217,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (editStockDeclarationRoles) {
             editStockDeclarationRoles.style.display = 'none';
+        }
+        if (editDocunotificationRoles) {
+            editDocunotificationRoles.style.display = 'none';
+            if (editDocunotificationRoleValidation) editDocunotificationRoleValidation.style.display = 'none';
         }
 
         // Reset avatar

@@ -58,6 +58,11 @@ class DocumentNotification(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
     last_notification_sent = models.DateTimeField(blank=True, null=True)
     notification_count = models.IntegerField(default=0, help_text="Number of notifications sent")
+    
+    # Notification tracking flags
+    notification_sent_1day = models.BooleanField(default=False, help_text='1-day before notification sent')
+    notification_sent_2days = models.BooleanField(default=False, help_text='2-day before notification sent')
+    notification_sent_duedate = models.BooleanField(default=False, help_text='Due date notification sent')
 
     is_active = models.BooleanField(default=True)
     notes = models.TextField(blank=True, null=True, help_text="Internal notes or comments")
@@ -244,3 +249,32 @@ class DocumentRenewal(models.Model):
 
     def __str__(self):
         return f"Renewal of {self.original_document.reference_number} on {self.renewed_at.date()}"
+
+
+class DocumentNotificationConfirmation(models.Model):
+    """
+    Tracks which users have confirmed/seen document notifications.
+    Once a user confirms, they won't see the notification modal for that document again.
+    """
+    document = models.ForeignKey(
+        DocumentNotification,
+        on_delete=models.CASCADE,
+        related_name='confirmations'
+    )
+    user = models.ForeignKey(
+        Users,
+        on_delete=models.CASCADE,
+        related_name='document_confirmations'
+    )
+    confirmed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['document', 'user']
+        ordering = ['-confirmed_at']
+        indexes = [
+            models.Index(fields=['document', 'user']),
+            models.Index(fields=['user', 'confirmed_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} confirmed {self.document.reference_number} at {self.confirmed_at}"

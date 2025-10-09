@@ -102,7 +102,7 @@
                                     {% elif declaration.status == 'filed' %}
                                     <span class="JO-status JO-status-filed">{{ declaration.get_status_display }}</span>
                                     {% else %}
-                                    <span class="JO-status JO-status-pending">{{ declaration.get_status_display }}</span>
+                                    <span class="JO-status JO-status-approved">{{ declaration.get_status_display }}</span>
                                     {% endif %}
                                 </td>
                                 <td data-label="Actions" class="text-center">
@@ -135,6 +135,10 @@
                                     {% if request.user.stock_declaration_purchasing and declaration.status == 'filed' %}
                                         <button class="btn btn-icon btn-success intransit-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Mark In Transit">
                                             <i class="fa fa-truck" aria-hidden="true"></i>
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-icon btn-warning add-intransit-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Mark In Transit">
+                                            <i class="fa fa-plus-circle" aria-hidden="true"></i>
                                         </button>
                                     {% endif %}
                                 </td>
@@ -543,6 +547,84 @@
                 <button type="submit" class="btn btn-success">
                     <i class="fa fa-truck"></i>
                     Mark In Transit
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Update In Transit Notes Modal -->
+<div id="update-intransit-notes-modal" class="JO-modal">
+    <div class="JO-modal-content modal-lg">
+        <div class="JO-modal-header">
+            <h3>Update In Transit Notes</h3>
+            <button class="JO-modal-close" id="update-intransit-notes-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" id="update-intransit-notes-form">
+            {% csrf_token %}
+            <input type="hidden" name="declaration_id" id="update-intransit-notes-declaration-id">
+            <div class="JO-modal-body">
+                <div class="modal-details-header">
+                    <div class="modal-details-id">
+                        <h3 id="update-intransit-notes-control-number"></h3>
+                        <span id="update-intransit-notes-status" class="JO-view-value"></span>
+                    </div>
+
+                    <div class="JO-details-date">
+                        <p><span id="update-intransit-notes-date-label"></span> <span id="update-intransit-notes-date-value"></span></p>
+                    </div>
+                </div>
+
+                <div class="modal-details-section">
+                    <h4>Stock Information</h4>
+                    <div class="modal-details-grid">
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Product Number</span>
+                            <span id="update-intransit-notes-product-number" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Product Name</span>
+                            <span id="update-intransit-notes-product-name" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Quantity</span>
+                            <span id="update-intransit-notes-quantity" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Stock Type</span>
+                            <span id="update-intransit-notes-stock-type" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Production Lines</span>
+                            <span id="update-intransit-notes-lines" class="JO-view-value"></span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Declared By</span>
+                            <span id="update-intransit-notes-created-by" class="JO-view-value"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-details-section">
+                    <h4>In Transit Information</h4>
+                    <div class="JO-form-grid">
+                        <div class="JO-form-group">
+                            <label for="update-intransit-notes">In Transit Notes <span class="input-required">*</span></label>
+                            <textarea id="update-intransit-notes" name="intransit_notes" class="JO-textarea" rows="4" placeholder="Update details about the in transit status (e.g., carrier information, tracking number, expected delivery date, etc.)" required></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="update-intransit-notes-cancel">
+                    <i class="fa fa-times"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-save"></i>
+                    Save Changes
                 </button>
             </div>
         </form>

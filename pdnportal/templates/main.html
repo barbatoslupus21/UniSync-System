@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{% static "css/style-ver2.css" %}">
     <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
     <link rel="stylesheet" href="{% static 'css/stockdeclaration/stockdeclaration.css' %}">
+    <link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -179,9 +180,9 @@
                 </div>
             </div>
             <div class="JO-modal-footer">
-                <button type="button" class="btn btn-primary" onclick="goToDocumentNotification()">
-                    <i class="fas fa-external-link-alt" style="margin-right: 6px;"></i>
-                    Go to Document Notifications
+                <button type="button" class="btn btn-primary" onclick="confirmDocumentNotifications()">
+                    <i class="fas fa-check-circle" style="margin-right: 6px;"></i>
+                    Confirm
                 </button>
             </div>
         </div>
@@ -367,15 +368,59 @@
             }
         }
 
-        // Function to redirect to Document Notification page
-        // Set a session flag so the document modal won't auto-open on the destination page
-        function goToDocumentNotification() {
-            try {
-                sessionStorage.setItem('suppress_document_notification_modal', '1');
-            } catch (e) {
-                // ignore storage errors
+        // Function to confirm document notifications
+        async function confirmDocumentNotifications() {
+            const modal = document.getElementById('document-notification-modal');
+            if (!modal) return;
+            
+            // Get all document IDs from the current notifications
+            const documentIds = [];
+            {% if document_notifications %}
+                {% for notification in document_notifications %}
+                    documentIds.push({{ notification.id }});
+                {% endfor %}
+            {% endif %}
+            
+            if (documentIds.length === 0) {
+                closeDocumentNotificationModal();
+                return;
             }
-            window.location.href = "{% url 'docunotification' %}";
+            
+            try {
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                
+                // Send confirmation request
+                const response = await fetch("{% url 'confirm_document_notifications' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        document_ids: documentIds
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Close the modal
+                    closeDocumentNotificationModal();
+                    
+                    // Optionally show a success message
+                    console.log(data.message);
+                    
+                    // Refresh the notifications to update the UI
+                    await fetchDocumentNotifications();
+                } else {
+                    console.error('Failed to confirm notifications:', data.error);
+                    alert('Failed to confirm notifications. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error confirming notifications:', error);
+                alert('An error occurred. Please try again.');
+            }
         }
 
         // Function to render a single document notification card
