@@ -6,101 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
 <link rel="stylesheet" href="{% static 'css/jo-facilitator.css' %}">
-<style>
-    /* Custom styles for full-height table */
-    .JO-all-requests {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        min-height: 600px;
-    }
-
-    .JO-all-requests .JO-card-header {
-        flex-shrink: 0;
-    }
-
-    .JO-all-requests .JO-table-container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        max-height: none;
-    }
-
-    .JO-all-requests .JO-table-container .JO-table {
-        flex: 1;
-    }
-
-    .JO-all-requests .JO-table-container {
-        overflow-y: auto;
-    }
-
-    /* Ensure the main content grid items have equal height */
-    .JO-main-content-grid {
-        align-items: stretch;
-    }
-
-    /* Make the assignment section match the height of the all requests section */
-    .JO-assignment-section {
-        height: 100%;
-        min-height: 600px;
-    }
-
-    /* Style for empty table state */
-    .empty-table-row td {
-        padding: 0;
-        height: 300px;
-    }
-
-    .JO-no-results {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 0;
-        height: 100%;
-    }
-
-    .JO-no-results-icon {
-        font-size: 3rem;
-        color: #e0e0e0;
-        margin-bottom: 20px;
-    }
-
-    .JO-no-results-message {
-        font-size: 1.2rem;
-        font-weight: 500;
-        color: #666;
-        margin: 0 0 5px 0;
-    }
-
-    /* Ensure the table fills the container properly */
-    .full-height-table {
-        padding: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .full-height-table .JO-table {
-        margin: 0;
-        border-spacing: 0;
-    }
-
-    .full-height-table .JO-table th {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 1024px) {
-        .JO-all-requests, .JO-assignment-section {
-            min-height: 500px;
-        }
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
 {% endblock %}
-
 
 {% block content %}
 <main class="main-content">
@@ -109,69 +16,65 @@
             <h1 class="JO-page-title">Job Order Assignment & Monitoring</h1>
             <p class="JO-subtitle">Assign, track and manage maintenance job order requests</p>
         </div>
-        <div class="JO-header-actions">
-            <button id="open-dashboard-btn" class="JO-button JO-primary-button">
-                <i class="fas fa-th-large"></i> Maintenance Dashboard
-            </button>
-        </div>
     </div>
 
     <div class="JO-stats-container">
         <div class="JO-stats-card JO-total">
             <div class="JO-stats-icon">
-                <i class="fas fa-file-alt"></i>
+                <i class="fas fa-briefcase"></i>
             </div>
             <div class="JO-stats-content">
-                <h3>Total Requests</h3>
+                <h3>Active Job Order</h3>
                 <h2 class="JO-stats-number">{{ joRequestsCount }}</h2>
-                <p>this month</p>
-            </div>
-        </div>
-
-        <div class="JO-stats-card JO-assigned">
-            <div class="JO-stats-icon">
-                <i class="fas fa-user-check"></i>
-            </div>
-            <div class="JO-stats-content">
-                <h3>Assigned Request</h3>
-                <h2 class="JO-stats-number">{{ assignJOCount }}</h2>
-                <p>this month</p>
+                <p>overall total</p>
             </div>
         </div>
 
         <div class="JO-stats-card JO-pending">
             <div class="JO-stats-icon">
-                <i class="fas fa-clock"></i>
+                <i class="fas fa-route"></i>
             </div>
             <div class="JO-stats-content">
-                <h3>Unassigned Request</h3>
-                <h2 class="JO-stats-number">{{ pendingJOCount }}</h2>
-                <p>this month</p>
+                <h3>Routing Requests</h3>
+                <h2 class="JO-stats-number">{{ assignJOCount }}</h2>
+                <p>overall total</p>
             </div>
         </div>
 
-        <div class="JO-stats-card JO-overdue">
+        <div class="JO-stats-card JO-assigned">
             <div class="JO-stats-icon">
-                <i class="fas fa-exclamation-circle"></i>
+                <i class="fa fa-wrench" aria-hidden="true"></i>
             </div>
             <div class="JO-stats-content">
-                <h3>Overdue</h3>
+                <h3>In Progress Requests</h3>
+                <h2 class="JO-stats-number">{{ pendingJOCount }}</h2>
+                <p>overall total</p>
+            </div>
+        </div>
+
+        <div class="JO-stats-card JO-approved">
+            <div class="JO-stats-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="JO-stats-content">
+                <h3>Completed Requests</h3>
                 <h2 class="JO-stats-number">{{ overdueCount }}</h2>
-                <p>this month</p>
+                <p>overall total</p>
             </div>
         </div>
     </div>
 
     <div class="JO-main-content-grid">
         <!-- Chart section - Only showing monthly trend -->
-        <div class="JO-card JO-chart-container">
+        <div class="chart-main-container">
             <div class="JO-card-header">
                 <h2>Job Order Analytics</h2>
                 <div class="JO-card-actions">
                     <select id="chart-period-selector" class="JO-select">
+                        <option value="thismonth" selected>This Month</option>
                         <option value="1month">Last Month</option>
                         <option value="3month">Last 3 Months</option>
-                        <option value="6month" selected>Last 6 Months</option>
+                        <option value="6month">Last 6 Months</option>
                     </select>
                 </div>
             </div>
@@ -181,12 +84,9 @@
         </div>
 
         <!-- Maintenance Workload-->
-        <div class="JO-card JO-workload-section">
+        <div class="chart-main-container">
             <div class="JO-card-header">
                 <h2>Maintenance Workload</h2>
-            </div>
-            <div class="JO-workload-chart-container">
-                <canvas id="workload-chart"></canvas>
             </div>
             <div class="JO-workload-list" id="workload-list">
                 <!-- Will be populated by JS -->
@@ -198,116 +98,148 @@
         </div>
     </div>
 
-    <div class="JO-main-content-grid">
-        <div class="JO-card JO-all-requests">
-            <div class="JO-card-header">
-                <h2>All Job Order Requests</h2>
-                <div class="JO-card-actions">
-                    <div class="JO-search-container">
-                        <input type="text" class="JO-search-input" placeholder="Search by JO Number, line, type...">
-                        <button class="JO-search-button">
-                            <i class="fas fa-search"></i>
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <!-- Job Order Search Bar -->
+                        <div class="JO-search-form" style="display: contents;">
+                            <div class="JO-search-container">
+                                <input type="text" id="jo-search-input" name="search" class="JO-search-input" placeholder="Search by JO Number, line, type, requestor..." value="{{ search_query }}">
+                            </div>
+                            <div class="JO-filter-container">
+                                <select id="jo-status-filter" name="status" class="JO-select JO-filter-select">
+                                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                                    <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
+                                    <option value="routing" {% if status_filter == 'routing' %}selected{% endif %}>Routing</option>
+                                    <option value="assigned" {% if status_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+                                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline JO-export-btn">
+                            <i class="fas fa-file-export"></i> Export
                         </button>
+                        <div class="JO-header-actions">
+                            <button id="open-dashboard-btn" class="btn btn-primary">
+                                <i class="fas fa-th-large"></i>Dashboard
+                            </button>
+                        </div>
                     </div>
-                    <!-- Export Button -->
-                    <button class="JO-button JO-secondary-button JO-export-btn">
-                        <i class="fas fa-file-export"></i> Export
-                    </button>
                 </div>
-            </div>
-
-            <div class="JO-table-container full-height-table">
-                <table class="JO-table">
-                    <thead>
-                        <tr>
-                            <th>JO Number</th>
-                            <th>Category</th>
-                            <th>Tool</th>
-                            <th>Nature</th>
-                            <th>Requestor</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for jo in recent_job_orders %}
-                        <tr>
-                            <td>{{ jo.jo_number }}</td>
-                            <td><span class="JO-category-pill JO-category-{{ jo.jo_color|lower }}">{{ jo.jo_color }}</span></td>
-                            <td>{{ jo.jo_tools }}</td>
-                            <td>{{ jo.jo_type }}</td>
-                            <td>{{ jo.requestor }}</td>
-                            <td><span class="JO-status JO-status-{{ jo.status|lower }}">{{ jo.status }}</span></td>
-                            <td>
-                                <button class="JO-icon-button view-details-btn" title="View Details" data-id="{{ jo.id }}" data-number="{{ jo.jo_number }}">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr class="empty-table-row">
-                            <td colspan="7">
-                                <div class="JO-no-results">
-                                    <div class="JO-no-results-icon">
-                                        <i class="fas fa-search"></i>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="jo-table">
+                        <thead>
+                            <tr>
+                                <th>JO Number</th>
+                                <th>Category</th>
+                                <th>Tool</th>
+                                <th>Nature</th>
+                                <th>Requestor</th>
+                                <th>Line</th>
+                                <th>Status</th>
+                                <th>Priority Level</th>
+                                <th>Date Submitted</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jo-table-body">
+                            {% for request in all_requests %}
+                            <tr class="jo-table-row">
+                                <td data-label="JO Number">{{ request.jo_number }}</td>
+                                <td data-label="Category"><span class="JO-category-pill JO-category-{{ request.jo_color|lower }}">{{ request.jo_color }}</span></td>
+                                <td data-label="Tool">{{ request.jo_tools|capfirst }}</td>
+                                <td data-label="Nature">{{ request.jo_type|capfirst }}</td>
+                                <td data-label="Requestor">{{ request.requestor }}</td>
+                                <td data-label="Line">{{ request.line }}</td>
+                                <td data-label="Status"><span class="JO-status JO-status-{{ request.status|lower }}">{{ request.status }}</span></td>
+                                <td data-label="Priority Level"><span class="JO-priority JO-priority-{{ request.priority_level|lower }}">{{ request.priority_level }}</span></td>
+                                <td data-label="Date">{{ request.date_created|date:"M d, Y" }}</td>
+                                <td data-label="Actions" class="text-center">
+                                    {% if request.has_pending_routing %}
+                                        {% if request.is_reviewable %}
+                                            <button class="btn btn-primary btn-sm jo-review-btn" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                                <i class="fa fa-bars" aria-hidden="true"></i>
+                                                Review
+                                            </button>
+                                        {% else %}
+                                            <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        {% endif %}
+                                    {% else %}
+                                        <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="10" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Job Order Request Found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No job order request has been filed yet</p>
+                                        {% endif %}
                                     </div>
-                                    <p class="JO-no-results-message">No job orders found</p>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="JO-card JO-assignment-section">
-            <div class="JO-card-header">
-                <h2>Assign Person In-Charge</h2>
-            </div>
-            <div class="JO-assignment-list" id="assignment-list">
-                {% for jo in pending_assignments_list %}
-                <div class="JO-assignment-item {% if jo.is_overdue_critical %}overdue-critical{% elif jo.is_overdue_warning %}overdue-warning{% endif %}"
-                data-id="{{ jo.jo_number.id }}" data-number="{{ jo.jo_number.jo_number }}">
-                    <div class="JO-assignment-header">
-                        <span class="JO-assignment-id">{{ jo.jo_number.jo_number}}</span>
-                        <span class="JO-category JO-category-{{ jo.jo_number.jo_color|lower }}">{{ jo.jo_number.jo_color }}</span>
-                    </div>
-                    <div class="JO-assignment-details">
-                        <p><strong>Tool:</strong> {{ jo.jo_number.jo_tools }}</p>
-                        <p><strong>Nature:</strong> {{ jo.jo_number.jo_type }}</p>
-                        <p><strong>Submitted:</strong> {{ jo.jo_number.date_created|date:"M d, Y" }}</p>
-                        {% if jo.is_overdue_warning %}
-                        <p class="JO-overdue-indicator">
-                            <i class="fas fa-exclamation-circle"></i>
-                            Overdue: {{ jo.jo_number.date_created|date:"M d, Y" }}
-                        </p>
-                        {% endif %}
-                    </div>
-                    <div class="JO-assignment-form">
-                        <select class="JO-select JO-assignee-select">
-                            <option value="">Select Assignee</option>
-                            {% for person in maintenance_personnel %}
-                            <option value="{{ person.id }}">{{ person.name }}</option>
+                                </td>
+                            </tr>
                             {% endfor %}
-                        </select>
-                        <button class="JO-button JO-primary-button JO-assign-btn">
-                            Assign
-                        </button>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if all_requests.paginator.num_pages > 1 %}
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ all_requests.start_index }} to {{ all_requests.end_index }} of {{ all_requests.paginator.count }} entries
+                    </div>
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if all_requests.has_previous %}
+                            <a href="?page={{ all_requests.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in all_requests.paginator.page_range %}
+                                {% if all_requests.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > all_requests.number|add:'-3' and num < all_requests.number|add:'3' %}
+                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if all_requests.has_next %}
+                            <a href="?page={{ all_requests.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
-                {% empty %}
-                <div class="JO-assignment-empty">
-                    <div class="JO-empty-icon">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <h3>All caught up!</h3>
-                    <p>There are no pending requests that require your approval at this time.</p>
-                </div>
-                {% endfor %}
+                {% endif %}
             </div>
-        </div>
     </div>
+
 </main>
 
 <!-- Job Order Details Modal -->
@@ -319,14 +251,15 @@
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="JO-modal-body" id="jo-details-content">
+        <div class="JO-modal-body" id="jo-details-content" style="overflow-y: auto !important; overflow-x: hidden !important;">
             <div class="JO-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
                 <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
                 <p style="font-size: 16px; color: #666;">Loading job order details...</p>
             </div>
         </div>
-        <div class="JO-modal-footer">
+        <div class="JO-modal-footer" id="jo-details-footer">
             <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+            <!-- Dynamic buttons will be added here based on permissions -->
         </div>
     </div>
 </div>

@@ -47,16 +47,6 @@
     transform: translateY(-2px);
 }
 
-.UM-edit-user:hover {
-    background-color: var(--jo-primary-light);
-    color: var(--jo-primary);
-}
-
-.UM-delete-user:hover {
-    background-color: var(--um-inactive-light);
-    color: var(--um-inactive-color);
-}
-
 .UM-toggle-status:hover {
     background-color: var(--um-active-light);
     color: var(--um-active-color);
@@ -432,10 +422,6 @@
     gap: 16px;
 }
 
-.UM-form-group {
-    margin-bottom: 10px;
-}
-
 .UM-form-group label {
     display: block;
     font-weight: 500;
@@ -585,24 +571,32 @@
 
 /* Permission sections */
 .UM-permission-category {
-    margin-bottom: 20px;
-    padding-bottom: 15px;
-    border-bottom: 1px solid var(--jo-border);
+    padding: 15px 0;
+    /* border-bottom: 1px solid var(--jo-border); */
 }
 
 .UM-permission-category:last-child {
     border-bottom: none;
 }
 
-.UM-permission-header {
-    margin-bottom: 10px;
-}
-
 .UM-subpermissions {
     margin-left: 25px;
-    padding: 10px 0;
+    /* Start hidden to avoid leaving vertical space under the header */
     display: none;
-    animation: UM-fade-in 0.3s ease-out;
+    padding: 0; /* no vertical padding when hidden */
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition: max-height 0.32s cubic-bezier(.2,.8,.2,1), opacity 0.24s ease, padding 0.2s ease;
+    will-change: max-height, opacity, padding;
+}
+
+.UM-subpermissions.visible {
+    display: block;
+    /* large enough max-height to accommodate the content; if you have deeper content increase this value */
+    max-height: 400px;
+    opacity: 1;
+    padding: 10px 0;
 }
 
 .UM-radio-group {
@@ -624,9 +618,11 @@
 .UM-avatar-container {
     position: relative;
     width: 100%;
-    max-width: 650px;
+    max-width: 80%;
     overflow: hidden;
+    border-radius: 10px;
     padding: 15px 0;
+    height: 120px; /* Fixed height for container */
 }
 
 .UM-avatar-slider {
@@ -1029,7 +1025,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr 2fr auto;
     gap: 15px;
-    align-items: end;
+    align-items: center !important;
     padding: 10px;
     background-color: var(--jo-bg-color);
     border-radius: 8px;
@@ -1048,20 +1044,6 @@
     padding-bottom: 10px;
 }
 
-.UM-remove-approver-btn {
-    color: var(--um-inactive-color);
-}
-
-.UM-remove-approver-btn:hover {
-    background-color: var(--um-inactive-light);
-    color: var(--um-inactive-color);
-}
-
-.UM-remove-approver-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 #add-approver-btn {
     align-self: flex-start;
     margin-top: 10px;
@@ -1073,16 +1055,6 @@
 
 .UM-inline-form {
     display: inline;
-}
-
-.UM-avatar-container {
-    position: relative;
-    width: 100%;
-    max-width: 350px;
-    overflow: hidden;
-    border-radius: 10px;
-    padding: 15px 0;
-    height: 120px; /* Fixed height for container */
 }
 
 /* ==========================================================================
@@ -1326,6 +1298,21 @@
     color: var(--um-ecis-color);
 }
 
+.UM-quality-control-pill {
+    background-color: var(--um-qc-light, #fff3e0);
+    color: var(--um-qc-color, #e65100);
+}
+
+.UM-stock-declaration-pill {
+    background-color: var(--um-stock-light, #fff8e1);
+    color: var(--um-stock-color, #f57f17);
+}
+
+.UM-docunotification-pill {
+    background-color: var(--um-docu-light, #e8f5e9);
+    color: var(--um-docu-color, #2e7d32);
+}
+
 /* Status */
 .UM-status {
     display: inline-flex;
@@ -1390,4 +1377,93 @@
     color: #666;
     max-width: 80%;
     margin: 0 auto;
+}
+
+/* Lines search and scrollable container */
+.lines-search-container {
+    margin-bottom: 12px;
+}
+
+.lines-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: var(--jo-transition);
+}
+
+.lines-search-input:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.lines-scrollable-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    padding: 12px;
+    background-color: var(--jo-bg-color);
+}
+
+.lines-scrollable-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lines-scrollable-container::-webkit-scrollbar-track {
+    background: var(--jo-bg-color);
+    border-radius: 3px;
+}
+
+.lines-scrollable-container::-webkit-scrollbar-thumb {
+    background: var(--jo-border);
+    border-radius: 3px;
+}
+
+.lines-scrollable-container::-webkit-scrollbar-thumb:hover {
+    background: var(--jo-primary);
+}
+
+.line-item {
+    transition: opacity 0.2s ease;
+}
+
+.line-item.hidden {
+    display: none;
+}
+
+/* Table column width constraints for Line and Permissions */
+.Unisync-table th.column-line,
+.Unisync-table td.column-line {
+    max-width: 450px;
+    width: 450px;
+}
+
+.Unisync-table th.column-permissions,
+.Unisync-table td.column-permissions {
+    max-width: 450px;
+    width: 450px;
+}
+
+.Unisync-table td.column-line,
+.Unisync-table td.column-permissions {
+    vertical-align: top;
+    padding: 12px 8px;
+}
+
+/* Ensure pills wrap within the constrained width */
+.Unisync-table td.column-line span,
+.Unisync-table td.column-permissions .UM-permission-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 100%;
+}
+
+.Unisync-table td.column-line span.UM-permission-pill,
+.Unisync-table td.column-permissions .UM-permission-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
 }

@@ -11,9 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initialize pagination
-    initializePagination();
-
     // Initialize toast styling
     addToastStyles();
 
@@ -29,6 +26,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const newJobOrderModal = document.getElementById('new-job-order-modal');
     console.log('New Request Button:', newRequestBtn);
     console.log('New Job Order Modal:', newJobOrderModal);
+
+    // Auto-search functionality for search input
+    const searchInput = document.querySelector('.JO-search-input');
+    if (searchInput) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                // Submit the form automatically when user stops typing
+                const form = searchInput.closest('form');
+                if (form) {
+                    form.submit();
+                }
+            }, 500); // Wait 500ms after user stops typing
+        });
+    }
 });
 
 // ========================================================================
@@ -241,6 +254,11 @@ function updateChart(data) {
 
     // Update tooltip to show percentage of total
     joStatsChart.options.plugins.tooltip.callbacks = {
+        title: function(context) {
+            const index = context[0].dataIndex;
+            const total = totalData[index];
+            return `Total JO: ${total}`;
+        },
         label: function(context) {
             const index = context.dataIndex;
             const value = context.raw;
@@ -250,13 +268,8 @@ function updateChart(data) {
                 return `${context.dataset.label}: ${value}`;
             } else {
                 const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                return `${context.dataset.label}: ${value} (${percentage}% of total)`;
+                return `${context.dataset.label}: ${value} (${percentage}%)`;
             }
-        },
-        afterLabel: function(context) {
-            const index = context.dataIndex;
-            const total = totalData[index];
-            return `Total JO: ${total}`;
         }
     };
 
@@ -391,6 +404,20 @@ function setupEventListeners() {
         });
     });
 
+    // Pending item click to view details
+    const pendingItems = document.querySelectorAll('.JO-pending-item');
+    pendingItems.forEach(item => {
+        item.addEventListener('click', function(e) {
+            const joId = this.dataset.id;
+            const joNumber = this.dataset.number || joId;
+            if (joId) {
+                fetchJobOrderDetails(joId, joNumber);
+            } else {
+                createToast('Cannot find job order ID', 'error');
+            }
+        });
+    });
+
     // Close Transaction buttons in the table
     const closeTransactionButtons = document.querySelectorAll('.JO-icon-button[title="Close Transaction"]');
     closeTransactionButtons.forEach(button => {
@@ -402,6 +429,23 @@ function setupEventListeners() {
             const joNumber = this.dataset.number || joId;
             if (joId) {
                 confirmCloseTransaction(joId, joNumber);
+            } else {
+                createToast('Cannot find job order ID', 'error');
+            }
+        });
+    });
+
+    // Review Job Order buttons
+    const reviewJobOrderButtons = document.querySelectorAll('.jo-review-btn');
+    reviewJobOrderButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const joId = this.dataset.id;
+            const joNumber = this.dataset.number || joId;
+            if (joId) {
+                openReviewModal(joId, joNumber);
             } else {
                 createToast('Cannot find job order ID', 'error');
             }
@@ -430,52 +474,72 @@ function setupEventListeners() {
         submitRequestBtn.addEventListener('click', function(e) {
             e.preventDefault();
 
-            if (validateJobOrderForm()) {
-                this.classList.add('loading');
-                this.textContent = '';
+            // First check if user has an approver assigned
+            fetch('/joborder/check-approver/', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.has_approver) {
+                    // User has approver, proceed with form validation and submission
+                    if (validateJobOrderForm()) {
+                        this.classList.add('loading');
+                        this.textContent = '';
 
-                const form = document.getElementById('job-order-form');
-                const formData = new FormData(form);
+                        const form = document.getElementById('job-order-form');
+                        const formData = new FormData(form);
 
-                fetch(form.action, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+                        fetch(form.action, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Server responded with an error');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            this.classList.remove('loading');
+                            this.textContent = 'Submit Request';
+
+                            if (data.status === 'success') {
+                                closeModal(document.getElementById('new-job-order-modal'));
+                                createToast(data.message || 'Job Order request submitted successfully!', 'success');
+
+                                form.reset();
+
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 1500);
+                            } else {
+                                createToast(data.message || 'Error submitting job order', 'error');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+
+                            this.classList.remove('loading');
+                            this.textContent = 'Submit Request';
+
+                            createToast('An error occurred while submitting the request. Please try again.', 'error');
+                        });
                     }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Server responded with an error');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    this.classList.remove('loading');
-                    this.textContent = 'Submit Request';
-
-                    if (data.status === 'success') {
-                        closeModal(document.getElementById('new-job-order-modal'));
-                        createToast(data.message || 'Job Order request submitted successfully!', 'success');
-
-                        form.reset();
-
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        createToast(data.message || 'Error submitting job order', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-
-                    this.classList.remove('loading');
-                    this.textContent = 'Submit Request';
-
-                    createToast('An error occurred while submitting the request. Please try again.', 'error');
-                });
-            }
+                } else {
+                    // User doesn't have approver assigned
+                    createToast(data.message || 'You must have an approver assigned before submitting a job order request. Please contact your administrator.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error checking approver:', error);
+                createToast('Unable to verify approver assignment. Please try again.', 'error');
+            });
         });
     }
 
@@ -523,22 +587,7 @@ function setupEventListeners() {
         });
     }
 
-    const searchInput = document.querySelector('.JO-search-input');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function() {
-            const searchText = this.value.toLowerCase();
-            filterAndPaginateTable(searchText);
-        });
-    }
-
-    // Filter functionality
-    const filterSelect = document.querySelector('.JO-filter-select');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            const searchText = searchInput ? searchInput.value.toLowerCase() : '';
-            filterAndPaginateTable(searchText);
-        });
-    }
+    // Search is now handled by form submission (server-side)
 
     // Confirmation modal buttons
     const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
@@ -608,6 +657,14 @@ function setupModalEventListeners() {
             }
         }
     });
+
+    // Category change event listeners
+    const categoryInputs = document.querySelectorAll('.JO-category-input');
+    categoryInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            toggleNatureOptions(this.value);
+        });
+    });
 }
 
 // ========================================================================
@@ -615,18 +672,44 @@ function setupModalEventListeners() {
 // ========================================================================
 
 function toggleNatureOptions(category) {
+    // Hide all nature options first
     document.querySelectorAll('.JO-nature-options').forEach(el => {
         el.style.display = 'none';
     });
 
-    const selectedOptions = document.querySelector(`.JO-nature-${category}`);
+    // Show the selected category's nature options
+    const selectedOptions = document.querySelector(`.JO-nature-options.JO-nature-${category}`);
     if (selectedOptions) {
         selectedOptions.style.display = 'block';
+    }
+
+    // Handle complaint field for orange category
+    const complaintField = document.querySelector('.JO-complaint-field');
+    if (complaintField) {
+        if (category === 'orange') {
+            complaintField.style.display = 'block';
+        } else {
+            complaintField.style.display = 'none';
+        }
     }
 }
 
 function validateJobOrderForm() {
     const form = document.getElementById('job-order-form');
+
+    const requestorInput = form.querySelector('input[name="requestor"]');
+    if (!requestorInput || !requestorInput.value.trim()) {
+        createToast('Please enter the requestor name', 'error');
+        if (requestorInput) requestorInput.focus();
+        return false;
+    }
+
+    const requestorLineSelect = form.querySelector('select[name="line"]');
+    if (!requestorLineSelect || !requestorLineSelect.value) {
+        createToast('Please select the requestor line', 'error');
+        if (requestorLineSelect) requestorLineSelect.focus();
+        return false;
+    }
 
     const categorySelected = form.querySelector('input[name="jo-category"]:checked');
     if (!categorySelected) {
@@ -776,6 +859,20 @@ function renderJobOrderDetails(data) {
                     <span class="JO-details-label">Status:</span>
                     <span class="JO-details-value">${data.jo_status || 'N/A'}</span>
                 </div>
+                ${data.priority_level ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Priority Level:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-priority JO-priority-${data.priority_level.toLowerCase()}">${data.priority_level}</span>
+                    </span>
+                </div>
+                ` : ''}
+                ${data.priority_level === 'Urgent' && data.date_of_completion ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date of Completion:</span>
+                    <span class="JO-details-value">${data.date_of_completion}</span>
+                </div>
+                ` : ''}
             </div>
         </div>
 
@@ -892,92 +989,56 @@ function renderJobOrderDetails(data) {
  */
 function generateTimelineItems(routingData, joStatus) {
     if (!routingData || routingData.length === 0) {
-        return '<p>No approval information available</p>';
+        return '<p class="text-muted">No approval information available</p>';
     }
-
-    // Define the standard approval sequence based on approver_sequence field in JORouting model
-    const approvalSequence = [
-        { sequence: 0, role: 'Requestor', title: 'Request Submitted' },
-        { sequence: 1, role: 'Supervisor', title: 'Supervisor Approval' },
-        { sequence: 2, role: 'Manager', title: 'Manager Approval' },
-        { sequence: 3, role: 'QA Manager', title: 'QA Manager Approval' },
-        { sequence: 4, role: 'PM Manager', title: 'PM Manager Approval' },
-        { sequence: 5, role: 'Assigning', title: 'Assigning Person In-Charge' },
-        { sequence: 6, role: 'Maintenance', title: 'Maintenance Implementation' },
-        { sequence: 7, role: 'QA', title: 'QA Checking' },
-        { sequence: 8, role: 'Requestor', title: 'Transaction Closure' }
-    ];
-
-    // Map to store routing entries by sequence number
-    const routingMap = {};
-
-    // Process routing data to build the map and find the highest sequence
-    let maxSequence = -1;
-    routingData.forEach(entry => {
-        if (entry.approver_sequence !== undefined && entry.approver_sequence !== null) {
-            const sequence = parseInt(entry.approver_sequence);
-            routingMap[sequence] = entry;
-            maxSequence = Math.max(maxSequence, sequence);
-        }
-    });
 
     let timelineHtml = '';
 
-    // Generate timeline items for each step in the sequence
-    approvalSequence.forEach(step => {
-        const entry = routingMap[step.sequence];
+    // Process each routing entry and create timeline items
+    routingData.forEach((entry, index) => {
         let timelineClass = '';
         let icon = '<i class="fas fa-clock"></i>';
-        let statusText = step.title;
+        let statusLabel = '';
         let dateText = '';
         let remarks = '';
 
-        // Step has been reached in the routing process
-        if (entry) {
-            if (entry.status === 'Submitted' || entry.status === 'Approved') {
-                timelineClass = 'JO-timeline-complete';
-                icon = '<i class="fas fa-check"></i>';
-
-                if (entry.status === 'Submitted') {
-                    dateText = `${entry.approver_name || entry.approver} - ${entry.request_at || entry.date}`;
-                } else {
-                    dateText = `Approved by ${entry.approver_name || entry.approver} on ${entry.approved_at}`;
-                }
-
-                if (entry.remarks) {
-                    remarks = `<p class="JO-timeline-remarks">"${entry.remarks}"</p>`;
-                }
-            } else if (entry.status === 'Rejected') {
-                timelineClass = 'JO-timeline-rejected';
-                icon = '<i class="fas fa-times"></i>';
-                statusText = `${step.title} - Rejected`;
-                dateText = `Rejected by ${entry.approver_name || entry.approver} on ${entry.approved_at}`;
-
-                if (entry.remarks) {
-                    remarks = `<p class="JO-timeline-remarks">"${entry.remarks}"</p>`;
-                }
-            } else if (entry.status === 'Pending' || entry.status === 'Processing') {
-                timelineClass = 'JO-timeline-active';
-                icon = '<i class="fas fa-hourglass-half"></i>';
-                dateText = `Waiting for ${entry.approver_name || entry.approver}'s approval`;
-            }
+        // Determine the timeline state based on entry status
+        if (entry.status === 'Approved' || entry.status === 'Submitted') {
+            timelineClass = 'JO-timeline-complete';
+            icon = '<i class="fas fa-check"></i>';
+            statusLabel = entry.status === 'Approved' ? 'Approved' : 'Submitted';
+            dateText = `${entry.status === 'Approved' ? 'Approved' : 'Submitted'} by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Disapproved') {
+            timelineClass = 'JO-timeline-rejected';
+            icon = '<i class="fas fa-times"></i>';
+            statusLabel = 'Disapproved';
+            dateText = `Disapproved by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Pending') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-hourglass-half"></i>';
+            statusLabel = 'Pending Approval';
+            dateText = `Waiting for ${entry.approver_name || entry.approver}'s approval`;
+        } else if (entry.status === 'Viewed') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-eye"></i>';
+            statusLabel = 'Viewed';
+            dateText = `Viewed by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Cancelled') {
+            timelineClass = 'JO-timeline-rejected';
+            icon = '<i class="fas fa-times"></i>';
+            statusLabel = 'Cancelled';
+            dateText = `Cancelled by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else {
+            // Default case for any other status
+            timelineClass = 'JO-timeline-pending';
+            icon = '<i class="fas fa-circle"></i>';
+            statusLabel = entry.status;
+            dateText = `${entry.approver_name || entry.approver} - ${entry.request_at || ''}`;
         }
-        // Step is a future step that hasn't been reached yet
-        else if (step.sequence > maxSequence) {
-            // If JO is cancelled or rejected, make future steps inactive
-            if (joStatus === 'Cancelled' || joStatus === 'Rejected') {
-                timelineClass = 'JO-timeline-inactive';
-                dateText = 'Not applicable';
-            } else if (step.sequence === maxSequence + 1) {
-                // Next step is pending
-                timelineClass = 'JO-timeline-active';
-                icon = '<i class="fas fa-hourglass-half"></i>';
-                dateText = 'Pending';
-            } else {
-                // Future steps
-                timelineClass = 'JO-timeline-inactive';
-                dateText = 'Not yet reached';
-            }
+
+        // Add remarks if available
+        if (entry.remarks && entry.remarks.trim() !== '') {
+            remarks = `<p class="JO-timeline-remarks"><em>"${entry.remarks}"</em></p>`;
         }
 
         timelineHtml += `
@@ -986,15 +1047,399 @@ function generateTimelineItems(routingData, joStatus) {
                     ${icon}
                 </div>
                 <div class="JO-timeline-content">
-                    <h5>${statusText}</h5>
-                    <p>${dateText}</p>
+                    <h5>${entry.approver_name || entry.approver} - ${statusLabel}</h5>
+                    <p class="JO-timeline-date">${dateText}</p>
                     ${remarks}
                 </div>
             </div>
         `;
     });
 
+    // If job order is completed or closed, add a final completion item
+    if (joStatus === 'Closed' || joStatus === 'Completed') {
+        timelineHtml += `
+            <div class="JO-timeline-item JO-timeline-complete">
+                <div class="JO-timeline-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>Job Order ${joStatus}</h5>
+                    <p class="JO-timeline-date">The job order has been successfully ${joStatus.toLowerCase()}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    // If job order is cancelled or rejected, add a final cancellation/rejection item
+    if (joStatus === 'Cancelled') {
+        timelineHtml += `
+            <div class="JO-timeline-item JO-timeline-rejected">
+                <div class="JO-timeline-icon">
+                    <i class="fas fa-ban"></i>
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>Job Order Cancelled</h5>
+                    <p class="JO-timeline-date">This job order has been cancelled</p>
+                </div>
+            </div>
+        `;
+    }
+
     return timelineHtml;
+}
+
+// ========================================================================
+// Job Order Review Functionality (Approve/Disapprove)
+// ========================================================================
+
+function openReviewModal(joId, joNumber) {
+    const reviewModal = document.getElementById('jo-review-modal');
+    openModal(reviewModal);
+
+    // Show loading spinner
+    document.getElementById('jo-review-content').innerHTML = `
+        <div class="JO-loading text-center p-5">
+            <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+            <p>Loading job order details...</p>
+        </div>
+    `;
+
+    // Clear remarks and error
+    document.getElementById('review-remarks').value = '';
+    document.getElementById('review-remarks-error').style.display = 'none';
+
+    // Store JO ID and Number for later use
+    document.getElementById('approve-jo-btn').setAttribute('data-id', joId);
+    document.getElementById('approve-jo-btn').setAttribute('data-number', joNumber);
+    document.getElementById('disapprove-jo-btn').setAttribute('data-id', joId);
+    document.getElementById('disapprove-jo-btn').setAttribute('data-number', joNumber);
+
+    // Fetch job order details
+    fetch(`/joborder/job-order-details/${joId}/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            renderReviewModalContent(data);
+        } else {
+            document.getElementById('jo-review-content').innerHTML = `
+                <div class="JO-error-message text-center p-5">
+                    <i class="fas fa-exclamation-circle fa-2x text-danger mb-3"></i>
+                    <p>${data.message || 'Failed to load job order details'}</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching job order details:', error);
+        document.getElementById('jo-review-content').innerHTML = `
+            <div class="JO-error-message text-center p-5">
+                <i class="fas fa-exclamation-circle fa-2x text-danger mb-3"></i>
+                <p>An error occurred while loading the job order details: ${error.message}</p>
+            </div>
+        `;
+    });
+
+    // Set up approve/disapprove button handlers
+    setupReviewButtonHandlers();
+}
+
+function renderReviewModalContent(data) {
+    // Create timeline HTML based on the routing
+    const timelineHtml = generateTimelineItems(data.routing, data.jo_status);
+
+    const modalContent = `
+        <div class="JO-details-header">
+            <div class="JO-details-id">
+                <h3>${data.jo_number || 'N/A'}</h3>
+                <span class="JO-category-pill JO-category-${data.category?.toLowerCase()}">${data.category || 'N/A'}</span>
+                <span class="JO-status JO-status-${data.jo_status?.toLowerCase()}">${data.jo_status || 'N/A'}</span>
+            </div>
+
+            <div class="JO-details-date">
+                <p>Submitted: ${data.submitted_date || 'N/A'}</p>
+            </div>
+        </div>
+
+        <div class="JO-details-section">
+            <h4>Job Order Information</h4>
+            <div class="JO-details-grid">
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Tool:</span>
+                    <span class="JO-details-value">${data.tool || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Nature:</span>
+                    <span class="JO-details-value">${data.nature || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Line:</span>
+                    <span class="JO-details-value">${data.line || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Requestor:</span>
+                    <span class="JO-details-value">${data.requestor || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Prepared By:</span>
+                    <span class="JO-details-value">${data.prepared_by || 'N/A'}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="JO-details-section">
+            <span class="JO-details-label">Details:</span>
+            <p class="JO-details-text JO-editable-field JO-editable-textarea" data-field="details" data-original="${escapeHtml(data.details || '')}" title="Click to edit">${data.details || 'No details provided'}</p>
+        </div>
+
+        ${data.in_charge ? `
+        <div class="JO-details-section">
+            <h4>Maintenance Information</h4>
+            <div class="JO-details-grid">
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Person In-Charge:</span>
+                    <span class="JO-details-value">${data.in_charge || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date Received:</span>
+                    <span class="JO-details-value">${data.date_received || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Target Date:</span>
+                    <span class="JO-details-value">${data.target_date || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date Complete:</span>
+                    <span class="JO-details-value">${data.date_complete || 'N/A'}</span>
+                </div>
+            </div>
+            ${data.action_taken ? `
+            <div class="JO-details-section">
+                <span class="JO-details-label">Action Taken:</span>
+                <p class="JO-details-text">${data.action_taken}</p>
+            </div>
+            ` : ''}
+            ${data.target_date_reason ? `
+            <div class="JO-details-section">
+                <span class="JO-details-label">Target Date Reason:</span>
+                <p class="JO-details-text">${data.target_date_reason}</p>
+            </div>
+            ` : ''}
+        </div>
+        ` : ''}
+
+        <div class="JO-details-section">
+            <h4>Approval Timeline</h4>
+            <div class="JO-timeline">
+                ${timelineHtml}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('jo-review-content').innerHTML = modalContent;
+    
+    // Set up editable field functionality
+    setupEditableFields();
+}
+
+function setupReviewButtonHandlers() {
+    const approveBtn = document.getElementById('approve-jo-btn');
+    const disapproveBtn = document.getElementById('disapprove-jo-btn');
+
+    // Remove any existing event listeners by cloning
+    const newApproveBtn = approveBtn.cloneNode(true);
+    const newDisapproveBtn = disapproveBtn.cloneNode(true);
+    approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
+    disapproveBtn.parentNode.replaceChild(newDisapproveBtn, disapproveBtn);
+
+    // Set up priority level change listener
+    const priorityLevelSelect = document.getElementById('review-priority-level');
+    if (priorityLevelSelect) {
+        priorityLevelSelect.addEventListener('change', function() {
+            const dateCompletionGroup = document.getElementById('review-date-of-completion-group');
+            const dateCompletionInput = document.getElementById('review-date-of-completion');
+            const dateError = document.getElementById('review-date-error');
+            
+            if (this.value === 'Urgent') {
+                dateCompletionGroup.style.display = 'block';
+                dateCompletionInput.setAttribute('required', 'required');
+            } else {
+                dateCompletionGroup.style.display = 'none';
+                dateCompletionInput.removeAttribute('required');
+                dateCompletionInput.value = '';
+                dateError.style.display = 'none';
+            }
+        });
+        
+        // Trigger change event to set initial state
+        priorityLevelSelect.dispatchEvent(new Event('change'));
+    }
+
+    // Add new event listeners
+    newApproveBtn.addEventListener('click', function() {
+        const joId = this.getAttribute('data-id');
+        const joNumber = this.getAttribute('data-number');
+        const remarks = document.getElementById('review-remarks').value.trim();
+        
+        // Hide error messages
+        document.getElementById('review-remarks-error').style.display = 'none';
+        const dateError = document.getElementById('review-date-error');
+        if (dateError) dateError.style.display = 'none';
+        
+        // Validate date of completion if priority is urgent
+        const priorityLevel = document.getElementById('review-priority-level');
+        const dateCompletion = document.getElementById('review-date-of-completion');
+        
+        if (priorityLevel && priorityLevel.value === 'Urgent') {
+            if (!dateCompletion || !dateCompletion.value) {
+                if (dateError) {
+                    dateError.style.display = 'block';
+                    dateCompletion.focus();
+                }
+                return;
+            }
+        }
+        
+        handleApproveJobOrder(joId, joNumber, remarks);
+    });
+
+    newDisapproveBtn.addEventListener('click', function() {
+        const joId = this.getAttribute('data-id');
+        const joNumber = this.getAttribute('data-number');
+        const remarks = document.getElementById('review-remarks').value.trim();
+        
+        // Validate remarks are required for disapproval
+        if (!remarks) {
+            document.getElementById('review-remarks-error').style.display = 'block';
+            document.getElementById('review-remarks').focus();
+            return;
+        }
+        
+        // Hide error message
+        document.getElementById('review-remarks-error').style.display = 'none';
+        
+        handleDisapproveJobOrder(joId, joNumber, remarks);
+    });
+}
+
+function handleApproveJobOrder(joId, joNumber, remarks) {
+    const approveBtn = document.getElementById('approve-jo-btn');
+    approveBtn.classList.add('loading');
+    approveBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('action', 'approve');
+    if (remarks) {
+        formData.append('remarks', remarks);
+    }
+    
+    // Add quality_matter, priority_level, and date_of_completion if they exist
+    const qualityMatter = document.getElementById('review-quality-matter');
+    if (qualityMatter) {
+        formData.append('quality_matter', qualityMatter.checked ? 'true' : 'false');
+    }
+    
+    const priorityLevel = document.getElementById('review-priority-level');
+    if (priorityLevel) {
+        formData.append('priority_level', priorityLevel.value);
+    }
+    
+    const dateOfCompletion = document.getElementById('review-date-of-completion');
+    if (dateOfCompletion && dateOfCompletion.value) {
+        formData.append('date_of_completion', dateOfCompletion.value);
+    }
+    
+    // Collect and add modified fields
+    const modifiedFields = collectModifiedFields();
+    if (Object.keys(modifiedFields).length > 0) {
+        formData.append('modified_fields', JSON.stringify(modifiedFields));
+    }
+
+    fetch(`/joborder/review-job-order/${joId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        approveBtn.classList.remove('loading');
+        approveBtn.disabled = false;
+
+        if (data.status === 'success') {
+            closeModal(document.getElementById('jo-review-modal'));
+            createToast(data.message || `Job Order ${joNumber} has been approved successfully!`, 'success');
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            createToast(data.message || 'Error approving job order', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        approveBtn.classList.remove('loading');
+        approveBtn.disabled = false;
+        createToast('An error occurred while approving the job order', 'error');
+    });
+}
+
+function handleDisapproveJobOrder(joId, joNumber, remarks) {
+    const disapproveBtn = document.getElementById('disapprove-jo-btn');
+    disapproveBtn.classList.add('loading');
+    disapproveBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('action', 'disapprove');
+    formData.append('remarks', remarks);
+    
+    // Collect and add modified fields even for disapproval
+    const modifiedFields = collectModifiedFields();
+    if (Object.keys(modifiedFields).length > 0) {
+        formData.append('modified_fields', JSON.stringify(modifiedFields));
+    }
+
+    fetch(`/joborder/review-job-order/${joId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        disapproveBtn.classList.remove('loading');
+        disapproveBtn.disabled = false;
+
+        if (data.status === 'success') {
+            closeModal(document.getElementById('jo-review-modal'));
+            createToast(data.message || `Job Order ${joNumber} has been disapproved`, 'warning');
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            createToast(data.message || 'Error disapproving job order', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        disapproveBtn.classList.remove('loading');
+        disapproveBtn.disabled = false;
+        createToast('An error occurred while disapproving the job order', 'error');
+    });
 }
 
 // ========================================================================
@@ -1210,222 +1655,11 @@ function addToastStyles() {
 }
 
 // ========================================================================
-// Pagination Functionality
+// Pagination & Search now handled server-side via Django Paginator
 // ========================================================================
-
-// Pagination variables
-let currentPage = 1;
-let rowsPerPage = 10;
-let filteredRows = [];
-
-/**
- * Initialize pagination functionality
- */
-function initializePagination() {
-    // Get all table rows
-    const tableRows = document.querySelectorAll('.jo-table-row');
-    filteredRows = Array.from(tableRows);
-
-    // Set total items count
-    document.getElementById('jo-total-items').textContent = filteredRows.length;
-
-    // Update pagination display
-    updatePagination();
-
-    // Add event listeners to pagination buttons
-    document.getElementById('jo-prev-page').addEventListener('click', function() {
-        if (!this.classList.contains('disabled') && currentPage > 1) {
-            currentPage--;
-            updatePagination();
-        }
-    });
-
-    document.getElementById('jo-next-page').addEventListener('click', function() {
-        const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
-        if (!this.classList.contains('disabled') && currentPage < totalPages) {
-            currentPage++;
-            updatePagination();
-        }
-    });
-}
-
-/**
- * Update pagination display and show appropriate rows
- */
-function updatePagination() {
-    const totalRows = filteredRows.length;
-    const totalPages = Math.ceil(totalRows / rowsPerPage);
-
-    // Update showing info
-    const start = totalRows === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
-    const end = Math.min(currentPage * rowsPerPage, totalRows);
-    document.getElementById('jo-showing-start').textContent = start;
-    document.getElementById('jo-showing-end').textContent = end;
-    document.getElementById('jo-total-items').textContent = totalRows;
-
-    // Update pagination buttons state
-    const prevBtn = document.getElementById('jo-prev-page');
-    const nextBtn = document.getElementById('jo-next-page');
-
-    prevBtn.classList.toggle('disabled', currentPage === 1);
-    nextBtn.classList.toggle('disabled', currentPage === totalPages || totalPages === 0);
-
-    // Generate page numbers - simplified to match the design in the image
-    const paginationPages = document.getElementById('jo-pagination-pages');
-    paginationPages.innerHTML = '';
-
-    // Just show the current page number
-    if (totalPages > 0) {
-        paginationPages.appendChild(createPageButton(currentPage));
-    }
-
-    // Show/hide rows based on current page
-    showPageRows();
-}
-
-/**
- * Create a page number button
- * @param {number} pageNum - Page number
- * @returns {HTMLElement} - Page button element
- */
-function createPageButton(pageNum) {
-    const button = document.createElement('button');
-    button.className = 'JO-pagination-page';
-    button.textContent = pageNum;
-
-    if (pageNum === currentPage) {
-        button.classList.add('active');
-    }
-
-    button.addEventListener('click', function() {
-        currentPage = pageNum;
-        updatePagination();
-    });
-
-    return button;
-}
-
-/**
- * Create ellipsis element for pagination
- * @returns {HTMLElement} - Ellipsis element
- */
-function createEllipsis() {
-    const span = document.createElement('span');
-    span.className = 'JO-pagination-ellipsis';
-    span.textContent = '...';
-    return span;
-}
-
-/**
- * Show rows for the current page
- */
-function showPageRows() {
-    const noResultsElement = document.getElementById('jo-no-results');
-    const emptyRow = document.getElementById('jo-empty-row');
-
-    // Hide all rows first
-    const allRows = document.querySelectorAll('.jo-table-row');
-    allRows.forEach(row => {
-        row.style.display = 'none';
-    });
-
-    // Hide empty row if it exists
-    if (emptyRow) {
-        emptyRow.style.display = 'none';
-    }
-
-    // Show no results message if no filtered rows
-    if (filteredRows.length === 0) {
-        if (noResultsElement) {
-            noResultsElement.style.display = 'flex';
-
-            // Make sure the table container has enough height to display the message properly
-            const tableContainer = document.querySelector('.JO-table-container');
-            if (tableContainer) {
-                tableContainer.style.minHeight = '300px';
-            }
-        }
-        return;
-    }
-
-    // Hide no results message
-    if (noResultsElement) {
-        noResultsElement.style.display = 'none';
-
-        // Reset the table container min-height
-        const tableContainer = document.querySelector('.JO-table-container');
-        if (tableContainer) {
-            tableContainer.style.minHeight = '';
-        }
-    }
-
-    // Calculate start and end indices for current page
-    const startIndex = (currentPage - 1) * rowsPerPage;
-    const endIndex = Math.min(startIndex + rowsPerPage, filteredRows.length);
-
-    // Show rows for current page with animation
-    for (let i = startIndex; i < endIndex; i++) {
-        const row = filteredRows[i];
-        row.style.display = '';
-
-        // Apply animation
-        row.style.animation = 'none';
-        row.offsetHeight; // Force reflow
-        row.style.animation = `JO-row-appear 0.5s ease forwards ${(i - startIndex) * 0.05}s`;
-    }
-}
-
-/**
- * Filter and paginate table based on search text and filter value
- * @param {string} searchText - Text to search for
- */
-function filterAndPaginateTable(searchText) {
-    const filterSelect = document.querySelector('.JO-filter-select');
-    const filterValue = filterSelect ? filterSelect.value : 'all';
-    const allRows = document.querySelectorAll('.jo-table-row');
-    const tableContainer = document.querySelector('.JO-table-container');
-
-    // Save scroll position
-    const scrollPosition = tableContainer.scrollTop;
-
-    // Filter rows
-    filteredRows = Array.from(allRows).filter(row => {
-        const text = row.textContent.toLowerCase();
-        const matchesSearch = searchText === '' || text.includes(searchText);
-
-        const statusCell = row.querySelector('.JO-status');
-        const matchesFilter = filterValue === 'all' ||
-                             (statusCell && statusCell.classList.contains(`JO-status-${filterValue}`));
-
-        return matchesSearch && matchesFilter;
-    });
-
-    // Reset to first page
-    currentPage = 1;
-
-    // Update pagination
-    updatePagination();
-
-    // Restore scroll position
-    tableContainer.scrollTop = scrollPosition;
-
-    // Ensure the no-results message is properly contained within the table container
-    const noResultsElement = document.getElementById('jo-no-results');
-    if (noResultsElement && filteredRows.length === 0) {
-        noResultsElement.style.display = 'flex';
-        tableContainer.style.minHeight = '300px';
-    } else if (noResultsElement) {
-        noResultsElement.style.display = 'none';
-        tableContainer.style.minHeight = '';
-    }
-
-    // Make sure the empty state in Pending Approval section remains visible
-    // This ensures the "All caught up!" message doesn't disappear during search/filter operations
-    const pendingEmptyState = document.getElementById('pending-empty-state');
-    if (pendingEmptyState) {
-        pendingEmptyState.style.display = 'flex';
-    }
-}
+// Client-side search/pagination functions removed - all deprecated code deleted
+// Search now uses GET form submission
+// Pagination uses Django's built-in Paginator
 
 /**
  * Helper function to get CSRF token from cookies
@@ -1454,4 +1688,193 @@ function getCSRFToken() {
     }
 
     return cookieValue;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+}
+
+/**
+ * Set up editable field functionality for job order review modal
+ * Only enabled for users with job_order_approver role
+ */
+function setupEditableFields() {
+    // Check if review modal has approver-specific fields (quality_matter, priority_level)
+    // This indicates the user is a job_order_approver
+    const isApprover = document.getElementById('review-quality-matter') !== null;
+    
+    if (!isApprover) {
+        // Not an approver, don't make fields editable
+        return;
+    }
+    
+    const editableFields = document.querySelectorAll('.JO-editable-field');
+    
+    editableFields.forEach(field => {
+        field.style.cursor = 'pointer';
+        field.style.transition = 'all 0.2s';
+        
+        field.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f0f7ff';
+        });
+        
+        field.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('JO-editing')) {
+                this.style.backgroundColor = '';
+            }
+        });
+        
+        field.addEventListener('click', function() {
+            makeFieldEditable(this);
+        });
+    });
+}
+
+/**
+ * Make a specific field editable
+ * @param {HTMLElement} field - The field element to make editable
+ */
+function makeFieldEditable(field) {
+    if (field.classList.contains('JO-editing')) {
+        return; // Already editing
+    }
+    
+    const originalValue = field.dataset.original || field.textContent.trim();
+    const fieldName = field.dataset.field;
+    const isTextarea = field.classList.contains('JO-editable-textarea');
+    
+    field.classList.add('JO-editing');
+    field.style.backgroundColor = '#fffbea';
+    
+    let inputElement;
+    if (isTextarea) {
+        inputElement = document.createElement('textarea');
+        inputElement.rows = 4;
+        inputElement.style.width = '100%';
+        inputElement.style.padding = '8px';
+        inputElement.style.fontSize = '14px';
+        inputElement.style.fontFamily = 'inherit';
+        inputElement.style.border = '2px solid #3366ff';
+        inputElement.style.borderRadius = '4px';
+        inputElement.style.resize = 'vertical';
+    } else {
+        inputElement = document.createElement('input');
+        inputElement.type = 'text';
+        inputElement.style.width = '100%';
+        inputElement.style.padding = '6px 8px';
+        inputElement.style.fontSize = '14px';
+        inputElement.style.fontFamily = 'inherit';
+        inputElement.style.border = '2px solid #3366ff';
+        inputElement.style.borderRadius = '4px';
+    }
+    
+    inputElement.value = originalValue === 'N/A' || originalValue === 'No details provided' ? '' : originalValue;
+    inputElement.dataset.field = fieldName;
+    inputElement.dataset.original = originalValue;
+    
+    // Replace the field content with the input
+    field.innerHTML = '';
+    field.appendChild(inputElement);
+    
+    // Focus the input
+    inputElement.focus();
+    inputElement.select();
+    
+    // Auto-save on blur (when user clicks outside)
+    inputElement.addEventListener('blur', function() {
+        saveFieldChanges(field, inputElement, originalValue);
+    });
+    
+    // Save on Enter key (for input fields only)
+    if (!isTextarea) {
+        inputElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                inputElement.blur(); // Trigger blur to save
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelFieldChanges(field, originalValue);
+            }
+        });
+    } else {
+        // For textarea, only Escape cancels
+        inputElement.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelFieldChanges(field, originalValue);
+            }
+        });
+    }
+    
+    // Prevent modal from closing when clicking inside the input
+    inputElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+}
+
+/**
+ * Save field changes
+ * @param {HTMLElement} field - The field element
+ * @param {HTMLElement} inputElement - The input element
+ * @param {string} originalValue - The original value
+ */
+function saveFieldChanges(field, inputElement, originalValue) {
+    const newValue = inputElement.value.trim();
+    field.classList.remove('JO-editing');
+    field.style.backgroundColor = '';
+    
+    if (newValue && newValue !== originalValue) {
+        field.innerHTML = newValue;
+        field.dataset.original = newValue;
+        field.classList.add('JO-field-modified');
+        field.style.backgroundColor = '#e8f5e9';
+        field.title = `Modified: ${originalValue} → ${newValue}`;
+        
+        // Mark that changes have been made
+        field.dataset.modified = 'true';
+    } else {
+        field.innerHTML = originalValue === '' || originalValue === 'N/A' ? 'N/A' : originalValue;
+    }
+}
+
+/**
+ * Cancel field changes
+ * @param {HTMLElement} field - The field element
+ * @param {string} originalValue - The original value
+ */
+function cancelFieldChanges(field, originalValue) {
+    field.classList.remove('JO-editing');
+    field.style.backgroundColor = '';
+    field.innerHTML = originalValue === '' || originalValue === 'N/A' ? 'N/A' : originalValue;
+}
+
+/**
+ * Collect all modified fields from the review modal
+ * @returns {Object} Object containing modified field names and values
+ */
+function collectModifiedFields() {
+    const modifiedFields = {};
+    const editableFields = document.querySelectorAll('.JO-editable-field[data-modified="true"]');
+    
+    editableFields.forEach(field => {
+        const fieldName = field.dataset.field;
+        const newValue = field.textContent.trim();
+        if (fieldName && newValue) {
+            modifiedFields[fieldName] = newValue;
+        }
+    });
+    
+    return modifiedFields;
 }

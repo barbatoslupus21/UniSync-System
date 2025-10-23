@@ -1068,31 +1068,6 @@
     transition: transform 0.3s ease;
 }
 
-/* Export button animation */
-.JO-export-btn {
-    position: relative;
-    overflow: hidden;
-}
-
-.JO-export-btn:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.3), transparent);
-    transition: all 0.5s ease;
-}
-
-.JO-export-btn:hover:before {
-    left: 100%;
-}
-
-.JO-export-btn.active {
-    pointer-events: none;
-}
-
 /* Show export processing animation */
 @keyframes progressBar {
     0% {

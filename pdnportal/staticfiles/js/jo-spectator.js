@@ -132,7 +132,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadCharts() {
         await loadCategoryChart('6month');
-        await loadStatusChart();
+        const statusPeriodSelector = document.getElementById('status-period-selector');
+        const initialStatusPeriod = statusPeriodSelector ? statusPeriodSelector.value : 'quarter';
+        await loadStatusChart(initialStatusPeriod);
     }
 
     async function loadCategoryChart(period) {

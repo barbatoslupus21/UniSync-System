@@ -655,6 +655,18 @@ document.addEventListener('DOMContentLoaded', function() {
         addUserForm.addEventListener('submit', function(e) {
             let isValid = true;
 
+            // Check if at least one line is selected
+            const linesContainer = document.getElementById('lines-container');
+            if (linesContainer) {
+                const checkedLines = linesContainer.querySelectorAll('input[type="checkbox"]:checked');
+                if (checkedLines.length === 0) {
+                    e.preventDefault();
+                    showToast('Please select at least one line', 'error');
+                    linesContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    isValid = false;
+                }
+            }
+
             // Check if DCF user is checked but no role is selected
             if (dcfUser && dcfUser.checked) {
                 const dcfRoleRadios = dcfRoles.querySelectorAll('input[type="radio"]:checked');
@@ -709,6 +721,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (editUserForm) {
         editUserForm.addEventListener('submit', function(e) {
             let isValid = true;
+
+            // Check if at least one line is selected
+            const editLinesContainer = document.getElementById('edit-lines-container');
+            if (editLinesContainer) {
+                const checkedLines = editLinesContainer.querySelectorAll('input[type="checkbox"]:checked');
+                if (checkedLines.length === 0) {
+                    e.preventDefault();
+                    showToast('Please select at least one line', 'error');
+                    editLinesContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    isValid = false;
+                }
+            }
 
             // Check if DCF user is checked but no role is selected
             if (editDcfUser && editDcfUser.checked) {
@@ -939,13 +963,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Set line - using line_name property from the correct path
-            // This is the critical fix: use userData.line.line_name instead of userData.line_name
-            const lineSelect = document.getElementById('edit-line');
-            if (lineSelect && userData.line && userData.line.line_name) {
-                Array.from(lineSelect.options).forEach(option => {
-                    if (option.text.trim().toLowerCase() === userData.line.line_name.toLowerCase()) {
-                        option.selected = true;
+            // Set lines - now many-to-many with checkboxes
+            const editLinesContainer = document.getElementById('edit-lines-container');
+            if (editLinesContainer && userData.lines) {
+                // Clear all checkboxes first
+                const allCheckboxes = editLinesContainer.querySelectorAll('input[type="checkbox"]');
+                allCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Check the user's lines
+                userData.lines.forEach(userLine => {
+                    const checkbox = editLinesContainer.querySelector(`input[value="${userLine.id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
                     }
                 });
             }
@@ -1175,6 +1206,15 @@ document.addEventListener('DOMContentLoaded', function() {
             stockDeclarationRoles.style.display = 'none';
         }
 
+        // Reset lines search
+        const linesSearchInput = document.getElementById('lines-search');
+        if (linesSearchInput) {
+            linesSearchInput.value = '';
+            // Show all line items
+            const lineItems = document.querySelectorAll('#lines-container .line-item');
+            lineItems.forEach(item => item.classList.remove('hidden'));
+        }
+
         // Reset avatar
         currentAvatarIndex = 0;
         selectAvatar(currentAvatarIndex);
@@ -1221,6 +1261,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editDocunotificationRoles) {
             editDocunotificationRoles.style.display = 'none';
             if (editDocunotificationRoleValidation) editDocunotificationRoleValidation.style.display = 'none';
+        }
+
+        // Reset lines search
+        const editLinesSearchInput = document.getElementById('edit-lines-search');
+        if (editLinesSearchInput) {
+            editLinesSearchInput.value = '';
+            // Show all line items
+            const lineItems = document.querySelectorAll('#edit-lines-container .line-item');
+            lineItems.forEach(item => item.classList.remove('hidden'));
         }
 
         // Reset avatar
@@ -2100,6 +2149,42 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAvatarSlider();
         updateEditAvatarSlider();
     });
+
+    // Lines search functionality for Add User modal
+    const linesSearchInput = document.getElementById('lines-search');
+    if (linesSearchInput) {
+        linesSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const lineItems = document.querySelectorAll('#lines-container .line-item');
+            
+            lineItems.forEach(item => {
+                const lineName = item.getAttribute('data-line-name');
+                if (lineName.includes(searchTerm)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+    }
+
+    // Lines search functionality for Edit User modal
+    const editLinesSearchInput = document.getElementById('edit-lines-search');
+    if (editLinesSearchInput) {
+        editLinesSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const lineItems = document.querySelectorAll('#edit-lines-container .line-item');
+            
+            lineItems.forEach(item => {
+                const lineName = item.getAttribute('data-line-name');
+                if (lineName.includes(searchTerm)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+    }
 });
 
 // jQuery for modal close (Bootstrap compatibility)

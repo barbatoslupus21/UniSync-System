@@ -1330,10 +1330,10 @@ def production_dashboard(request):
 
     current_shift = 'AM' if 7 <= current_hour < 19 else 'PM'
 
-    user_line = request.user.line
+    user_lines = request.user.line.all()
 
     schedule = ProductionSchedulePlan.objects.filter(
-        product_number__line=user_line,
+        product_number__line__in=user_lines,
         date_planned=today,
         shift=current_shift,
         status="Planned",
@@ -1342,7 +1342,7 @@ def production_dashboard(request):
 
     if not schedule:
         schedule = ProductionSchedulePlan.objects.filter(
-            product_number__line=user_line,
+            product_number__line__in=user_lines,
             date_planned=today,
             shift=current_shift,
             status="Change Load",
@@ -1351,7 +1351,7 @@ def production_dashboard(request):
 
     if not schedule:
         schedule = ProductionSchedulePlan.objects.filter(
-            product_number__line=user_line,
+            product_number__line__in=user_lines,
             date_planned=today,
             shift=current_shift,
             status="Backlog",
@@ -1378,7 +1378,7 @@ def production_dashboard(request):
             production_output, created = ProductionOutput.objects.get_or_create(
                 monitoring=schedule.monitoring,
                 schedule_plan=schedule,
-                line=user_line,
+                line=schedule.product_number.line,
                 shift=current_shift,
                 defaults={
                     'inspector': operator,
@@ -1411,7 +1411,7 @@ def production_dashboard(request):
                     'target': target_per_hour,
                     'evaluation': status,
                     'operator': operator,
-                    'line_name': user_line.line_name,
+                    'line_name': schedule.product_number.line.line_name,
                     'time_recorded': localtime(current_time).strftime('%H:%M'),
                     'message': 'Production output added successfully!'
                 })
@@ -1494,11 +1494,11 @@ def production_dashboard(request):
     context = {
         'schedule_exists': True,
         'page_title': 'Production Monitoring',
-        'subtitle': f'Line: {user_line.line_name} - {current_shift} Shift',
+        'subtitle': f'Line: {schedule.product_number.line.line_name} - {current_shift} Shift',
         'active_nav': 'monitoring',
         'schedule': schedule,
         'product_name': schedule.product_number.product_name,
-        'line_name': user_line.line_name,
+        'line_name': schedule.product_number.line.line_name,
         'planned_qty': schedule.planned_qty,
         'total_produced': total_produced,
         'completion_percentage': completion_percentage,

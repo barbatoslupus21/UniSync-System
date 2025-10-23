@@ -1,9 +1,4 @@
-/* ======================================
-   Job Order Dashboard Monitoring Styles
-   ====================================== */
-
-   :root {
-    /* Additional dashboard colors */
+:root {
     --jo-completed: #4caf50;
     --jo-completed-light: #e8f5e9;
     --jo-delayed: #f44336;
@@ -20,22 +15,8 @@
 }
 
 .overall-content {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    box-shadow: var(--shadow);
-    border: #e6e6e6 solid 1px;
     padding: 20px;
-    border-radius: 15px;
-    margin: 5px;
-    background-color: #ebecec;
-}
-
-/* Header Section */
-.JO-header-actions {
-    display: flex;
-    gap: 12px;
-    align-items: center;
+    padding-top: 0;
 }
 
 .JO-period-selector {
@@ -48,30 +29,6 @@
     font-size: 0.9rem;
     color: var(--jo-text-light);
 }
-
-/* Stats Cards */
-.JO-stats-container {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    padding-bottom: 24px;
-}
-
-.JO-stats-card {
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: var(--jo-shadow);
-    background-color: var(--jo-card-bg);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    animation: fadeIn 0.6s forwards;
-    transform: translateY(20px);
-    opacity: 0;
-}
-
-.JO-stats-card:nth-child(1) { animation-delay: 0.1s; }
-.JO-stats-card:nth-child(2) { animation-delay: 0.2s; }
-.JO-stats-card:nth-child(3) { animation-delay: 0.3s; }
-.JO-stats-card:nth-child(4) { animation-delay: 0.4s; }
-
 
 .JO-stats-content p .up,
 .JO-stats-content p .down {
@@ -116,41 +73,39 @@
 }
 
 /* Main Content Grids - Updated layout */
-.JO-main-content-grid {
+.JO-content-grid {
     display: grid;
     grid-template-columns: 70% 30%;
-    gap: 20px;
+    gap: 24px;
     margin-bottom: 24px;
+    margin-right: 24px;
     flex: 1;
-    min-height: 0; /* Important for proper flex behavior */
+    min-height: 0;
 }
 
-/* Right Column for Deadlines and Alerts */
 .JO-right-column,
 .JO-left-column {
     display: flex;
     flex-direction: column;
     height: 100%;
-    min-height: 0; /* Important for proper flex behavior */
+    min-height: 0;
 }
 
-/* Right column with gap between cards */
 .JO-right-column {
     gap: 20px;
 }
 
-/* Timeline Section - Flexible height */
 .JO-timeline-section {
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: 0; /* Important for proper flex behavior */
-    overflow: hidden; /* Prevent overflow */
+    min-height: 0;
+    overflow: hidden;
 }
 
 .JO-timeline-wrapper {
     padding: 0px 10px;
-    overflow: hidden; /* Hide overflow at this level */
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -285,11 +240,13 @@
     overflow: hidden; /* Prevent overflow */
 }
 
-.JO-deadlines-container {
+.JO-deadlines-container,
+.JO-queue-wrapper {
     padding: 10px;
     overflow-y: auto;
     flex: 1;
     min-height: 150px;
+    max-height: 800px;
 }
 
 .JO-deadline-item {
@@ -299,8 +256,8 @@
     padding: 15px;
     background-color: var(--jo-yellow-light, #fff8e1);
     border-radius: 10px;
-    margin-bottom: 15px;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    margin-bottom: 12px !important;
+    transition: all 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
     animation: fadeInUp 0.5s forwards;
     opacity: 0;
     transform: translateY(10px);
@@ -378,8 +335,7 @@
 
 .JO-deadline-requestor-info {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
+    gap: 12px;
     margin-top: 5px;
     padding-top: 5px;
     border-top: 1px dashed rgba(0, 0, 0, 0.1);
@@ -410,6 +366,108 @@
     background-color: var(--jo-delayed-light);
     color: var(--jo-delayed);
     animation: pulse-fade 2s infinite;
+}
+
+/* Deadline Section Headers */
+.JO-deadline-section {
+    margin-bottom: 10px;
+}
+
+.JO-deadline-section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.JO-deadline-section-header i {
+    font-size: 1.1rem;
+}
+
+.JO-deadline-section-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.JO-deadline-section-header.urgent {
+    background-color: #ffebee;
+    color: #d32f2f;
+    border-left: 4px solid #d32f2f;
+}
+
+.JO-deadline-section-header.critical {
+    background-color: #fff3e0;
+    color: #f57c00;
+    border-left: 4px solid #f57c00;
+}
+
+.JO-deadline-section-header.upcoming {
+    background-color: #e3f2fd;
+    color: #1976d2;
+    border-left: 4px solid #1976d2;
+}
+
+/* Urgency-specific deadline item styles */
+.JO-deadline-item.urgent {
+    background-color: #ffe9e9 !important;
+}
+
+.JO-deadline-item.urgent .JO-deadline-countdown {
+    background-color: #FF6B6B;
+    color: white;
+    font-weight: 600;
+}
+
+.JO-deadline-item.critical {
+    background-color: #fff3e0;
+}
+
+.JO-deadline-item.critical .JO-deadline-countdown {
+    background-color: #f57c00;
+    color: white;
+    font-weight: 600;
+}
+
+.JO-deadline-item.upcoming {
+    background-color: #fff8e1;
+}
+
+.JO-deadline-item.upcoming .JO-deadline-countdown {
+    background-color: #fbc02d;
+    color: white;
+}
+
+/* Priority Badge */
+.JO-priority-badge {
+    display: inline-flex;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.JO-priority-badge.urgent {
+    background-color: #FF6B6B;
+    color: white;
+}
+
+.JO-priority-badge.high {
+    background-color: #f57c00;
+    color: white;
+}
+
+.JO-priority-badge.medium {
+    background-color: #ffa726;
+    color: white;
+}
+
+.JO-priority-badge.low {
+    background-color: #66bb6a;
+    color: white;
 }
 
 /* Alerts Section - Flexible height */
@@ -820,6 +878,12 @@
     visibility: visible;
 }
 
+.JO-chart-wrapper,
+.JO-compliance-chart-container,
+.chart-main-container {
+    background-color: white !important;
+}
+
 /* Animation for job order details */
 @keyframes slideIn {
     from {
@@ -897,7 +961,7 @@
 }
 
 @media (max-width: 1024px) {
-    .JO-main-content-grid {
+    .JO-content-grid {
         grid-template-columns: 1fr;
     }
 
@@ -1136,11 +1200,6 @@
     color: var(--jo-primary);
 }
 
-/* Refreshed animation for stats cards */
-.JO-stats-card.refreshed {
-    animation: pulse-refresh 1s ease;
-}
-
 /* Enhanced animations for timeline events */
 .JO-timeline-event {
     transition: all 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
@@ -1150,11 +1209,6 @@
     transform: translateY(-5px) scale(1.05);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
     z-index: 10;
-}
-
-/* Enhanced animation for deadline items */
-.JO-deadline-item {
-    transition: all 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
 }
 
 .JO-deadline-item:hover {
@@ -1235,7 +1289,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    height: 150px;
+    height: 100%;
     color: var(--jo-text-light);
     font-style: italic;
     background-color: var(--jo-bg-color);
@@ -1278,4 +1332,502 @@
 .JO-empty-deadlines p,
 .JO-empty-alerts p {
     margin: 0;
+}
+
+/* Maintenance Workload Styles */
+.JO-workload-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.JO-workload-item {
+    display: grid;
+    grid-template-columns: 1fr 150px 60px;
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.JO-workload-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.JO-workload-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.JO-workload-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: #2c3e50;
+}
+
+.JO-workload-tasks {
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.JO-workload-bar-container {
+    position: relative;
+    height: 24px;
+    background: #e9ecef;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.JO-workload-bar {
+    height: 100%;
+    border-radius: 12px;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+.JO-workload-bar.low {
+    background: linear-gradient(90deg, #4caf50, #66bb6a);
+}
+
+.JO-workload-bar.medium {
+    background: linear-gradient(90deg, #ff9800, #ffa726);
+}
+
+.JO-workload-bar.high {
+    background: linear-gradient(90deg, #f44336, #ef5350);
+}
+
+.JO-workload-percentage {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    text-align: right;
+}
+
+.JO-loading,
+.JO-empty-workload,
+.JO-error-workload {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Compliance Rate Chart Styles */
+.JO-compliance-chart-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    min-height: 400px;
+    max-height: 500px;
+    position: relative;
+    gap: 30px;
+    overflow: hidden;
+}
+
+.JO-compliance-chart-wrapper {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.JO-compliance-chart-wrapper canvas {
+    max-width: 100%;
+    max-height: 100%;
+}
+
+.JO-compliance-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+    max-width: 280px;
+    min-width: 200px;
+}
+
+.JO-compliance-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 4px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.JO-deadline-info-header{
+    display: flex;
+    align-items: center !important;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+.JO-deadline-info-header h4{
+    margin: 0;
+    padding: 0;
+}
+.JO-compliance-legend-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.JO-compliance-legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
+}
+
+.JO-compliance-legend-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.JO-compliance-legend-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+
+.JO-compliance-legend-percentage {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.JO-compliance-legend-count {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #2c3e50;
+}
+
+.JO-compliance-center-text {
+    position: absolute;
+    display: flex;
+    flex-direction: column; 
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.JO-compliance-rate-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1;
+}
+
+.JO-compliance-rate-label {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+@media (max-width: 1024px) {
+    .JO-compliance-chart-container {
+        flex-direction: column;
+        gap: 30px;
+        max-height: none;
+    }
+    
+    .JO-compliance-legend {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .JO-compliance-chart-wrapper {
+        order: -1;
+    }
+}
+
+/* Job Order Queue Styles */
+.JO-queue-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.JO-queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--jo-border);
+}
+
+.JO-queue-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--jo-text);
+}
+
+.JO-queue-count {
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+    background-color: var(--jo-primary-light);
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.JO-queue-container {
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.JO-queue-item {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 15px;
+    background-color: var(--jo-yellow-light, #fff8e1);
+    border-radius: 10px;
+    margin-bottom: 12px !important;
+    transition: all 0.3s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+    animation: fadeInUp 0.5s forwards;
+    opacity: 0;
+    transform: translateY(10px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+}
+
+.JO-queue-item:nth-child(1) { animation-delay: 0.1s; }
+.JO-queue-item:nth-child(2) { animation-delay: 0.2s; }
+.JO-queue-item:nth-child(3) { animation-delay: 0.3s; }
+.JO-queue-item:nth-child(4) { animation-delay: 0.4s; }
+
+.JO-queue-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Urgent: Red background */
+.JO-queue-item.urgent {
+    background-color: #ffebee !important;
+    border-left: 4px solid #f44336;
+}
+
+/* Critical: Orange background */
+.JO-queue-item.critical {
+    background-color: #fff3e0 !important;
+    border-left: 4px solid #ff9800;
+}
+
+/* Upcoming (2-3 days): Yellow background */
+.JO-queue-item.upcoming {
+    background-color: #fffde7 !important;
+    border-left: 4px solid #fdd835;
+}
+
+/* Upcoming (more than 3 days): Green background */
+.JO-queue-item.upcoming_far {
+    background-color: #e8f5e9 !important;
+    border-left: 4px solid #4caf50;
+}
+
+/* Normal (no target date): Default background */
+.JO-queue-item.normal {
+    background-color: #f5f5f5 !important;
+    border-left: 4px solid #9e9e9e;
+}
+
+.JO-queue-info {
+    flex: 1;
+}
+
+.JO-queue-info-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.JO-queue-info-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.JO-queue-info p {
+    margin: 0 0 8px;
+    font-size: 0.9rem;
+    color: var(--jo-text-light);
+}
+
+.JO-queue-requestor-info {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+}
+
+.JO-queue-requestor {
+    font-size: 0.85rem;
+    color: var(--jo-text-dark, #333);
+}
+
+.JO-queue-department {
+    font-size: 0.85rem;
+    color: var(--jo-text-dark, #333);
+    font-style: italic;
+}
+
+.JO-queue-waiting {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: white;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    margin-top: 8px;
+}
+
+.JO-waiting-label {
+    color: var(--jo-text-light);
+    font-weight: 500;
+}
+
+.JO-waiting-value {
+    color: var(--jo-text);
+    font-weight: 600;
+}
+
+/* Empty queue state */
+.JO-empty-queue {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--jo-text-light);
+    font-style: italic;
+    background-color: var(--jo-bg-color);
+    border-radius: 8px;
+    animation: fadeIn 0.5s forwards;
+}
+
+.JO-empty-queue .empty-state {
+    text-align: center;
+}
+
+.JO-empty-queue .empty-state i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    color: var(--jo-primary-light);
+    animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.JO-empty-queue .empty-state h4 {
+    margin: 0 0 10px;
+    font-size: 1.2rem;
+    color: var(--jo-text);
+}
+
+.JO-empty-queue .empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Grid lines for queue */
+.JO-grid-lines .JO-queue-item {
+    position: relative;
+    border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+    margin-bottom: 0;
+    padding: 15px 10px;
+}
+
+.JO-grid-lines .JO-queue-item:last-child {
+    border-bottom: none;
+}
+
+/* Responsive styles for queue */
+@media (max-width: 768px) {
+    .JO-queue-wrapper {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+
+    .JO-queue-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .JO-queue-header h3 {
+        font-size: 1.1rem;
+    }
+
+    .JO-queue-item {
+        padding: 12px;
+    }
+
+    .JO-queue-info-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .JO-queue-requestor-info {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .JO-queue-waiting {
+        align-self: flex-start;
+        margin-top: 10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .JO-queue-container {
+        max-height: 400px;
+    }
+
+    .JO-queue-item {
+        padding: 10px;
+    }
 }

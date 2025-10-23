@@ -1,0 +1,178 @@
+/* Lines search and scrollable container */
+.lines-search-container {
+    margin-bottom: 12px;
+}
+
+.lines-search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: var(--jo-transition);
+}
+
+.lines-search-input:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.lines-scrollable-container {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    padding: 12px;
+    background-color: var(--jo-bg-color);
+}
+
+.lines-scrollable-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.lines-scrollable-container::-webkit-scrollbar-track {
+    background: var(--jo-bg-color);
+    border-radius: 3px;
+}
+
+.lines-scrollable-container::-webkit-scrollbar-thumb {
+    background: var(--jo-border);
+    border-radius: 3px;
+}
+
+.lines-scrollable-container::-webkit-scrollbar-thumb:hover {
+    background: var(--jo-primary);
+}
+
+.line-item {
+    transition: opacity 0.2s ease;
+}
+
+.line-item.hidden-by-search {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .two-column-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}
+
+/* Form error and help text styles */
+.form-errors {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+}
+
+.field-errors {
+    margin-top: 4px;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.85rem;
+    display: block;
+    margin-top: 2px;
+}
+
+.field-help {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    font-style: italic;
+}
+
+/* Form control styling */
+.form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    transition: var(--jo-transition);
+    background-color: white;
+}
+
+.form-control:focus {
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
+    outline: none;
+}
+
+.form-control:invalid {
+    border-color: #dc3545;
+}
+
+/* Button styles */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--jo-transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background-color: var(--jo-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: var(--jo-primary-dark);
+}
+
+.btn-primary:disabled {
+    background-color: var(--jo-border);
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background-color: var(--jo-bg-color);
+    color: var(--jo-text);
+    border: 1px solid var(--jo-border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--jo-border);
+}
+
+/* Form field error styling */
+.form-field-error {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2) !important;
+}
+
+.lines-scrollable-container.form-field-error {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+}
+
+/* Line container styling */
+.line-container {
+    display: inline-block;
+    padding: 4px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: #f8fafc;
+    margin: 4px 6px 4px 0;
+    font-size: 0.85rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.lines-cell {
+    max-width: 250px;
+    word-wrap: break-word;
+    white-space: normal;
+}

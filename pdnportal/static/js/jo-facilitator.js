@@ -1,5 +1,4 @@
 let analyticsChartInstance = null;
-let workloadChartInstance = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     initializeCharts();
@@ -55,10 +54,12 @@ function resetCardHeights(cards = null) {
 
 // Initialize all charts
 function initializeCharts() {
-    fetchAnalyticsData('6month');
+    // Get the selected value from the dropdown, default to 'thismonth'
+    const periodSelector = document.getElementById('chart-period-selector');
+    const defaultPeriod = periodSelector?.value || 'thismonth';
+    fetchAnalyticsData(defaultPeriod);
     fetchWorkloadData();
 
-    const periodSelector = document.getElementById('chart-period-selector');
     if (periodSelector) {
         periodSelector.addEventListener('change', function() {
             const chartWrapper = document.querySelector('.JO-chart-wrapper');
@@ -69,7 +70,7 @@ function initializeCharts() {
         });
     }
     setInterval(() => {
-        const selectedPeriod = document.getElementById('chart-period-selector')?.value || '6month';
+        const selectedPeriod = document.getElementById('chart-period-selector')?.value || 'thismonth';
         fetchAnalyticsData(selectedPeriod);
         fetchWorkloadData();
     }, 60000);
@@ -129,7 +130,8 @@ function fetchAnalyticsData(period, retryCount = 0) {
                     document.getElementById('jo-analytics-chart'),
                     data.labels,
                     data.total_by_month,
-                    data.completed_by_month
+                    data.completed_by_month,
+                    data.assigned_by_month || []
                 );
 
                 // Reset chart opacity
@@ -199,9 +201,10 @@ function createFallbackChart() {
     const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
     const totalData = [4, 6, 8, 5, 7, 9];
     const completedData = [3, 4, 6, 3, 5, 7];
+    const assignedData = [1, 2, 2, 2, 2, 2];
 
     // Create chart with fallback data
-    createAnalyticsChart(canvas, labels, totalData, completedData);
+    createAnalyticsChart(canvas, labels, totalData, completedData, assignedData);
 
     console.log('Using fallback chart data');
 }
@@ -244,12 +247,6 @@ function fetchWorkloadData(retryCount = 0) {
         if (data.status === 'success') {
             // Check if we have valid workload data
             if (data.workload_data && Array.isArray(data.workload_data)) {
-                // Create the workload chart
-                createWorkloadChart(
-                    document.getElementById('workload-chart'),
-                    data.workload_data
-                );
-
                 // Update the workload list
                 updateWorkloadList(data.workload_data);
 
@@ -301,11 +298,6 @@ function createFallbackWorkloadData() {
         { name: 'Maintenance Staff 3', active_tasks: 3, workload_percentage: 30 }
     ];
 
-    // Create chart with fallback data
-    if (canvas) {
-        createWorkloadChart(canvas, fallbackData);
-    }
-
     // Update list with fallback data
     updateWorkloadList(fallbackData);
 
@@ -313,7 +305,7 @@ function createFallbackWorkloadData() {
 }
 
 // Create Analytics Chart
-function createAnalyticsChart(canvas, labels, totalData, completedData) {
+function createAnalyticsChart(canvas, labels, totalData, completedData, assignedData) {
     if (!canvas) return;
 
     // Clear any existing chart
@@ -321,29 +313,44 @@ function createAnalyticsChart(canvas, labels, totalData, completedData) {
         analyticsChartInstance.destroy();
     }
 
+    // Prepare datasets array
+    const datasets = [
+        {
+            label: 'Total Requests',
+            data: totalData,
+            borderColor: '#3366ff',
+            backgroundColor: 'rgba(51, 102, 255, 0.1)',
+            fill: true,
+            tension: 0.4
+        },
+        {
+            label: 'Completed',
+            data: completedData,
+            borderColor: '#4caf50',
+            backgroundColor: 'transparent',
+            borderDash: [5, 5],
+            tension: 0.4
+        }
+    ];
+
+    // Add Assigned dataset if data is available
+    if (assignedData && assignedData.length > 0) {
+        datasets.push({
+            label: 'Assigned',
+            data: assignedData,
+            borderColor: '#ff9800',
+            backgroundColor: 'transparent',
+            borderDash: [3, 3],
+            tension: 0.4
+        });
+    }
+
     // Monthly trends - Line chart
     const chartConfig = {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [
-                {
-                    label: 'Total Requests',
-                    data: totalData,
-                    borderColor: '#3366ff',
-                    backgroundColor: 'rgba(51, 102, 255, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                },
-                {
-                    label: 'Completed',
-                    data: completedData,
-                    borderColor: '#4caf50',
-                    backgroundColor: 'transparent',
-                    borderDash: [5, 5],
-                    tension: 0.4
-                }
-            ]
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -545,16 +552,28 @@ function initializeEventListeners() {
         });
     });
 
-    // View Details buttons
-    const viewDetailsButtons = document.querySelectorAll('.view-details-btn');
-    viewDetailsButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const joId = this.dataset.id;
-            const joNumber = this.dataset.number;
+    // View Details buttons (eye icon)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.JO-icon-button')) {
+            const button = e.target.closest('.JO-icon-button');
+            const joId = button.dataset.id;
+            const joNumber = button.dataset.number;
             if (joId) {
-                fetchJobOrderDetails(joId, joNumber);
+                fetchJobOrderDetails(joId, joNumber, false); // false = view only mode
             }
-        });
+        }
+    });
+
+    // Review buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.jo-review-btn')) {
+            const button = e.target.closest('.jo-review-btn');
+            const joId = button.dataset.id;
+            const joNumber = button.dataset.number;
+            if (joId) {
+                fetchJobOrderDetails(joId, joNumber, true); // true = review mode with assignment
+            }
+        }
     });
 
     // Assign buttons in list
@@ -650,9 +669,14 @@ function initializeAssignmentSystem() {
 }
 
 // Fetch job order details (implements the required function from task)
-function fetchJobOrderDetails(joId, joNumber) {
+function fetchJobOrderDetails(joId, joNumber, isReviewMode = false) {
     const detailsModal = document.getElementById('jo-details-modal');
     openModal(detailsModal);
+
+    // Store review mode in modal for later use
+    detailsModal.dataset.reviewMode = isReviewMode;
+    detailsModal.dataset.joId = joId;
+    detailsModal.dataset.joNumber = joNumber;
 
     // Show loading spinner
     document.getElementById('jo-details-content').innerHTML = `
@@ -675,7 +699,7 @@ function fetchJobOrderDetails(joId, joNumber) {
     })
     .then(data => {
         if (data.status === 'success') {
-            renderJobOrderDetails(data);
+            renderJobOrderDetails(data, isReviewMode);
         } else {
             // Show error in modal
             document.getElementById('jo-details-content').innerHTML = `
@@ -692,7 +716,7 @@ function fetchJobOrderDetails(joId, joNumber) {
             document.querySelector('.retry-fetch-btn').addEventListener('click', function() {
                 const retryId = this.dataset.id;
                 const retryNumber = this.dataset.number;
-                fetchJobOrderDetails(retryId, retryNumber);
+                fetchJobOrderDetails(retryId, retryNumber, isReviewMode);
             });
         }
     })
@@ -709,13 +733,13 @@ function fetchJobOrderDetails(joId, joNumber) {
         `;
 
         document.querySelector('.retry-fetch-btn').addEventListener('click', function() {
-            fetchJobOrderDetails(joId, joNumber);
+            fetchJobOrderDetails(joId, joNumber, isReviewMode);
         });
     });
 }
 
 // Render job order details in the modal
-function renderJobOrderDetails(data) {
+function renderJobOrderDetails(data, isReviewMode = false) {
     const canCancelJO = data.jo_status === 'Routing' && data.is_creator === true;
     const canCloseTransaction = data.jo_status === 'Checked' && data.is_creator === true;
 
@@ -758,6 +782,20 @@ function renderJobOrderDetails(data) {
                     <span class="JO-details-label">Status:</span>
                     <span class="JO-details-value">${data.jo_status || 'N/A'}</span>
                 </div>
+                ${data.priority_level ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Priority Level:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-priority JO-priority-${data.priority_level.toLowerCase()}">${data.priority_level}</span>
+                    </span>
+                </div>
+                ` : ''}
+                ${data.priority_level === 'Urgent' && data.date_of_completion ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date of Completion:</span>
+                    <span class="JO-details-value">${data.date_of_completion}</span>
+                </div>
+                ` : ''}
             </div>
         </div>
 
@@ -816,8 +854,8 @@ function renderJobOrderDetails(data) {
         ` : ''}
 
         <div class="JO-details-section">
-            <h4>Approval Status</h4>
-            <div class="JO-approval-timeline">
+            <h4>Approval Timeline</h4>
+            <div class="JO-timeline">
                 ${timelineHtml}
             </div>
         </div>
@@ -825,20 +863,26 @@ function renderJobOrderDetails(data) {
 
     document.getElementById('jo-details-content').innerHTML = modalContent;
 
-    // Update the footer content based on permissions
-    const footerContent = `
-        <button class="JO-button JO-secondary-button close-details-modal">Close</button>
-        ${canCancelJO ? `
-        <button class="JO-button JO-danger-button" id="cancel-jo-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}">
-            <i class="fas fa-times-circle"></i> Cancel Request
-        </button>` : ''}
-        ${canCloseTransaction ? `
-        <button class="JO-button JO-success-button" id="close-transaction-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}">
-            <i class="fas fa-check-circle"></i> Close Transaction
-        </button>` : ''}
-    `;
+    // Update the footer content based on permissions and review mode
+    if (isReviewMode) {
+        // In review mode, fetch maintenance personnel and show assignment dropdown
+        fetchMaintenancePersonnel(data.id, data.jo_number);
+    } else {
+        // View only mode - show standard buttons
+        const footerContent = `
+            <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+            ${canCancelJO ? `
+            <button class="JO-button JO-danger-button" id="cancel-jo-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}">
+                <i class="fas fa-times-circle"></i> Cancel Request
+            </button>` : ''}
+            ${canCloseTransaction ? `
+            <button class="JO-button JO-success-button" id="close-transaction-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}">
+                <i class="fas fa-check-circle"></i> Close Transaction
+            </button>` : ''}
+        `;
 
-    document.querySelector('#jo-details-modal .JO-modal-footer').innerHTML = footerContent;
+        document.querySelector('#jo-details-modal .JO-modal-footer').innerHTML = footerContent;
+    }
 
     // Setup event listeners for the footer buttons
     const cancelJoBtn = document.getElementById('cancel-jo-btn');
@@ -867,6 +911,108 @@ function renderJobOrderDetails(data) {
     });
 }
 
+// Fetch maintenance personnel and render assignment controls
+function fetchMaintenancePersonnel(joId, joNumber) {
+    const footer = document.querySelector('#jo-details-modal .JO-modal-footer');
+    
+    // Show loading in footer
+    footer.innerHTML = `
+        <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Loading maintenance personnel...</span>
+        </div>
+    `;
+
+    // Fetch maintenance personnel from server
+    fetch('/joborder/get-maintenance-personnel/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success' && data.personnel) {
+            renderAssignmentControls(joId, joNumber, data.personnel);
+        } else {
+            footer.innerHTML = `
+                <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+                <div style="color: #f14668;">Failed to load maintenance personnel</div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching maintenance personnel:', error);
+        footer.innerHTML = `
+            <button class="JO-button JO-secondary-button close-details-modal">Close</button>
+            <div style="color: #f14668;">Error loading maintenance personnel</div>
+        `;
+    });
+
+    // Re-attach close button listener
+    setTimeout(() => {
+        document.querySelectorAll('.close-details-modal').forEach(button => {
+            button.addEventListener('click', function() {
+                closeModal(document.getElementById('jo-details-modal'));
+            });
+        });
+    }, 100);
+}
+
+// Render assignment controls in modal footer
+function renderAssignmentControls(joId, joNumber, personnel) {
+    const footer = document.querySelector('#jo-details-modal .JO-modal-footer');
+    
+    // Build options for the dropdown
+    let optionsHtml = '<option value="">Select Maintenance Personnel</option>';
+    personnel.forEach(person => {
+        optionsHtml += `<option value="${person.id}">${person.name}</option>`;
+    });
+
+    footer.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end;">
+            <select id="assign-maintenance-select" class="JO-select" style="min-width: 200px;">
+                ${optionsHtml}
+            </select>
+            <button class="JO-button JO-primary-button" id="assign-request-btn" disabled>
+                <i class="fas fa-user-check"></i> Assign
+            </button>
+        </div>
+    `;
+
+    // Attach event listeners
+    const selectElement = document.getElementById('assign-maintenance-select');
+    const assignButton = document.getElementById('assign-request-btn');
+
+    // Enable/disable assign button based on selection
+    selectElement.addEventListener('change', function() {
+        if (this.value) {
+            assignButton.disabled = false;
+            assignButton.classList.add('pulse');
+            setTimeout(() => assignButton.classList.remove('pulse'), 600);
+        } else {
+            assignButton.disabled = true;
+        }
+    });
+
+    // Handle assign button click
+    assignButton.addEventListener('click', function() {
+        const assigneeId = selectElement.value;
+        const assigneeName = selectElement.options[selectElement.selectedIndex].text;
+        
+        if (assigneeId) {
+            showAssignmentConfirmation(joId, joNumber, assigneeId, assigneeName);
+        }
+    });
+
+    // Attach close button listener
+    document.querySelectorAll('.close-details-modal').forEach(button => {
+        button.addEventListener('click', function() {
+            closeModal(document.getElementById('jo-details-modal'));
+        });
+    });
+}
+
 /**
  * Generates timeline items based on JORouting model data
  * @param {Array} routingData - Routing data from the server
@@ -875,92 +1021,56 @@ function renderJobOrderDetails(data) {
  */
 function generateTimelineItems(routingData, joStatus) {
     if (!routingData || routingData.length === 0) {
-        return '<p>No approval information available</p>';
+        return '<p class="text-muted">No approval information available</p>';
     }
-
-    // Define the standard approval sequence based on approver_sequence field in JORouting model
-    const approvalSequence = [
-        { sequence: 0, role: 'Requestor', title: 'Request Submitted' },
-        { sequence: 1, role: 'Supervisor', title: 'Supervisor Approval' },
-        { sequence: 2, role: 'Manager', title: 'Manager Approval' },
-        { sequence: 3, role: 'QA Manager', title: 'QA Manager Approval' },
-        { sequence: 4, role: 'PM Manager', title: 'PM Manager Approval' },
-        { sequence: 5, role: 'Assigning', title: 'Assigning Person In-Charge' },
-        { sequence: 6, role: 'Maintenance', title: 'Maintenance Implementation' },
-        { sequence: 7, role: 'QA', title: 'QA Checking' },
-        { sequence: 8, role: 'Requestor', title: 'Transaction Closure' }
-    ];
-
-    // Map to store routing entries by sequence number
-    const routingMap = {};
-
-    // Process routing data to build the map and find the highest sequence
-    let maxSequence = -1;
-    routingData.forEach(entry => {
-        if (entry.approver_sequence !== undefined && entry.approver_sequence !== null) {
-            const sequence = parseInt(entry.approver_sequence);
-            routingMap[sequence] = entry;
-            maxSequence = Math.max(maxSequence, sequence);
-        }
-    });
 
     let timelineHtml = '';
 
-    // Generate timeline items for each step in the sequence
-    approvalSequence.forEach((step, index) => {
-        const entry = routingMap[step.sequence];
+    // Process each routing entry and create timeline items
+    routingData.forEach((entry, index) => {
         let timelineClass = '';
         let icon = '<i class="fas fa-clock"></i>';
-        let statusText = step.title;
+        let statusLabel = '';
         let dateText = '';
         let remarks = '';
 
-        // Step has been reached in the routing process
-        if (entry) {
-            if (entry.status === 'Submitted' || entry.status === 'Approved') {
-                timelineClass = 'JO-timeline-complete';
-                icon = '<i class="fas fa-check"></i>';
-
-                if (entry.status === 'Submitted') {
-                    dateText = `${entry.approver_name || entry.approver} - ${entry.request_at || entry.date}`;
-                } else {
-                    dateText = `Approved by ${entry.approver_name || entry.approver} on ${entry.approved_at}`;
-                }
-
-                if (entry.remarks) {
-                    remarks = `<p class="JO-timeline-remarks">"${entry.remarks}"</p>`;
-                }
-            } else if (entry.status === 'Rejected') {
-                timelineClass = 'JO-timeline-rejected';
-                icon = '<i class="fas fa-times"></i>';
-                statusText = `${step.title} - Rejected`;
-                dateText = `Rejected by ${entry.approver_name || entry.approver} on ${entry.approved_at}`;
-
-                if (entry.remarks) {
-                    remarks = `<p class="JO-timeline-remarks">"${entry.remarks}"</p>`;
-                }
-            } else if (entry.status === 'Pending' || entry.status === 'Processing') {
-                timelineClass = 'JO-timeline-active';
-                icon = '<i class="fas fa-hourglass-half"></i>';
-                dateText = `Waiting for ${entry.approver_name || entry.approver}'s approval`;
-            }
+        // Determine the timeline state based on entry status
+        if (entry.status === 'Approved' || entry.status === 'Submitted') {
+            timelineClass = 'JO-timeline-complete';
+            icon = '<i class="fas fa-check"></i>';
+            statusLabel = entry.status === 'Approved' ? 'Approved' : 'Submitted';
+            dateText = `${entry.status === 'Approved' ? 'Approved' : 'Submitted'} by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Disapproved') {
+            timelineClass = 'JO-timeline-rejected';
+            icon = '<i class="fas fa-times"></i>';
+            statusLabel = 'Disapproved';
+            dateText = `Disapproved by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Pending') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-hourglass-half"></i>';
+            statusLabel = 'Pending Approval';
+            dateText = `Waiting for ${entry.approver_name || entry.approver}'s approval`;
+        } else if (entry.status === 'Viewed') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-eye"></i>';
+            statusLabel = 'Viewed';
+            dateText = `Viewed by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Cancelled') {
+            timelineClass = 'JO-timeline-rejected';
+            icon = '<i class="fas fa-times"></i>';
+            statusLabel = 'Cancelled';
+            dateText = `Cancelled by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else {
+            // Default case for any other status
+            timelineClass = 'JO-timeline-pending';
+            icon = '<i class="fas fa-circle"></i>';
+            statusLabel = entry.status;
+            dateText = `${entry.approver_name || entry.approver} - ${entry.request_at || ''}`;
         }
-        // Step is a future step that hasn't been reached yet
-        else if (step.sequence > maxSequence) {
-            // If JO is cancelled or rejected, make future steps inactive
-            if (joStatus === 'Cancelled' || joStatus === 'Rejected') {
-                timelineClass = 'JO-timeline-inactive';
-                dateText = 'Not applicable';
-            } else if (step.sequence === maxSequence + 1) {
-                // Next step is pending
-                timelineClass = 'JO-timeline-active';
-                icon = '<i class="fas fa-hourglass-half"></i>';
-                dateText = 'Pending';
-            } else {
-                // Future steps
-                timelineClass = 'JO-timeline-inactive';
-                dateText = 'Not yet reached';
-            }
+
+        // Add remarks if available
+        if (entry.remarks && entry.remarks.trim() !== '') {
+            remarks = `<p class="JO-timeline-remarks"><em>"${entry.remarks}"</em></p>`;
         }
 
         timelineHtml += `
@@ -969,13 +1079,44 @@ function generateTimelineItems(routingData, joStatus) {
                     ${icon}
                 </div>
                 <div class="JO-timeline-content">
-                    <h5>${statusText}</h5>
-                    <p>${dateText}</p>
+                    <h5>${entry.approver_name || entry.approver} - ${statusLabel}</h5>
+                    <p class="JO-timeline-date">${dateText}</p>
                     ${remarks}
                 </div>
             </div>
         `;
     });
+
+    // If job order is completed or closed, add a final completion item
+    if (joStatus === 'Closed' || joStatus === 'Completed') {
+        timelineHtml += `
+            <div class="JO-timeline-item JO-timeline-complete">
+                <div class="JO-timeline-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>Job Order ${joStatus}</h5>
+                    <p class="JO-timeline-date">The job order has been successfully ${joStatus.toLowerCase()}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    // If job order is cancelled or rejected, add a final cancellation/rejection item
+    if (joStatus === 'Cancelled') {
+        timelineHtml += `
+            <div class="JO-timeline-item JO-timeline-rejected">
+                <div class="JO-timeline-icon">
+                    <i class="fas fa-ban"></i>
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>Job Order Cancelled</h5>
+                    <p class="JO-timeline-date">This job order has been cancelled</p>
+                </div>
+            </div>
+        `;
+    }
+
     return timelineHtml;
 }
 
@@ -1049,49 +1190,60 @@ function removeAssignmentItem(item) {
 
 // Initialize search functionality
 function initializeSearch() {
-    const searchInput = document.querySelector('.JO-search-input');
+    const searchInput = document.getElementById('jo-search-input');
+    const statusFilter = document.getElementById('jo-status-filter');
+    
     if (!searchInput) return;
 
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.trim().toLowerCase();
-        const tableRows = document.querySelectorAll('.JO-table tbody tr');
-        let visibleCount = 0;
+    let searchTimeout;
 
-        tableRows.forEach(row => {
-            let shouldShow = false;
-            const cells = row.querySelectorAll('td');
-
-            cells.forEach(cell => {
-                if (cell.textContent.toLowerCase().includes(searchTerm)) {
-                    shouldShow = true;
-                }
-            });
-
-            if (shouldShow) {
-                row.style.display = '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        // Show/hide empty state row
-        let emptyRow = document.querySelector('.JO-table tbody .JO-empty-row');
-        if (!emptyRow) {
-            emptyRow = document.createElement('tr');
-            emptyRow.className = 'JO-empty-row';
-            emptyRow.innerHTML = `<td colspan="7" style="padding: 0; border-bottom: none;">
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 220px; min-height: 180px; width: 100%;">
-                    <div class="JO-no-results-icon">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 4px;">No matching Job Order requests found</div>
-                    <div style="color: #888; font-size: 0.95rem;">Try adjusting your search criteria</div>
-                </div>
-            </td>`;
-            document.querySelector('.JO-table tbody').appendChild(emptyRow);
+    // Function to perform search
+    function performSearch() {
+        const searchTerm = searchInput.value.trim();
+        const status = statusFilter ? statusFilter.value : 'all';
+        
+        // Build URL with search parameters
+        const url = new URL(window.location.href);
+        url.searchParams.set('page', '1'); // Reset to first page
+        
+        if (searchTerm) {
+            url.searchParams.set('search', searchTerm);
+        } else {
+            url.searchParams.delete('search');
         }
-        emptyRow.style.display = (visibleCount === 0) ? '' : 'none';
+        
+        if (status && status !== 'all') {
+            url.searchParams.set('status', status);
+        } else {
+            url.searchParams.delete('status');
+        }
+        
+        // Reload page with new parameters
+        window.location.href = url.toString();
+    }
+
+    // Search input with debounce (wait 500ms after user stops typing)
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            performSearch();
+        }, 500);
+    });
+
+    // Status filter change
+    if (statusFilter) {
+        statusFilter.addEventListener('change', function() {
+            performSearch();
+        });
+    }
+
+    // Allow Enter key to trigger immediate search
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            clearTimeout(searchTimeout);
+            performSearch();
+        }
     });
 }
 

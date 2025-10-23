@@ -101,8 +101,8 @@
                                 <th>ID Number</th>
                                 <th>Name</th>
                                 <th>Position</th>
-                                <th>Line</th>
-                                <th>Permissions</th>
+                                <th class="column-line">Line</th>
+                                <th class="column-permissions">Permissions</th>
                                 <th style="text-align: center;">Status</th>
                                 <th style="text-align: center;">Actions</th>
                             </tr>
@@ -116,8 +116,14 @@
                                     <td data-label="ID">{{ user.id_number }}</td>
                                     <td data-label="Name">{{ user.name }}</td>
                                     <td data-label="Position">{{ user.position }}</td>
-                                    <td data-label="Line">{{ user.line.line_name }}</td>
-                                    <td data-label="Permissions">
+                                    <td data-label="Line" class="column-line">
+                                        <div class="UM-permission-pills">
+                                            {% for line in user.line.all %}
+                                                <span class="UM-permission-pill UM-monitoring-pill">{{ line.line_name }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td data-label="Permissions" class="column-permissions">
                                         <div class="UM-permission-pills">
                                             {% if user.is_admin %}
                                             <span class="UM-permission-pill UM-admin-pill">Admin</span>
@@ -299,13 +305,20 @@
                         </div>
 
                         <div class="UM-form-group">
-                            <label for="line">Line</label>
-                            <select id="line" name="line" class="UM-select" required>
-                                <option value="">Select a line</option>
-                                {% for line in lines %}
-                                <option value="{{ line.id }}">{{ line.line_name }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="line">Line *</label>
+                            <div class="lines-search-container">
+                                <input type="text" id="lines-search" class="lines-search-input" placeholder="Search lines...">
+                            </div>
+                            <div class="lines-scrollable-container">
+                                <div class="JO-tooling-options" id="lines-container">
+                                    {% for line in lines %}
+                                    <div class="JO-checkbox-container line-item" data-line-name="{{ line.line_name|lower }}">
+                                        <input type="checkbox" id="line_{{ line.id }}" name="line" value="{{ line.id }}">
+                                        <label for="line_{{ line.id }}" class="JO-checkbox-label">{{ line.line_name }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </div>
 
                         <div class="UM-form-group">
@@ -720,13 +733,20 @@
                         </div>
 
                         <div class="UM-form-group">
-                            <label for="edit-line">Line</label>
-                            <select id="edit-line" name="line" class="UM-select" required>
-                                <option value="">Select a line</option>
-                                {% for line in lines %}
-                                <option value="{{ line.id }}">{{ line.line_name }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="edit-line">Line *</label>
+                            <div class="lines-search-container">
+                                <input type="text" id="edit-lines-search" class="lines-search-input" placeholder="Search lines...">
+                            </div>
+                            <div class="lines-scrollable-container">
+                                <div class="JO-tooling-options" id="edit-lines-container">
+                                    {% for line in lines %}
+                                    <div class="JO-checkbox-container line-item" data-line-name="{{ line.line_name|lower }}">
+                                        <input type="checkbox" id="edit_line_{{ line.id }}" name="line" value="{{ line.id }}">
+                                        <label for="edit_line_{{ line.id }}" class="JO-checkbox-label">{{ line.line_name }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
                         </div>
 
                         <div class="UM-form-group">

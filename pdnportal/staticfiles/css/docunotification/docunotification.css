@@ -1,0 +1,436 @@
+/* Document Notification Layout */
+.docu-content-grid {
+    display: flex;
+    /* gap: var(--space-sm); */
+    height: calc(100vh - 150px);
+    margin-top: 20px;
+}
+
+.docu-left-column {
+    flex: 0 0 65%;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.docu-right-column {
+    flex: 0 0 35%;
+    height: 100%;
+    overflow: hidden; /* Prevent scrolling */
+}
+
+.docu-right-content {
+    height: 100%;
+    padding: 20px;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Statistics Cards Grid */
+.docu-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-md);
+    flex-shrink: 0;
+}
+
+.docu-stat-card {
+    background: white;
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    width: 100%;
+}
+
+.docu-stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.docu-stat-icon i {
+    font-size: 22px;
+}
+
+.docu-stat-info {
+    flex: 1;
+}
+
+.docu-stat-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2c3e50;
+    line-height: 1.2;
+    margin-bottom: 4px;
+}
+
+.docu-stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+.docu-stat-sublabel {
+    font-size: 0.75rem;
+    color: #95a5a6;
+    margin-top: 2px;
+}
+
+.docu-stat-badge {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.docu-stat-badge.positive {
+    color: #4CAF50;
+    background: #E8F5E9;
+}
+
+.docu-stat-badge.negative {
+    color: #F44336;
+    background: #FFEBEE;
+}
+
+.docu-stat-badge i {
+    font-size: 0.7rem;
+}
+
+/* Arrow and percent styling */
+.docu-stat-badge .stat-arrow {
+    font-weight: 700;
+    margin-right: 6px;
+}
+
+/* Ensure percent text uses same color as badge (positive = green, negative = red) */
+.docu-stat-badge {
+    color: inherit;
+}
+
+/* Status badges for table */
+.docu-status {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.docu-status-expired {
+    background: #FFEBEE;
+    color: #F44336;
+}
+
+.docu-status-due-soon {
+    background: #FFF3E0;
+    color: #FF9800;
+}
+
+.docu-status-due-week {
+    background: #FFFDE7;
+    color: #FFC107;
+}
+
+.docu-status-due-later {
+    background: #E3F2FD;
+    color: #2196F3;
+}
+
+/* Notifications Section */
+.docu-notifications-section {
+    border: 0.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-top: var(--space-md);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Allow flex item to shrink below content size */
+}
+
+.docu-notifications-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.docu-notifications-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0; /* Allow flex item to shrink below content size */
+}
+
+/* Notification Card Base Styles */
+.docu-notification-card {
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.docu-notification-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Status-based Background Colors */
+.docu-notification-expired {
+    background: #FFEBEE;
+}
+
+.docu-notification-due-soon {
+    background: #FFF3E0;
+}
+
+.docu-notification-due-week {
+    background: #FFFDE7;
+}
+
+.docu-notification-due-later {
+    background: #E3F2FD;
+}
+
+/* Notification Header */
+.docu-notification-header {
+    margin-bottom: 12px;
+}
+
+.docu-notification-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.docu-notification-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.docu-notification-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.08);
+    color: #2c3e50;
+}
+
+.docu-notification-ref {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+    font-family: 'Courier New', monospace;
+}
+
+/* Notification Body */
+.docu-notification-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.docu-notification-description {
+    font-size: 0.9rem;
+    color: #495057;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.docu-notification-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.docu-notification-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.docu-notification-meta i {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* Empty State */
+.docu-notifications-empty {
+    text-align: center;
+    padding: 48px 24px;
+    color: #95a5a6;
+}
+
+.docu-notifications-empty i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.docu-notifications-empty p {
+    font-size: 1rem;
+    margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .docu-content-grid {
+        flex-direction: column;
+        height: auto;
+        gap: 15px;
+    }
+    
+    .docu-left-column,
+    .docu-right-column {
+        flex: none;
+        width: 100%;
+        height: auto;
+        overflow: visible;
+    }
+    
+    .docu-right-column {
+        order: -1; /* Right column appears first on mobile */
+    }
+    
+    .docu-right-content {
+        height: auto;
+        min-height: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .docu-content-grid {
+        margin-top: 15px;
+        gap: 10px;
+    }
+    
+    .docu-right-content {
+        padding: 15px;
+    }
+    
+    .docu-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .docu-stat-card {
+        padding: 16px;
+    }
+    
+    .docu-stat-value {
+        font-size: 1.5rem;
+    }
+
+    .docu-notifications-section {
+        margin-top: 24px;
+        max-height: 600px;
+    }
+
+    .docu-notification-card {
+        border-radius: 8px;
+        padding: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+}
+
+/* Notification Settings Section */
+.form-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.form-section h4 {
+    margin: 0 0 15px 0;
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.notification-settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+    margin: var(--space-lg) 0;
+}
+
+.checkbox-group {
+    margin-bottom: 0 !important;
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    cursor: pointer;
+    font-weight: normal !important;
+    margin-bottom: 0 !important;
+    gap: 8px;
+}
+
+
+.checkbox-label input[type="checkbox"] {
+    /* Visually hide the native checkbox but keep it accessible */
+    position: absolute !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.checkmark {
+    position: relative;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border: 2px solid var(--border-color);
+    border-radius: 3px;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+    content: '✓';
+    position: absolute;
+    top: 1px;
+    left: 3px;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+}

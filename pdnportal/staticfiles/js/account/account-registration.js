@@ -3,8 +3,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const addUserBtn = document.getElementById('add-user-btn');
     const addUserModal = document.getElementById('add-user-modal');
     const editUserModal = document.getElementById('edit-user-modal');
-    const addModalClose = addUserModal?.querySelector('.UM-modal-close');
-    const editModalClose = editUserModal?.querySelector('.UM-modal-close');
+    // Support both legacy UM-modal-close and JO-modal-close button class names
+    const addModalClose = addUserModal?.querySelector('.UM-modal-close, .JO-modal-close');
+    const editModalClose = editUserModal?.querySelector('.UM-modal-close, .JO-modal-close');
     const cancelUserBtn = document.getElementById('cancel-user');
     const cancelEditUserBtn = document.getElementById('edit-cancel-user');
     const editButtons = document.querySelectorAll('.UM-edit-user');
@@ -47,6 +48,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const editQualityControlRoles = document.getElementById('edit-quality-control-roles');
     const editStockDeclarationUser = document.getElementById('edit-stock-declaration-user');
     const editStockDeclarationRoles = document.getElementById('edit-stock-declaration-roles');
+    const docunotificationUser = document.getElementById('docunotification-user');
+    const docunotificationRoles = document.getElementById('docunotification-roles');
+    const docunotificationRoleValidation = document.getElementById('docunotification-role-validation');
+    const editDocunotificationUser = document.getElementById('edit-docunotification-user');
+    const editDocunotificationRoles = document.getElementById('edit-docunotification-roles');
+    const editDocunotificationRoleValidation = document.getElementById('edit-docunotification-role-validation');
 
     // Password toggle - Add form
     const passwordField = document.getElementById('password');
@@ -73,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Delete confirmation
     const deleteButtons = document.querySelectorAll('.UM-delete-user');
     const deleteConfirmModal = document.getElementById('delete-confirm-modal');
-    const deleteModalClose = deleteConfirmModal?.querySelector('.UM-modal-close');
+    const deleteModalClose = deleteConfirmModal?.querySelector('.UM-modal-close, .JO-modal-close');
     const cancelDeleteBtn = document.getElementById('cancel-delete');
     const deleteUserForm = document.getElementById('delete-user-form');
 
@@ -106,50 +113,55 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Edit user button click
-    if (editButtons.length > 0) {
-        // Add this to the edit button click event handler
-        editButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+    // Edit user button click - using event delegation for dynamically added rows
+    document.addEventListener('click', function(e) {
+        const editButton = e.target.closest('.UM-edit-user');
+        if (editButton) {
+            e.preventDefault();
+            e.stopPropagation();
 
-                const userId = this.getAttribute('data-id');
-                if (!userId) {
-                    console.error('User ID not found on edit button');
-                    showToast('Error: User ID not found', 'error');
-                    return;
+            const userId = editButton.getAttribute('data-id');
+            if (!userId) {
+                console.error('User ID not found on edit button');
+                showToast('Error: User ID not found', 'error');
+                return;
+            }
+
+            // Add visual feedback with a line/border highlight
+            const parentRow = editButton.closest('tr');
+            if (parentRow) {
+                parentRow.style.boxShadow = '0 0 0 2px var(--jo-primary)';
+                parentRow.style.position = 'relative';
+                parentRow.style.zIndex = '1';
+
+                // Reset after modal is closed
+                const resetHighlight = () => {
+                    parentRow.style.boxShadow = '';
+                    parentRow.style.position = '';
+                    parentRow.style.zIndex = '';
+                };
+
+                // Add event listeners to reset highlight (guard in case elements are not present)
+                const editCancelEl = document.getElementById('edit-cancel-user');
+                if (editCancelEl) {
+                    editCancelEl.addEventListener('click', resetHighlight, {once: true});
                 }
 
-                // Add visual feedback with a line/border highlight
-                const parentRow = this.closest('tr');
-                if (parentRow) {
-                    parentRow.style.boxShadow = '0 0 0 2px var(--jo-primary)';
-                    parentRow.style.position = 'relative';
-                    parentRow.style.zIndex = '1';
-
-                    // Reset after modal is closed
-                    const resetHighlight = () => {
-                        parentRow.style.boxShadow = '';
-                        parentRow.style.position = '';
-                        parentRow.style.zIndex = '';
-                    };
-
-                    // Add event listeners to reset highlight
-                    document.getElementById('edit-cancel-user').addEventListener('click', resetHighlight, {once: true});
-                    document.querySelector('#edit-user-modal .UM-modal-close').addEventListener('click', resetHighlight, {once: true});
+                const editModalCloseEl = document.querySelector('#edit-user-modal .UM-modal-close, #edit-user-modal .JO-modal-close');
+                if (editModalCloseEl) {
+                    editModalCloseEl.addEventListener('click', resetHighlight, {once: true});
                 }
+            }
 
-                // Add micro-animation to button
-                this.style.transform = 'scale(1.2)';
-                setTimeout(() => {
-                    this.style.transform = 'scale(1)';
-                }, 200);
+            // Add micro-animation to button
+            editButton.style.transform = 'scale(1.2)';
+            setTimeout(() => {
+                editButton.style.transform = 'scale(1)';
+            }, 200);
 
-                loadUserData(userId);
-            });
-        });
-    }
+            loadUserData(userId);
+        }
+    });
 
     // Close Add modal events
     if (addModalClose) {
@@ -181,14 +193,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Close modals when clicking outside
-    if (addUserModal) {
-        addUserModal.addEventListener('click', function(e) {
-            if (e.target === addUserModal) {
-                closeUserModal();
-            }
-        });
-    }
+    // NOTE: Add User modal should only close via its close/cancel buttons.
+    // Do NOT close the Add User modal when clicking outside (backdrop).
+    // This keeps the user from accidentally dismissing the form.
+    // (No backdrop click handler for addUserModal)
 
     if (editUserModal) {
         editUserModal.addEventListener('click', function(e) {
@@ -275,45 +283,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Quality Control user checkbox
-    if (qualityControlUser) {
-        qualityControlUser.addEventListener('change', function() {
-            toggleSubpermissions(this, qualityControlRoles);
-
-            // Reset radio buttons when unchecked
-            if (!this.checked) {
-                const radioButtons = qualityControlRoles.querySelectorAll('input[type="radio"]');
-                radioButtons.forEach(radio => {
-                    radio.checked = false;
-                });
-            }
-        });
-    }
-
-    // Stock Declaration user checkbox
-    if (stockDeclarationUser) {
-        // Set initial state if checkbox is pre-checked
-        if (stockDeclarationUser.checked && stockDeclarationRoles) {
-            stockDeclarationRoles.style.display = 'block';
-            // Force reflow then add visible class for transition
-            // eslint-disable-next-line no-unused-expressions
-            void stockDeclarationRoles.offsetHeight;
-            stockDeclarationRoles.classList.add('visible');
-        }
-
-        stockDeclarationUser.addEventListener('change', function() {
-            toggleSubpermissions(this, stockDeclarationRoles);
-
-            // Reset radio buttons when unchecked
-            if (!this.checked) {
-                const radioButtons = stockDeclarationRoles.querySelectorAll('input[type="radio"]');
-                radioButtons.forEach(radio => {
-                    radio.checked = false;
-                });
-            }
-        });
-    }
-
     // DCF user checkbox
     if (dcfUser) {
         // Set initial state
@@ -375,6 +344,78 @@ document.addEventListener('DOMContentLoaded', function() {
             radio.addEventListener('change', function() {
                 if (ecisRoleValidation) {
                     ecisRoleValidation.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Quality Control user checkbox
+    if (qualityControlUser) {
+        qualityControlUser.addEventListener('change', function() {
+            toggleSubpermissions(this, qualityControlRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = qualityControlRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // Stock Declaration user checkbox
+    if (stockDeclarationUser) {
+        // Set initial state if checkbox is pre-checked
+        if (stockDeclarationUser.checked && stockDeclarationRoles) {
+            stockDeclarationRoles.style.display = 'block';
+            // Force reflow then add visible class for transition
+            // eslint-disable-next-line no-unused-expressions
+            void stockDeclarationRoles.offsetHeight;
+            stockDeclarationRoles.classList.add('visible');
+        }
+
+        stockDeclarationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, stockDeclarationRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = stockDeclarationRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // Document Notification user checkbox
+    if (docunotificationUser) {
+        // Set initial state
+        if (docunotificationUser.checked && docunotificationRoles) {
+            docunotificationRoles.style.display = 'block';
+        }
+
+        docunotificationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, docunotificationRoles);
+
+            // Reset radio buttons and validation message when unchecked
+            if (!this.checked) {
+                const radioButtons = docunotificationRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+                if (docunotificationRoleValidation) {
+                    docunotificationRoleValidation.style.display = 'none';
+                }
+            }
+        });
+
+        // Add event listeners to Document Notification role radio buttons
+        const docunotificationRoleRadios = docunotificationRoles.querySelectorAll('input[type="radio"]');
+        docunotificationRoleRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (docunotificationRoleValidation) {
+                    docunotificationRoleValidation.style.display = 'none';
                 }
             });
         });
@@ -489,19 +530,92 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Delete user event listeners
-    deleteButtons.forEach(button => {
-        button.addEventListener('click', function(e) {
+    // Quality Control user checkbox for edit form
+    if (editQualityControlUser) {
+        editQualityControlUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editQualityControlRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = editQualityControlRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // Stock Declaration user checkbox for edit form
+    if (editStockDeclarationUser) {
+        // Set initial state if checkbox is pre-checked
+        if (editStockDeclarationUser.checked && editStockDeclarationRoles) {
+            editStockDeclarationRoles.style.display = 'block';
+            // Force reflow then add visible class for transition
+            // eslint-disable-next-line no-unused-expressions
+            void editStockDeclarationRoles.offsetHeight;
+            editStockDeclarationRoles.classList.add('visible');
+        }
+
+        editStockDeclarationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editStockDeclarationRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = editStockDeclarationRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // Document Notification user checkbox for edit form
+    if (editDocunotificationUser) {
+        // Set initial state
+        if (editDocunotificationUser.checked && editDocunotificationRoles) {
+            editDocunotificationRoles.style.display = 'block';
+        }
+
+        editDocunotificationUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editDocunotificationRoles);
+
+            // Reset radio buttons and validation message when unchecked
+            if (!this.checked) {
+                const radioButtons = editDocunotificationRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+                if (editDocunotificationRoleValidation) {
+                    editDocunotificationRoleValidation.style.display = 'none';
+                }
+            }
+        });
+
+        // Add event listeners to Document Notification role radio buttons
+        const editDocunotificationRoleRadios = editDocunotificationRoles.querySelectorAll('input[type="radio"]');
+        editDocunotificationRoleRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (editDocunotificationRoleValidation) {
+                    editDocunotificationRoleValidation.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Delete user event listeners - using event delegation for dynamically added rows
+    document.addEventListener('click', function(e) {
+        const deleteButton = e.target.closest('.UM-delete-user');
+        if (deleteButton) {
             e.preventDefault();
-            const userId = this.dataset.id;
+            const userId = deleteButton.dataset.id;
             openDeleteModal(userId);
 
             // Add micro-animation to button
-            this.style.transform = 'scale(1.2)';
+            deleteButton.style.transform = 'scale(1.2)';
             setTimeout(() => {
-                this.style.transform = 'scale(1)';
+                deleteButton.style.transform = 'scale(1)';
             }, 200);
-        });
+        }
     });
 
     // Close delete modal
@@ -541,6 +655,18 @@ document.addEventListener('DOMContentLoaded', function() {
         addUserForm.addEventListener('submit', function(e) {
             let isValid = true;
 
+            // Check if at least one line is selected
+            const linesContainer = document.getElementById('lines-container');
+            if (linesContainer) {
+                const checkedLines = linesContainer.querySelectorAll('input[type="checkbox"]:checked');
+                if (checkedLines.length === 0) {
+                    e.preventDefault();
+                    showToast('Please select at least one line', 'error');
+                    linesContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    isValid = false;
+                }
+            }
+
             // Check if DCF user is checked but no role is selected
             if (dcfUser && dcfUser.checked) {
                 const dcfRoleRadios = dcfRoles.querySelectorAll('input[type="radio"]:checked');
@@ -571,6 +697,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Check if Document Notification user is checked but no role is selected
+            if (docunotificationUser && docunotificationUser.checked) {
+                const docunotificationRoleRadios = docunotificationRoles.querySelectorAll('input[type="radio"]:checked');
+                if (docunotificationRoleRadios.length === 0) {
+                    e.preventDefault();
+                    if (docunotificationRoleValidation) {
+                        docunotificationRoleValidation.style.display = 'block';
+                    }
+                    // Scroll to the validation message if previous validations didn't fail
+                    if (isValid) {
+                        docunotificationRoles.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    isValid = false;
+                }
+            }
+
             return isValid;
         });
     }
@@ -579,6 +721,18 @@ document.addEventListener('DOMContentLoaded', function() {
     if (editUserForm) {
         editUserForm.addEventListener('submit', function(e) {
             let isValid = true;
+
+            // Check if at least one line is selected
+            const editLinesContainer = document.getElementById('edit-lines-container');
+            if (editLinesContainer) {
+                const checkedLines = editLinesContainer.querySelectorAll('input[type="checkbox"]:checked');
+                if (checkedLines.length === 0) {
+                    e.preventDefault();
+                    showToast('Please select at least one line', 'error');
+                    editLinesContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    isValid = false;
+                }
+            }
 
             // Check if DCF user is checked but no role is selected
             if (editDcfUser && editDcfUser.checked) {
@@ -610,6 +764,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
 
+            // Check if Document Notification user is checked but no role is selected
+            if (editDocunotificationUser && editDocunotificationUser.checked) {
+                const editDocunotificationRoleRadios = editDocunotificationRoles.querySelectorAll('input[type="radio"]:checked');
+                if (editDocunotificationRoleRadios.length === 0) {
+                    e.preventDefault();
+                    if (editDocunotificationRoleValidation) {
+                        editDocunotificationRoleValidation.style.display = 'block';
+                    }
+                    // Scroll to the validation message if previous validations didn't fail
+                    if (isValid) {
+                        editDocunotificationRoles.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    isValid = false;
+                }
+            }
+
             return isValid;
         });
     }
@@ -622,11 +792,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Search functionality
+    // Search functionality with debounce
+    let searchTimeout;
     if (userSearch) {
         userSearch.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            filterUsers(searchTerm, permissionFilter?.value || 'all');
+            const searchTerm = this.value.trim();
+            const filterValue = permissionFilter?.value || 'all';
+            
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+            
+            // Debounce search - wait 300ms after user stops typing
+            searchTimeout = setTimeout(() => {
+                performUserSearch(searchTerm, filterValue, 1);
+            }, 300);
         });
     }
 
@@ -634,7 +813,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (permissionFilter) {
         permissionFilter.addEventListener('change', function() {
             const filterValue = this.value;
-            filterUsers(userSearch?.value.toLowerCase() || '', filterValue);
+            const searchTerm = userSearch?.value.trim() || '';
+            performUserSearch(searchTerm, filterValue, 1);
         });
     }
 
@@ -649,14 +829,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Toggle sub-permissions visibility
     function toggleSubpermissions(checkbox, container) {
+        if (!container) return;
+
         if (checkbox.checked) {
+            // Open with CSS transition by adding visible class
+            // Ensure element is displayed so transitions can run
             container.style.display = 'block';
-            container.style.animation = 'none';
-            setTimeout(() => {
-                container.style.animation = 'UM-fade-in 0.3s ease-out';
-            }, 10);
+            // Force reflow so the browser registers the initial max-height (0) before we add the class
+            // eslint-disable-next-line no-unused-expressions
+            void container.offsetHeight;
+            container.classList.add('visible');
         } else {
-            container.style.display = 'none';
+            // Close with CSS transition by removing visible class
+            container.classList.remove('visible');
+
+            // After transition ends, ensure the element is hidden from layout if desired
+            // (optional) we can set display to none after the transition completes
+            container.addEventListener('transitionend', function onTransitionEnd(e) {
+                if (e.propertyName === 'max-height') {
+                    container.style.display = 'none';
+                }
+            }, { once: true });
         }
     }
 
@@ -726,7 +919,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.status === 'success') {
                         populateEditForm(data.user);
-                        showToast('User data loaded successfully', 'success');
                     } else {
                         throw new Error(data.message || 'Error fetching user data');
                     }
@@ -771,13 +963,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Set line - using line_name property from the correct path
-            // This is the critical fix: use userData.line.line_name instead of userData.line_name
-            const lineSelect = document.getElementById('edit-line');
-            if (lineSelect && userData.line && userData.line.line_name) {
-                Array.from(lineSelect.options).forEach(option => {
-                    if (option.text.trim().toLowerCase() === userData.line.line_name.toLowerCase()) {
-                        option.selected = true;
+            // Set lines - now many-to-many with checkboxes
+            const editLinesContainer = document.getElementById('edit-lines-container');
+            if (editLinesContainer && userData.lines) {
+                // Clear all checkboxes first
+                const allCheckboxes = editLinesContainer.querySelectorAll('input[type="checkbox"]');
+                allCheckboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+                
+                // Check the user's lines
+                userData.lines.forEach(userLine => {
+                    const checkbox = editLinesContainer.querySelector(`input[value="${userLine.id}"]`);
+                    if (checkbox) {
+                        checkbox.checked = true;
                     }
                 });
             }
@@ -872,36 +1071,31 @@ document.addEventListener('DOMContentLoaded', function() {
             // Quality Control
             if (userData.quality_control_user && editQualityControlUser) {
                 editQualityControlUser.checked = true;
-                
-                // Explicitly show the subpermissions
-                if (editQualityControlRoles) {
-                    editQualityControlRoles.style.display = 'block';
-                    void editQualityControlRoles.offsetHeight;
-                    editQualityControlRoles.classList.add('visible');
-                }
+                toggleSubpermissions(editQualityControlUser, editQualityControlRoles);
 
                 // Set Quality Control role
-                if (editQualityControlRoles) {
-                    const qualityControlRoleRadios = editQualityControlRoles.querySelectorAll('input[type="radio"]');
-                    qualityControlRoleRadios.forEach(radio => {
-                        if (radio.value === 'warehouse' && userData.quality_control_warehouse) {
-                            radio.checked = true;
-                        } else if (radio.value === 'engineering' && userData.quality_control_engineering) {
-                            radio.checked = true;
-                        } else if (radio.value === 'production' && userData.quality_control_production) {
-                            radio.checked = true;
-                        } else if (radio.value === 'qa' && userData.quality_control_qa) {
-                            radio.checked = true;
-                        }
-                    });
-                }
+                const qualityControlRoleRadios = editQualityControlRoles.querySelectorAll('input[type="radio"]');
+                qualityControlRoleRadios.forEach(radio => {
+                    if (radio.value === 'warehouse' && userData.quality_control_warehouse) {
+                        radio.checked = true;
+                    } else if (radio.value === 'engineering' && userData.quality_control_engineering) {
+                        radio.checked = true;
+                    } else if (radio.value === 'production' && userData.quality_control_production) {
+                        radio.checked = true;
+                    } else if (radio.value === 'qa' && userData.quality_control_qa) {
+                        radio.checked = true;
+                    }
+                });
             }
 
             // Stock Declaration
             console.log('Stock Declaration Debug:', {
                 stock_declaration_user: userData.stock_declaration_user,
                 editStockDeclarationUser: editStockDeclarationUser,
-                editStockDeclarationRoles: editStockDeclarationRoles
+                editStockDeclarationRoles: editStockDeclarationRoles,
+                stock_declaration_production: userData.stock_declaration_production,
+                stock_declaration_warehouse: userData.stock_declaration_warehouse,
+                stock_declaration_purchasing: userData.stock_declaration_purchasing
             });
             
             if (userData.stock_declaration_user && editStockDeclarationUser) {
@@ -912,6 +1106,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (editStockDeclarationRoles) {
                     console.log('Showing Stock Declaration subpermissions');
                     editStockDeclarationRoles.style.display = 'block';
+                    // Force reflow
                     void editStockDeclarationRoles.offsetHeight;
                     editStockDeclarationRoles.classList.add('visible');
                 }
@@ -934,7 +1129,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                 }
             } else {
-                console.log('Stock Declaration NOT set');
+                console.log('Stock Declaration NOT set because:', 
+                    !userData.stock_declaration_user ? 'userData.stock_declaration_user is false/undefined' : 'editStockDeclarationUser element not found');
+            }
+
+            // Document Notification
+            if (userData.docunotification_user && editDocunotificationUser) {
+                editDocunotificationUser.checked = true;
+                toggleSubpermissions(editDocunotificationUser, editDocunotificationRoles);
+
+                // Set Document Notification role
+                const docunotificationRoleRadios = editDocunotificationRoles.querySelectorAll('input[type="radio"]');
+                docunotificationRoleRadios.forEach(radio => {
+                    if (radio.value === 'user' && userData.docunotification_requestor) {
+                        radio.checked = true;
+                    } else if (radio.value === 'admin' && userData.docunotification_admin) {
+                        radio.checked = true;
+                    }
+                });
             }
 
             // Set approvers
@@ -983,33 +1195,37 @@ document.addEventListener('DOMContentLoaded', function() {
             ecisRoles.style.display = 'none';
             if (ecisRoleValidation) ecisRoleValidation.style.display = 'none';
         }
+        if (docunotificationRoles) {
+            docunotificationRoles.style.display = 'none';
+            if (docunotificationRoleValidation) docunotificationRoleValidation.style.display = 'none';
+        }
+        if (qualityControlRoles) {
+            qualityControlRoles.style.display = 'none';
+        }
+        if (stockDeclarationRoles) {
+            stockDeclarationRoles.style.display = 'none';
+        }
+
+        // Reset lines search
+        const linesSearchInput = document.getElementById('lines-search');
+        if (linesSearchInput) {
+            linesSearchInput.value = '';
+            // Show all line items
+            const lineItems = document.querySelectorAll('#lines-container .line-item');
+            lineItems.forEach(item => item.classList.remove('hidden'));
+        }
 
         // Reset avatar
         currentAvatarIndex = 0;
         selectAvatar(currentAvatarIndex);
 
-        // Reset approvers
+        // Reset approvers - allow zero approvers (clear all rows)
         if (approversList) {
-            // Clear all approver rows except the first one
-            while (approversList.children.length > 1) {
-                approversList.removeChild(approversList.lastChild);
+            while (approversList.firstChild) {
+                approversList.removeChild(approversList.firstChild);
             }
-
-            // Reset first approver row
-            if (approversList.children.length === 1) {
-                const firstRow = approversList.children[0];
-                const moduleSelect = firstRow.querySelector('select[name="approver_module[]"]');
-                const roleSelect = firstRow.querySelector('select[name="approver_role[]"]');
-                const userSelect = firstRow.querySelector('select[name="approver_user[]"]');
-
-                if (moduleSelect) moduleSelect.value = '';
-                if (roleSelect) roleSelect.value = '';
-                if (userSelect) userSelect.value = '';
-
-                // Disable remove button for the first row
-                const removeBtn = firstRow.querySelector('.UM-remove-approver-btn');
-                if (removeBtn) removeBtn.disabled = true;
-            }
+            // Add a default empty approver row so the user sees the dropdown immediately
+            addApproverRow(null, 0);
         }
     }
 
@@ -1042,20 +1258,29 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editStockDeclarationRoles) {
             editStockDeclarationRoles.style.display = 'none';
         }
+        if (editDocunotificationRoles) {
+            editDocunotificationRoles.style.display = 'none';
+            if (editDocunotificationRoleValidation) editDocunotificationRoleValidation.style.display = 'none';
+        }
+
+        // Reset lines search
+        const editLinesSearchInput = document.getElementById('edit-lines-search');
+        if (editLinesSearchInput) {
+            editLinesSearchInput.value = '';
+            // Show all line items
+            const lineItems = document.querySelectorAll('#edit-lines-container .line-item');
+            lineItems.forEach(item => item.classList.remove('hidden'));
+        }
 
         // Reset avatar
         editCurrentAvatarIndex = 0;
         selectEditAvatar(editCurrentAvatarIndex);
 
-        // Reset approvers
+        // Reset approvers - clear all existing rows (allow zero approvers)
         if (editApproversList) {
-            // Clear all approver rows
-            while (editApproversList.children.length > 0) {
-                editApproversList.removeChild(editApproversList.lastChild);
+            while (editApproversList.firstChild) {
+                editApproversList.removeChild(editApproversList.firstChild);
             }
-
-            // Add default empty row
-            addEditApproverRow(null, 0);
         }
     }
 
@@ -1155,8 +1380,7 @@ document.addEventListener('DOMContentLoaded', function() {
         newRow.className = 'UM-approver-row';
         newRow.innerHTML = `
             <div class="UM-form-group">
-                <label for="approver-module-${index}">Module</label>
-                <select name="approver_module[]" id="approver-module-${index}" class="UM-select" required>
+                <select name="approver_module[]" id="approver-module-${index}" class="UM-select">
                     <option value="">Select Module</option>
                     <option value="Job Order" ${approverData && approverData.module === 'Job Order' ? 'selected' : ''}>Job Order</option>
                     <option value="Manhours" ${approverData && approverData.module === 'Manhours' ? 'selected' : ''}>Manhours</option>
@@ -1165,8 +1389,7 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="UM-form-group">
-                <label for="approver-role-${index}">Role</label>
-                <select name="approver_role[]" id="approver-role-${index}" class="UM-select" required>
+                <select name="approver_role[]" id="approver-role-${index}" class="UM-select">
                     <option value="">Select Role</option>
                     <option value="Requestor" ${approverData && approverData.approver_role === 'Requestor' ? 'selected' : ''}>Requestor</option>
                     <option value="Checker" ${approverData && approverData.approver_role === 'Checker' ? 'selected' : ''}>Checker</option>
@@ -1175,14 +1398,13 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
 
             <div class="UM-form-group approver-user-group">
-                <label for="approver-user-${index}">Approver</label>
-                <select name="approver_user[]" id="approver-user-${index}" class="UM-select" required>
+                <select name="approver_user[]" id="approver-user-${index}" class="UM-select">
                     <option value="">Select Approver</option>
                 </select>
             </div>
 
             <div class="UM-approver-actions">
-                <button type="button" class="UM-icon-button UM-remove-approver-btn">
+                <button type="button" class="btn btn-icon btn-error UM-remove-approver-btn">
                     <i class="fas fa-trash-alt"></i>
                 </button>
             </div>
@@ -1209,15 +1431,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Enable remove button on all rows if there are multiple rows
-        if (approversList.children.length > 1) {
-            approversList.querySelectorAll('.UM-remove-approver-btn').forEach(btn => {
-                btn.disabled = false;
-            });
-        } else {
-            // Disable remove button if there's only one row
-            newRow.querySelector('.UM-remove-approver-btn').disabled = true;
-        }
+        // Enable remove button on all rows
+        approversList.querySelectorAll('.UM-remove-approver-btn').forEach(btn => {
+            btn.disabled = false;
+        });
 
         // Add event listener to remove button
         const removeBtn = newRow.querySelector('.UM-remove-approver-btn');
@@ -1253,7 +1470,7 @@ document.addEventListener('DOMContentLoaded', function() {
         newRow.innerHTML = `
             <div class="UM-form-group">
                 <label for="edit-approver-module-${index}">Module</label>
-                <select name="approver_module[]" id="edit-approver-module-${index}" class="UM-select" required>
+                <select name="approver_module[]" id="edit-approver-module-${index}" class="UM-select">
                     <option value="">Select Module</option>
                     <option value="Job Order" ${approverData && approverData.module === 'Job Order' ? 'selected' : ''}>Job Order</option>
                     <option value="Manhours" ${approverData && approverData.module === 'Manhours' ? 'selected' : ''}>Manhours</option>
@@ -1263,7 +1480,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <div class="UM-form-group">
                 <label for="edit-approver-role-${index}">Role</label>
-                <select name="approver_role[]" id="edit-approver-role-${index}" class="UM-select" required>
+                <select name="approver_role[]" id="edit-approver-role-${index}" class="UM-select">
                     <option value="">Select Role</option>
                     <option value="Requestor" ${approverData && approverData.approver_role === 'Requestor' ? 'selected' : ''}>Requestor</option>
                     <option value="Checker" ${approverData && approverData.approver_role === 'Checker' ? 'selected' : ''}>Checker</option>
@@ -1273,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             <div class="UM-form-group approver-user-group">
                 <label for="edit-approver-user-${index}">Approver</label>
-                <select name="approver_user[]" id="edit-approver-user-${index}" class="UM-select" required>
+                <select name="approver_user[]" id="edit-approver-user-${index}" class="UM-select">
                     <option value="">Select Approver</option>
                 </select>
             </div>
@@ -1306,15 +1523,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        // Enable remove button on all rows if there are multiple rows
-        if (editApproversList.children.length > 1) {
-            editApproversList.querySelectorAll('.UM-remove-approver-btn').forEach(btn => {
-                btn.disabled = false;
-            });
-        } else {
-            // Disable remove button if there's only one row
-            newRow.querySelector('.UM-remove-approver-btn').disabled = true;
-        }
+        // Enable remove button on all rows
+        editApproversList.querySelectorAll('.UM-remove-approver-btn').forEach(btn => {
+            btn.disabled = false;
+        });
 
         // Add event listener to remove button
         const removeBtn = newRow.querySelector('.UM-remove-approver-btn');
@@ -1380,117 +1592,213 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Filter users based on search term and permission filter
-    function filterUsers(searchTerm, permissionFilter) {
-        console.log("Filtering with search term:", searchTerm, "and filter:", permissionFilter);
-
-        // Get all user rows
-        const rows = document.querySelectorAll('.UM-table tbody tr:not(.UM-empty-filter-table)');
-        const tableBody = document.querySelector('.UM-table tbody');
-
+    // Perform AJAX search across all user records
+    function performUserSearch(searchTerm, permissionFilter, page = 1) {
+        const tableBody = document.querySelector('#trial-run-tbody');
+        const paginationInfo = document.querySelector('.JO-pagination-info');
+        const paginationControls = document.querySelector('.JO-pagination-controls');
+        
         if (!tableBody) return;
-
-        // Remove any existing empty message
-        const existingEmptyMessage = tableBody.querySelector('.UM-empty-filter-table');
-        if (existingEmptyMessage) {
-            existingEmptyMessage.remove();
-        }
-
-        // Track if we have any visible rows
-        let visibleRowCount = 0;
-
-        // Filter each row
-        rows.forEach(row => {
-            // Skip if this is an empty message row
-            if (row.classList.contains('UM-empty-filter-table') || row.querySelector('.UM-empty-table')) {
-                return;
-            }
-
-            // Get text content from cells
-            const name = row.querySelector('[data-label="Name"]')?.textContent.toLowerCase() || '';
-            const id = row.querySelector('[data-label="ID"]')?.textContent.toLowerCase() || '';
-            const line = row.querySelector('[data-label="Line"]')?.textContent.toLowerCase() || '';
-            const position = row.querySelector('[data-label="Position"]')?.textContent.toLowerCase() || '';
-            const username = row.querySelector('[data-label="Username"]')?.textContent.toLowerCase() || '';
-
-            // Check if matches search term
-            const matchesSearch = searchTerm === '' ||
-                                name.includes(searchTerm) ||
-                                id.includes(searchTerm) ||
-                                line.includes(searchTerm) ||
-                                position.includes(searchTerm) ||
-                                username.includes(searchTerm);
-
-            // Check if matches permission filter
-            let matchesFilter = true;
-            if (permissionFilter !== 'all') {
-                const permissions = row.querySelector('[data-label="Permissions"]');
-                if (permissions) {
-                    switch (permissionFilter) {
-                        case 'admin':
-                            matchesFilter = permissions.querySelector('.UM-admin-pill') !== null;
-                            break;
-                        case 'job_order':
-                            matchesFilter = permissions.querySelector('.UM-job-order-pill') !== null;
-                            break;
-                        case 'manhours':
-                            matchesFilter = permissions.querySelector('.UM-manhours-pill') !== null;
-                            break;
-                        case 'monitoring':
-                            matchesFilter = permissions.querySelector('.UM-monitoring-pill') !== null;
-                            break;
-                        case 'dcf':
-                            matchesFilter = permissions.querySelector('.UM-dcf-pill') !== null;
-                            break;
-                        case 'ecis':
-                            matchesFilter = permissions.querySelector('.UM-ecis-pill') !== null;
-                            break;
-                    }
-                }
-            }
-
-            // Show/hide row
-            if (matchesSearch && matchesFilter) {
-                row.style.display = '';
-                visibleRowCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        // If no visible rows, show empty message
-        if (visibleRowCount === 0) {
-            // Determine if we're showing a filter message
-            const isFilterActive = permissionFilter && permissionFilter !== 'all';
-
-            // Choose message text and icon based on what's active
-            let messageText, iconClass;
-
-            if (isFilterActive) {
-                messageText = 'No matching users found for this filter';
-                iconClass = 'fas fa-filter';
-            } else {
-                messageText = 'No matching users found';
-                iconClass = 'fas fa-search';
-            }
-
-            // Create empty message row
-            const emptyRow = document.createElement('tr');
-            emptyRow.className = 'UM-empty-filter-table';
-
-            emptyRow.innerHTML = `
-                <td colspan="9">
-                    <div class="UM-no-results">
-                        <div class="UM-no-results-icon">
-                            <i class="${iconClass}"></i>
-                        </div>
-                        <div class="UM-no-results-message">${messageText}</div>
-                        <div class="UM-no-results-hint">Try adjusting your search criteria</div>
-                    </div>
+        
+        // Show loading state
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #4CAF50;"></i>
+                    <p style="margin-top: 10px; color: #666;">Searching...</p>
                 </td>
-            `;
-
-            tableBody.appendChild(emptyRow);
+            </tr>
+        `;
+        
+        // Build query params
+        const params = new URLSearchParams({
+            q: searchTerm,
+            filter: permissionFilter,
+            page: page
+        });
+        
+        // Fetch search results
+        fetch(`/settings/search-users/?${params.toString()}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Clear table
+                    tableBody.innerHTML = '';
+                    
+                    if (data.users.length === 0) {
+                        // Show empty state
+                        const emptyRow = document.createElement('tr');
+                        emptyRow.innerHTML = `
+                            <td colspan="8" class="JO-empty-table">
+                                <div class="empty-state">
+                                    <i class="fa fa-search" aria-hidden="true"></i>
+                                    <h4>No Users Found</h4>
+                                    <p>${searchTerm ? 'No users match your search criteria' : 'No users found with the selected filter'}</p>
+                                </div>
+                            </td>
+                        `;
+                        tableBody.appendChild(emptyRow);
+                        
+                        // Hide pagination
+                        if (paginationControls) paginationControls.style.display = 'none';
+                        if (paginationInfo) paginationInfo.textContent = 'Showing 0 to 0 of 0 entries';
+                    } else {
+                        // Render user rows
+                        data.users.forEach(user => {
+                            const row = createUserRow(user);
+                            tableBody.appendChild(row);
+                        });
+                        
+                        // Update pagination info
+                        if (paginationInfo) {
+                            paginationInfo.textContent = `Showing ${data.pagination.start_index} to ${data.pagination.end_index} of ${data.pagination.total_count} entries`;
+                        }
+                        
+                        // Update pagination controls
+                        if (paginationControls && data.pagination.total_pages > 1) {
+                            updatePaginationControls(data.pagination, searchTerm, permissionFilter);
+                            paginationControls.style.display = 'block';
+                        } else if (paginationControls) {
+                            paginationControls.style.display = 'none';
+                        }
+                    }
+                } else {
+                    console.error('Search failed:', data.message);
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="JO-empty-table">
+                                <div class="empty-state">
+                                    <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                                    <h4>Error</h4>
+                                    <p>Failed to search users. Please try again.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="JO-empty-table">
+                            <div class="empty-state">
+                                <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+                                <h4>Error</h4>
+                                <p>An error occurred while searching. Please try again.</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+    }
+    
+    // Create a user table row from data
+    function createUserRow(user) {
+        const row = document.createElement('tr');
+        
+        // Build permissions HTML
+        let permissionsHtml = '<div class="UM-permission-pills">';
+        user.permissions.forEach(perm => {
+            permissionsHtml += `<span class="UM-permission-pill UM-${perm.type}-pill">${perm.label}</span>`;
+        });
+        permissionsHtml += '</div>';
+        
+        // Build status HTML
+        const statusClass = user.is_active ? 'UM-status-active' : 'UM-status-inactive';
+        const statusText = user.is_active ? 'Active' : 'Inactive';
+        const toggleIcon = user.is_active ? 'fa-user-slash' : 'fa-user-check';
+        const toggleTitle = user.is_active ? 'Deactivate' : 'Activate';
+        
+        row.innerHTML = `
+            <td data-label="Avatar">
+                <img src="${user.avatar_url}" alt="${user.name}" class="UM-user-avatar">
+            </td>
+            <td data-label="ID">${user.id_number}</td>
+            <td data-label="Name">${user.name}</td>
+            <td data-label="Position">${user.position}</td>
+            <td data-label="Line">${user.line_name}</td>
+            <td data-label="Permissions">${permissionsHtml}</td>
+            <td class="text-center" data-label="Status">
+                <span class="UM-status ${statusClass}">${statusText}</span>
+            </td>
+            <td data-label="Actions">
+                <div class="UM-action-buttons">
+                    <button class="UM-icon-button UM-edit-user" data-id="${user.id}" title="Edit User">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="UM-icon-button UM-delete-user" data-id="${user.id}" title="Delete User">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                    <form method="post" action="/settings/toggle-status/${user.id}/" class="UM-inline-form">
+                        <input type="hidden" name="csrfmiddlewaretoken" value="${getCSRFToken()}">
+                        <button type="submit" class="UM-icon-button UM-toggle-status" title="${toggleTitle}">
+                            <i class="fas ${toggleIcon}"></i>
+                        </button>
+                    </form>
+                </div>
+            </td>
+        `;
+        
+        return row;
+    }
+    
+    // Update pagination controls with search parameters
+    function updatePaginationControls(pagination, searchTerm, permissionFilter) {
+        const navContainer = document.querySelector('.JO-pagination-nav-container');
+        if (!navContainer) return;
+        
+        let html = '';
+        
+        // Previous button
+        if (pagination.has_previous) {
+            html += `<a href="#" class="JO-pagination-btn" data-page="${pagination.previous_page}">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>`;
+        } else {
+            html += `<span class="JO-pagination-btn disabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </span>`;
         }
+        
+        // Page numbers
+        html += '<div class="JO-pagination-pages">';
+        for (let i = 1; i <= pagination.total_pages; i++) {
+            if (i === pagination.current_page) {
+                html += `<span class="JO-pagination-page active">${i}</span>`;
+            } else if (i > pagination.current_page - 3 && i < pagination.current_page + 3) {
+                html += `<a href="#" class="JO-pagination-page" data-page="${i}">${i}</a>`;
+            }
+        }
+        html += '</div>';
+        
+        // Next button
+        if (pagination.has_next) {
+            html += `<a href="#" class="JO-pagination-btn" data-page="${pagination.next_page}">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>`;
+        } else {
+            html += `<span class="JO-pagination-btn disabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </span>`;
+        }
+        
+        navContainer.innerHTML = html;
+        
+        // Add click handlers to pagination links
+        navContainer.querySelectorAll('a[data-page]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const page = this.getAttribute('data-page');
+                performUserSearch(searchTerm, permissionFilter, page);
+            });
+        });
+    }
+    
+    // Get CSRF token
+    function getCSRFToken() {
+        const token = document.querySelector('[name=csrfmiddlewaretoken]');
+        return token ? token.value : '';
     }
 
     // Helper function to set input value
@@ -1841,6 +2149,42 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAvatarSlider();
         updateEditAvatarSlider();
     });
+
+    // Lines search functionality for Add User modal
+    const linesSearchInput = document.getElementById('lines-search');
+    if (linesSearchInput) {
+        linesSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const lineItems = document.querySelectorAll('#lines-container .line-item');
+            
+            lineItems.forEach(item => {
+                const lineName = item.getAttribute('data-line-name');
+                if (lineName.includes(searchTerm)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+    }
+
+    // Lines search functionality for Edit User modal
+    const editLinesSearchInput = document.getElementById('edit-lines-search');
+    if (editLinesSearchInput) {
+        editLinesSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const lineItems = document.querySelectorAll('#edit-lines-container .line-item');
+            
+            lineItems.forEach(item => {
+                const lineName = item.getAttribute('data-line-name');
+                if (lineName.includes(searchTerm)) {
+                    item.classList.remove('hidden');
+                } else {
+                    item.classList.add('hidden');
+                }
+            });
+        });
+    }
 });
 
 // jQuery for modal close (Bootstrap compatibility)

@@ -30,9 +30,7 @@
             {% if request.user.job_order_user %}
             <li class="nav-item">
                 <a href="
-                {% if request.user.job_order_user and request.user.job_order_approver or request.user.job_order_checker %}
-                    {% url "approval" %}
-                {% elif request.user.job_order_user and request.user.job_order_facilitator %}
+                {% if request.user.job_order_user and request.user.job_order_facilitator %}
                     {% url "facilitator" %}
                 {% elif request.user.job_order_user and request.user.job_order_maintenance %}
                     {% url "maintenance" %}

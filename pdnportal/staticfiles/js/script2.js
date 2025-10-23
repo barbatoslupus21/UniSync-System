@@ -302,3 +302,38 @@ navItems.forEach(item => {
         }
     });
 });
+
+
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const tabSlider = document.querySelector('.tab-slider');
+
+    function updateSlider() {
+        const activeButton = document.querySelector('.tab-btn.active');
+        if (activeButton) {
+            tabSlider.style.left = activeButton.offsetLeft + 'px';
+            tabSlider.style.width = activeButton.offsetWidth + 'px';
+        }
+    }
+
+    // Initial slider position
+    updateSlider();
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const tabId = this.getAttribute('data-tab');
+
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            // Add active class to clicked button and corresponding content
+            this.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+
+            // Update slider position
+            updateSlider();
+        });
+    });
+});

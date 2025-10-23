@@ -13,7 +13,7 @@ def is_admin(user):
 @login_required(login_url="user-login")
 @user_passes_test(is_admin)
 def user_management(request):
-    users_list = Users.objects.all()
+    users_list = Users.objects.prefetch_related('line').all().order_by('name')
 
     users_count = users_list.count()
     admin_count = users_list.filter(is_admin=True).count()
@@ -29,6 +29,9 @@ def user_management(request):
     page = request.GET.get('page', 1)
     users = paginator.get_page(page)
 
+    # Generate avatar options
+    avatars = [{'filename': f'avatar{i}.png', 'url': f'/static/images/profile/avatar{i}.png'} for i in range(1, 10)]
+
     context = {
         'users': users,
         'users_count': users_count,
@@ -40,6 +43,7 @@ def user_management(request):
         'position_choices': Users.POSITION,
         'module_choices': UserApprovers.MODULES,
         'role_choices': UserApprovers.ROLES,
+        'avatars': avatars,
     }
     return render(request, 'settings/account-register.html', context)
 
@@ -52,7 +56,7 @@ def search_users(request):
         page_number = request.GET.get('page', 1)
         
         # Start with all users
-        users_list = Users.objects.all()
+        users_list = Users.objects.prefetch_related('line').all()
         
         # Apply search filter if query exists
         if search_query:
@@ -107,7 +111,7 @@ def search_users(request):
                 'id_number': user.id_number,
                 'name': user.name,
                 'position': user.position,
-                'line_name': user.line.line_name if user.line else '',
+                'lines': [{'id': line.id, 'name': line.line_name} for line in user.line.all()],
                 'permissions': permissions,
                 'is_active': user.is_active,
             })
@@ -145,7 +149,7 @@ def create_user(request):
             position = request.POST.get('position')
             username = request.POST.get('username')
             password = request.POST.get('password')
-            line_id = request.POST.get('line')
+            line_ids = request.POST.getlist('line')
             is_admin = request.POST.get('is_admin') == 'on'
 
             avatar_filename = request.POST.get('avatar')
@@ -160,7 +164,6 @@ def create_user(request):
                 name=name,
                 position=position,
                 username=username,
-                line_id=line_id,
                 is_admin=is_admin,
                 avatar=avatar_path
             )
@@ -274,6 +277,9 @@ def create_user(request):
             user.set_password(password)
             user.save()
 
+            # Set many-to-many lines
+            user.line.set(line_ids)
+
             approver_modules = request.POST.getlist('approver_module[]')
             approver_roles = request.POST.getlist('approver_role[]')
             approver_users = request.POST.getlist('approver_user[]')
@@ -313,7 +319,7 @@ def edit_user(request, user_id):
                 return redirect('account_settings')
 
             user.username = new_username
-            user.line_id = request.POST.get('line')
+            line_ids = request.POST.getlist('line')
             user.is_admin = request.POST.get('is_admin') == 'on'
 
             avatar_filename = request.POST.get('avatar')
@@ -475,6 +481,9 @@ def edit_user(request, user_id):
 
             user.save()
 
+            # Set many-to-many lines
+            user.line.set(line_ids)
+
             UserApprovers.objects.filter(user=user).delete()
 
             approver_modules = request.POST.getlist('approver_module[]')
@@ -591,13 +600,16 @@ def get_user_data(request, user_id):
         elif user.docunotification_admin:
             docunotification_role = 'admin'
 
+        # Serialize ManyToMany lines field
+        lines_data = [{'id': line.id, 'line_name': line.line_name} for line in user.line.all()]
+        
         user_data = {
             'id': user.id,
             'id_number': user.id_number,
             'name': user.name,
             'position': user.position,
             'username': user.username,
-            'line': {'id': user.line.id, 'line_name': user.line.line_name} if user.line else None,
+            'lines': lines_data,
             'avatar': user.avatar.url,
             'is_admin': user.is_admin,
             'is_active': user.is_active,

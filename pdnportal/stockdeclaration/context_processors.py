@@ -15,14 +15,14 @@ def stock_notifications(request):
     user_has_stock_declarations = False
     
     # Only check for authenticated users with a line assigned
-    if request.user.is_authenticated and hasattr(request.user, 'line') and request.user.line:
-        user_line = request.user.line
+    if request.user.is_authenticated and hasattr(request.user, 'line') and request.user.line.exists():
+        user_lines = request.user.line.all()
         today = timezone.now().date()
         
         # Query for stock declarations that meet the conditions.
         # To match the API behavior, only include declarations created today AND not yet received.
         stock_declarations = StockDeclaration.objects.filter(
-            lines=user_line,
+            lines__in=user_lines,
             created_at__date=today,
             received_by_production=False
         ).distinct().select_related('created_by').prefetch_related('lines')

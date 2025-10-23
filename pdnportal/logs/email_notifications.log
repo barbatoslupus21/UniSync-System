@@ -25,3 +25,6 @@ INFO 2025-10-09 13:27:49,478 email_service 9532 10468 Email sent successfully to
 INFO 2025-10-09 13:27:49,521 forms 9532 10468 Initial notification sent for document DOC-20251009-001
 INFO 2025-10-09 14:00:33,622 email_service 924 3496 Email sent successfully to zen.mis@repco.ph for document DOC-20251009-003
 INFO 2025-10-09 14:00:33,664 forms 924 3496 Initial notification sent for document DOC-20251009-003
+INFO 2025-10-21 12:30:22,977 scheduler 8404 2800 Starting document notification scheduler loop
+INFO 2025-10-21 12:30:22,977 scheduler 8404 6516 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-10-21 12:30:22,977 apps 8404 6516 Document notification scheduler initialized successfully

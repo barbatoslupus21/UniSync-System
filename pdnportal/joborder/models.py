@@ -31,10 +31,19 @@ class JOLogsheet(models.Model):
         ('Routing', 'Routing'),
         ('Completed', 'Completed'),
         ('Checked', 'Checked'),
+        ('Assigned', 'Assigned'),
         ('Cancelled', 'Cancelled'),
         ('Closed', 'Closed'),
         ('Rejected', 'Rejected')
     ]
+
+    PRIORITY_LEVELS = [
+        ('Low', 'Low'),
+        ('Medium', 'Medium'),
+        ('High', 'High'),
+        ('Urgent', 'Urgent')
+    ]
+
     jo_number = models.CharField(max_length=50, null=True)
     prepared_by = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, related_name='JoRequestPreparer')
     requestor = models.CharField(max_length=100, null=True)
@@ -50,21 +59,30 @@ class JOLogsheet(models.Model):
     date_received = models.DateTimeField(null=True)
     target_date = models.DateTimeField(null=True, blank=True)
     target_date_reason = models.TextField(null=True, blank=True)
+    quality_matter = models.BooleanField(default=False)
+    priority_level = models.CharField(max_length=20, choices=PRIORITY_LEVELS, default='Low')
+    date_of_completion = models.DateField(null=True, blank=True)
     date_complete = models.DateTimeField(null=True)
 
     def __str__(self):
         return f'{self.prepared_by} - {self.jo_number}'
 
 class JORouting(models.Model):
-    jo_number = models.ForeignKey(JOLogsheet,on_delete=models.CASCADE, null=True, related_name='joRouting')
-    jo_request = models.ForeignKey(Users, on_delete=models.CASCADE, null=True, related_name='joPreparer')
+    STATUS_CHOICES = [
+        ('submitted', 'Submitted'),
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('disapproved', 'Disapproved'),
+        ('viewed', 'Viewed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    jo_request = models.ForeignKey(JOLogsheet,on_delete=models.CASCADE, null=True, related_name='joRouting')
     approver = models.ForeignKey(Users, on_delete=models.CASCADE, null=True, related_name='joApprover')
-    first_approver = models.BooleanField(default=False)
-    approver_sequence = models.IntegerField(null=True)
-    status = models.CharField(max_length=50, default='Pending')
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='Pending')
     remarks = models.TextField(blank=True)
     request_at = models.DateTimeField(auto_now_add=True)
     approved_at = models.DateTimeField(null=True)
 
     def __str__(self):
-        return f'{self.jo_number.jo_number} - {self.approver}'
+        return f'{self.jo_request.jo_number} - {self.approver}'

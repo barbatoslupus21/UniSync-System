@@ -852,3 +852,72 @@ function updatePendingCount() {
         }
     }
 }
+
+// Export ECIS Modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const exportBtn = document.getElementById('export-ecis-btn');
+    const exportModal = document.getElementById('export-ecis-modal');
+    const exportForm = document.getElementById('export-ecis-form');
+    const cancelExportBtn = document.querySelector('.ecis-cancel-export');
+    const dateFromInput = document.getElementById('date-from');
+    const dateToInput = document.getElementById('date-to');
+    
+    // Set default date range (current month)
+    if (dateFromInput && dateToInput) {
+        const today = new Date();
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        
+        dateFromInput.value = firstDay.toISOString().split('T')[0];
+        dateToInput.value = lastDay.toISOString().split('T')[0];
+    }
+    
+    // Open export modal
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            if (exportModal) {
+                exportModal.classList.add('active');
+            }
+        });
+    }
+    
+    // Close export modal
+    if (cancelExportBtn) {
+        cancelExportBtn.addEventListener('click', function() {
+            if (exportModal) {
+                exportModal.classList.remove('active');
+            }
+        });
+    }
+    
+    // Close modal on close button click
+    const exportCloseBtn = exportModal?.querySelector('.ecis-modal-close');
+    if (exportCloseBtn) {
+        exportCloseBtn.addEventListener('click', function() {
+            exportModal.classList.remove('active');
+        });
+    }
+    
+    // Close modal on background click
+    if (exportModal) {
+        exportModal.addEventListener('click', function(e) {
+            if (e.target === exportModal) {
+                exportModal.classList.remove('active');
+            }
+        });
+    }
+    
+    // Validate date range before submitting
+    if (exportForm) {
+        exportForm.addEventListener('submit', function(e) {
+            const dateFrom = new Date(dateFromInput.value);
+            const dateTo = new Date(dateToInput.value);
+            
+            if (dateFrom > dateTo) {
+                e.preventDefault();
+                showToast('Invalid Date Range', 'Date From cannot be later than Date To', 'error');
+                return false;
+            }
+        });
+    }
+});

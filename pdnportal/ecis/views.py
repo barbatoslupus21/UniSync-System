@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
 from django.db.models import Count
 from django.core.paginator import Paginator
 from django.utils import timezone
@@ -9,6 +9,8 @@ from dateutil.relativedelta import relativedelta
 import calendar
 from .models import ECIS
 from .forms import ECISForm, FacilitatorReviewForm, CancelRequestForm
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 # Requestor Views
 @login_required(login_url="user-login")
@@ -439,3 +441,144 @@ def ecis_requestor_chart_data(request):
             }
         ]
     })
+
+@login_required(login_url="user-login")
+def ecis_export(request):
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    category = request.GET.get('category', 'all')
+    
+    # Parse dates
+    try:
+        date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+        date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return HttpResponse('Invalid date format', status=400)
+    
+    # Filter ECIS records
+    ecis_queryset = ECIS.objects.filter(
+        date_prepared__gte=date_from_obj,
+        date_prepared__lte=date_to_obj
+    )
+    
+    if category != 'all':
+        ecis_queryset = ecis_queryset.filter(category=category)
+    
+    ecis_queryset = ecis_queryset.order_by('-date_prepared')
+    
+    # Create workbook
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'ECIS Summary Report'
+    
+    # Set column widths
+    ws.column_dimensions['A'].width = 15
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 20
+    ws.column_dimensions['F'].width = 20
+    ws.column_dimensions['G'].width = 30
+    ws.column_dimensions['H'].width = 30
+    ws.column_dimensions['I'].width = 20
+    ws.column_dimensions['J'].width = 15
+    ws.column_dimensions['K'].width = 30
+    
+    # Title
+    ws.merge_cells('A1:K1')
+    title_cell = ws['A1']
+    title_cell.value = 'Ryonan Electric Philippines Corporation'
+    title_cell.font = Font(name='Arial', size=16, bold=True)
+    title_cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Subtitle
+    ws.merge_cells('A2:K2')
+    subtitle_cell = ws['A2']
+    date_from_formatted = date_from_obj.strftime('%B %d, %Y')
+    date_to_formatted = date_to_obj.strftime('%B %d, %Y')
+    subtitle_cell.value = f'ECIS Summary Report for {date_from_formatted} to {date_to_formatted}'
+    subtitle_cell.font = Font(name='Arial', size=12)
+    subtitle_cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Add space
+    ws.append([])
+    
+    # Headers
+    headers = [
+        'ECIS Number',
+        'Category',
+        'Date Prepared',
+        'Department',
+        'Requested By',
+        'Customer',
+        'Line Supervisor',
+        'Affected Parts',
+        'Details of Change',
+        'Implementation Date',
+        'Status'
+    ]
+    
+    ws.append(headers)
+    
+    # Style headers
+    yellow_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+    bold_font = Font(name='Arial', size=10, bold=True)
+    center_alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for col_num in range(1, len(headers) + 1):
+        cell = ws.cell(row=4, column=col_num)
+        cell.fill = yellow_fill
+        cell.font = bold_font
+        cell.alignment = center_alignment
+        cell.border = thin_border
+    
+    # Category display mapping
+    category_display = {
+        'OR': 'Orange (OR)',
+        'YE': 'Yellow (YE)',
+        'PN': 'Pink (PN)',
+        'LG': 'Light Green (LG)',
+        'GR': 'Green (GR)',
+        'L': 'Blue (L)',
+        'GY': 'Gray (GY)',
+    }
+    
+    # Add data rows
+    for ecis in ecis_queryset:
+        row_data = [
+            ecis.number,
+            category_display.get(ecis.category, ecis.category),
+            ecis.date_prepared.strftime('%B %d, %Y'),
+            ecis.department,
+            ecis.requested_by,
+            ecis.customer or '',
+            ecis.line_supervisor or '',
+            ecis.affected_parts,
+            ecis.details_change,
+            ecis.implementation_date.strftime('%B %d, %Y'),
+            ecis.status
+        ]
+        ws.append(row_data)
+    
+    # Apply borders and alignment to all data cells
+    for row in ws.iter_rows(min_row=5, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+        for cell in row:
+            cell.border = thin_border
+            cell.alignment = Alignment(vertical='top', wrap_text=True)
+    
+    # Prepare response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'ECIS_Summary_Report_{date_from_obj.strftime("%Y%m%d")}_to_{date_to_obj.strftime("%Y%m%d")}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
+

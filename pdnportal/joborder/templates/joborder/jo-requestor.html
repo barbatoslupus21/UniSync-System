@@ -5,274 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/job-order.css' %}?v={% now 'U' %}">
-<link rel="stylesheet" href="{% static 'css/jo-common.css' %}">
-<style>
-    /* Direct modal styles to ensure proper display */
-    .JO-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-        overflow-y: auto;
-    }
-
-    .JO-modal-content {
-        background-color: white;
-        border-radius: 8px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-        width: 100%;
-        max-width: 800px;
-        max-height: 90vh;
-        display: flex;
-        flex-direction: column;
-        margin: 20px;
-        position: relative;
-    }
-
-    .JO-modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 15px 20px;
-        border-bottom: 1px solid #e0e0e0;
-    }
-
-    .JO-modal-body {
-        padding: 20px;
-        overflow-y: auto;
-        flex: 1;
-    }
-
-    .JO-modal-footer {
-        display: flex;
-        justify-content: flex-end;
-        padding: 15px 20px;
-        border-top: 1px solid #e0e0e0;
-        gap: 10px;
-    }
-    /* Confirmation Modal Styles */
-    .JO-confirmation-modal .JO-modal-content {
-        max-width: 450px;
-        animation: JO-scale-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    @keyframes JO-scale-in {
-        from {
-            transform: scale(0.8);
-            opacity: 0;
-        }
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    .JO-confirmation-icon {
-        font-size: 3.5rem;
-        margin-bottom: 20px;
-        animation: JO-icon-pulse 1.5s infinite alternate;
-    }
-
-    .JO-confirmation-icon.warning {
-        color: var(--jo-status-pending);
-    }
-
-    .JO-confirmation-icon.danger {
-        color: var(--jo-status-rejected);
-    }
-
-    .JO-confirmation-icon.success {
-        color: var(--jo-status-approved);
-    }
-
-    @keyframes JO-icon-pulse {
-        from {
-            transform: scale(1);
-            opacity: 0.9;
-        }
-        to {
-            transform: scale(1.1);
-            opacity: 1;
-        }
-    }    /* Modal display styles */
-    .JO-modal {
-        display: none;
-    }
-
-    .JO-modal.active {
-        display: flex;
-    }    /* Status styles in pending items */
-    .JO-pending-details .JO-status {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-
-    .JO-pending-details .JO-status-checked {
-        background-color: #48c774;
-        color: white;
-    }
-
-    .JO-pending-details .JO-status-pending {
-        background-color: var(--jo-status-pending);
-        color: white;
-    }
-
-    .JO-pending-details .JO-status-processing {
-        background-color: var(--jo-status-processing);
-        color: white;
-    }
-
-    .JO-pending-details .JO-status-completed {
-        background-color: var(--jo-status-completed);
-        color: white;
-    }
-
-    .JO-confirmation-message {
-        font-size: 1.1rem;
-        margin-bottom: 10px;
-    }
-
-    .JO-confirmation-submessage {
-        color: var(--jo-text-light);
-        margin-bottom: 20px;
-    }
-
-    .JO-timeline-remarks {
-        background-color: var(--jo-bg-color);
-        border-radius: 8px;
-        padding: 10px 15px;
-        position: relative;
-        margin-top: 15px;
-        font-style: italic;
-    }
-
-    .JO-timeline-remarks:before {
-        content: '';
-        position: absolute;
-        top: -8px;
-        left: 20px;
-        width: 0;
-        height: 0;
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-bottom: 8px solid var(--jo-bg-color);
-    }
-
-    /* Timeline specific updates */
-    .JO-timeline-item.JO-timeline-inactive .JO-timeline-icon {
-        background-color: #e0e0e0;
-        color: #999;
-    }
-
-    .JO-timeline-item.JO-timeline-rejected .JO-timeline-icon {
-        background-color: var(--jo-status-rejected);
-        animation: none;
-    }
-
-    /* Button styles */
-    .JO-danger-button {
-        background-color: #f14668;
-        color: white;
-    }
-
-    .JO-danger-button:hover {
-        background-color: #e43c5a;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(241, 70, 104, 0.3);
-    }
-
-    /* Form row for side-by-side fields */
-    .JO-form-row {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 15px;
-    }
-
-    .JO-form-row .JO-form-group {
-        flex: 1;
-    }
-    
-    .JO-form-group select {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid var(--jo-border-color, #e0e0e0);
-        border-radius: 6px;
-        background-color: white;
-        font-size: 14px;
-        color: var(--jo-text-color, #333);
-        appearance: none;
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        background-size: 16px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
-    .JO-form-group select:hover {
-        border-color: var(--jo-primary-color, #3366ff);
-    }
-
-    .JO-form-group select:focus {
-        outline: none;
-        border-color: var(--jo-primary-color, #3366ff);
-        box-shadow: 0 0 0 3px rgba(51, 102, 255, 0.1);
-    }
-
-    .JO-success-button {
-        background-color: #48c774;
-        color: white;
-    }
-
-    .JO-success-button:hover {
-        background-color: #3bb164;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(72, 199, 116, 0.3);
-    }
-
-    .JO-check-btn {
-        color: #48c774;
-    }
-
-    .JO-check-btn:hover {
-        background-color: rgba(72, 199, 116, 0.15);
-    }
-
-    /* Loading animation for buttons */
-    .JO-button.loading {
-        color: transparent !important;
-        pointer-events: none;
-        position: relative;
-    }
-
-    .JO-button.loading:after {
-        content: '';
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        top: calc(50% - 10px);
-        left: calc(50% - 10px);
-        border: 2px solid rgba(255, 255, 255, 0.3);
-        border-radius: 50%;
-        border-top-color: white;
-        animation: JO-spinner 0.8s linear infinite;
-    }
-
-    @keyframes JO-spinner {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-</style>
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -281,13 +14,11 @@
     <div class="JO-header">
         <div class="JO-title-section">
             <h1 class="JO-page-title">Job Order Management</h1>
-            <p class="JO-subtitle">View, track and create your job order requests</p>
+            <p class="JO-subtitle">View, track, create, and approve your job order requests</p>
         </div>
-        <button id="new-request-btn" class="JO-button JO-primary-button">
-            <i class="fas fa-plus"></i> New Request
-        </button>
+        
     </div>
-
+{% comment %} 
     <!-- Stats cards -->
     <div class="JO-stats-container">
         <div class="JO-stats-card JO-total">
@@ -333,15 +64,14 @@
                 <p>This Month</p>
             </div>
         </div>
-    </div>
+    </div> {% endcomment %}
 
-    <!-- Chart and Pending Approvals section -->
     <div class="JO-main-content-grid">
         <!-- Chart section -->
-        <div class="JO-card JO-chart-container">
+        <div class="chart-main-container">
             <div class="JO-card-header">
                 <h2>Job Orders by Category per Month</h2>
-                <div class="JO-card-actions">
+                <div class="main-chart-filters">
                     <select id="chart-period-selector" class="JO-select">
                         <option value="3month">Last 3 Months</option>
                         <option value="6month" selected>Last 6 Months</option>
@@ -355,143 +85,192 @@
         </div>
 
         <!-- Pending approval section -->
-        <div class="JO-card JO-pending-approvals">
+        <div class="JO-pending-approvals">
             <div class="JO-card-header">
-                <h2>Pending Approval and Completion</h2>
-                <div class="JO-card-actions">
-                    <button class="JO-button JO-text-button JO-refresh-btn">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
-                </div>
-            </div>            <div class="JO-pending-list">
-                {% for request in pendingJO %}                <div class="JO-pending-item {% if request.status == 'Completed' %}has-completed-status{% endif %}" data-id="{{ request.jo_number }}">
+                <h3 style="font-weight:600;">Pending Approval and Completion</h3>
+            </div>            
+            <div class="JO-pending-list">
+                {% for request in pendingJO %}                
+                <div class="JO-pending-item {% if request.status == 'Completed' %}has-completed-status{% endif %}" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
                     <div class="JO-pending-header">
-                        <span class="JO-pending-id">{{ request.jo_number }}</span>
-                        <span class="JO-category JO-category-{{ request.jo_color|lower }}">{{ request.jo_color }}</span>
+                         <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="JO-pending-id">{{ request.jo_number }}</span>
+                            <span class="JO-category JO-category-{{ request.jo_color|lower }}">{{ request.jo_color }}</span>
+                            <span class="JO-status JO-status-{{ request.status|lower }}">{{ request.status }}</span>
+                        </div>
+                        <div>
+                            <span class="JO-date">Submitted: {{ request.date_created|date:"M d, Y" }}</span>
+                        </div>
                     </div>
                     <div class="JO-pending-details">
                         <p><strong>Tool:</strong> {{ request.jo_tools }}</p>
                         <p><strong>Nature:</strong> {{ request.jo_type }}</p>
-                        <p><strong>Status:</strong> <span class="JO-status JO-status-{{ request.status|lower }}">{{ request.status }}</span></p>
-                    </div>
-                    <div class="JO-pending-status">
-                        <span class="JO-date">Submitted: {{ request.date_created|date:"M d, Y" }}</span>
-                        <button class="JO-button JO-view-details-btn" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
-                            View Details
-                        </button>
                     </div>
                 </div>
                 {% empty %}
                 <div class="JO-pending-empty">
-                    <div class="JO-empty-icon">
-                        <i class="fas fa-check"></i>
+                    <div class="empty-state">
+                        <i class="fa fa-check-circle" aria-hidden="true"></i>
+                        <h3>All caught up!</h3>
+                        <p>There are no pending requests that require your approval at this time.</p>
                     </div>
-                    <h3>All caught up!</h3>
-                    <p>There are no pending requests that require your approval at this time.</p>
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- All Requests Section -->
-    <div class="JO-card JO-all-requests">
-        <div class="JO-card-header">
-            <h2>All Job Order Requests</h2>
-            <div class="JO-card-actions">
-                <div class="JO-search-container">
-                    <input type="text" class="JO-search-input" placeholder="Search by JO Number, line, type...">
-                    <button class="JO-search-button">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-                <div class="JO-filter-container">
-                    <select class="JO-select JO-filter-select">
-                        <option value="all">All Statuses</option>
-                        <option value="closed">Closed</option>
-                        <option value="routing">Routing</option>
-                        <option value="cancelled">Cancelled</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-
-        <div class="JO-table-container">
-            <table class="JO-table">
-                <thead>
-                    <tr>
-                        <th>JO Number</th>
-                        <th>Category</th>
-                        <th>Tool</th>
-                        <th>Nature</th>
-                        <th>Requestor</th>
-                        <th>Line</th>
-                        <th>Status</th>
-                        <th>Date Submitted</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="jo-table-body">
-                    {% for request in all_requests %}
-                    <tr class="jo-table-row">
-                        <td data-label="JO Number">{{ request.jo_number }}</td>
-                        <td data-label="Category"><span class="JO-category-pill JO-category-{{ request.jo_color|lower }}">{{ request.jo_color }}</span></td>
-                        <td data-label="Tool">{{ request.jo_tools }}</td>
-                        <td data-label="Nature">{{ request.jo_type }}</td>
-                        <td data-label="Requestor">{{ request.requestor }}</td>
-                        <td data-label="Line">{{ request.line }}</td>
-                        <td data-label="Status"><span class="JO-status JO-status-{{ request.status|lower }}">{{ request.status }}</span></td>
-                        <td data-label="Date">{{ request.date_created|date:"M d, Y" }}</td>
-                        <td data-label="Actions">
-                            <button class="JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
-                                <i class="fas fa-eye"></i>
+    <!-- New Table -->
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <!-- Job Order Search Bar -->
+                        <form method="GET" class="JO-search-form" style="display: contents;">
+                            <div class="JO-search-container">
+                                <input type="text" name="search" class="JO-search-input" placeholder="Search by JO Number, line, type..." value="{{ search_query }}">
+                            </div>
+                            <div class="JO-filter-container">
+                                <select name="status" class="JO-select JO-filter-select" onchange="this.form.submit()">
+                                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                                    <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
+                                    <option value="routing" {% if status_filter == 'routing' %}selected{% endif %}>Routing</option>
+                                    <option value="assigned" {% if status_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+                                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                                </select>
+                            </div>
+                        </form>
+                        {% if request.user.job_order_requestor %}
+                            <button id="new-request-btn" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> New Request
                             </button>
-                            {% if request.status == 'Completed' %}
-                            <button class="JO-icon-button JO-check-btn" title="Close Transaction" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
-                                <i class="fas fa-check-circle"></i>
+                        {% endif %}
+                        {% if request.user.job_order_spectator or request.user.job_order_pmd %}
+                            <button id="jo-overview" class="btn btn-primary" onclick="window.open('{% url 'maintenance' %}', '_blank')">
+                                <i class="fa fa-area-chart" aria-hidden="true"></i> JO Overview
                             </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr id="jo-empty-row">
-                        <td colspan="9" class="JO-empty-table">No job order requests found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            <!-- No results message (hidden by default) -->
-            <div id="jo-no-results" class="JO-no-results" style="display: none;">
-                <div class="JO-no-results-icon">
-                    <i class="fas fa-search"></i>
-                </div>
-                <div class="JO-no-results-message">No matching Job Order requests found</div>
-                <div class="JO-no-results-hint">Try adjusting your search criteria</div>
-            </div>
-        </div>
-
-        <!-- Pagination -->
-        <div class="JO-pagination">
-            <div class="JO-pagination-info">
-                Showing <span id="jo-showing-start">1</span> to <span id="jo-showing-end">10</span> of <span id="jo-total-items">0</span> entries
-            </div>
-            <div class="JO-pagination-controls">
-                <div class="JO-pagination-nav-container">
-                    <button id="jo-prev-page" class="JO-pagination-btn disabled">
-                        <i class="fas fa-chevron-left"></i> Previous
-                    </button>
-                    <div class="JO-pagination-pages" id="jo-pagination-pages">
-                        <!-- Page numbers will be inserted here by JavaScript -->
+                        {% endif %}
                     </div>
-                    <button id="jo-next-page" class="JO-pagination-btn">
-                        Next <i class="fas fa-chevron-right"></i>
-                    </button>
                 </div>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="jo-table">
+                        <thead>
+                            <tr>
+                                <th>JO Number</th>
+                                <th>Category</th>
+                                <th>Tool</th>
+                                <th>Nature</th>
+                                <th>Requestor</th>
+                                <th>Line</th>
+                                <th>Status</th>
+                                <th>Date Submitted</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jo-table-body">
+                            {% for request in all_requests %}
+                            <tr class="jo-table-row">
+                                <td data-label="JO Number">{{ request.jo_number }}</td>
+                                <td data-label="Category"><span class="JO-category-pill JO-category-{{ request.jo_color|lower }}">{{ request.jo_color }}</span></td>
+                                <td data-label="Tool">{{ request.jo_tools|capfirst }}</td>
+                                <td data-label="Nature">{{ request.jo_type|capfirst }}</td>
+                                <td data-label="Requestor">{{ request.requestor }}</td>
+                                <td data-label="Line">{{ request.line }}</td>
+                                <td data-label="Status"><span class="JO-status JO-status-{{ request.status|lower }}">{{ request.status }}</span></td>
+                                <td data-label="Date">{{ request.date_created|date:"M d, Y" }}</td>
+                                <td data-label="Actions" class="text-center">
+                                    {% if user.job_order_requestor or user.job_order_spectator  %}
+                                        <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    {% endif %}
+
+                                    {% if request.status == 'Completed' %}
+                                        <button class="btn btn-icon JO-check-btn JO-icon-button" title="Close Transaction" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-check-circle"></i>
+                                        </button>
+                                    {% endif %}
+
+                                    {% if user.job_order_approver or user.job_order_pmd or user.job_order_checker%}
+                                        {% if request.has_pending_routing %}
+                                        <button class="btn btn-primary btn-sm jo-review-btn" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fa fa-bars" aria-hidden="true"></i>
+                                            Review
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Job Order Request Found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No job order request has been filed yet</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if all_requests.paginator.num_pages > 1 %}
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ all_requests.start_index }} to {{ all_requests.end_index }} of {{ all_requests.paginator.count }} entries
+                    </div>
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if all_requests.has_previous %}
+                            <a href="?page={{ all_requests.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in all_requests.paginator.page_range %}
+                                {% if all_requests.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > all_requests.number|add:'-3' and num < all_requests.number|add:'3' %}
+                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if all_requests.has_next %}
+                            <a href="?page={{ all_requests.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
-        </div>
     </div>
+
 </main>
 
 <!-- New Job Order Request Modal -->
@@ -506,28 +285,17 @@
         <form method="POST" action="{% url 'create-jo-request' %}" id="job-order-form">
             {% csrf_token %}
             <div class="JO-modal-body" style="overflow-y: auto !important; overflow-x: hidden !important;">
-                    <div class="JO-form-row">
-                        <div class="JO-form-group">
-                            <label for="requestor-input">Requestor</label>
-                            <input type="text" id="requestor-input" name="requestor" value="{{ request.user.name }}" required>
-                        </div>   
+                    <div class="JO-form-grid">
+                        <div class="two-column-row">
+                            <div class="JO-form-group two-column-half">
+                                <label for="requestor-input">Requestor</label>
+                                <input type="text" name="requestor" placeholder="Enter requestor name" required>
+                            </div>   
 
-                        <div class="JO-form-group">
-                            <label for="requestor-line">Requestor Line</label>
-                            <select id="requestor-line" name="line" required>
-                                <option value="">Select Line</option>
-                                {% for line in lines %}
-                                <option value="{{ line.id }}" 
-                                    {% if request.user.line and request.user.line.id == line.id %}
-                                        selected
-                                    {% endif %}>
-                                    {{ line.line_name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            {% if request.user.line %}
-                            <input type="hidden" name="default_line_id" value="{{ request.user.line.id }}">
-                            {% endif %}
+                            <div class="JO-form-group two-column-half">
+                                <label for="requestor-line">Requestor Line</label>
+                                {{ form.line }}
+                            </div>
                         </div>
                     </div>
 
@@ -723,6 +491,69 @@
         <div class="JO-modal-footer">
             <button class="JO-button JO-secondary-button" id="close-confirmation-cancel">Cancel</button>
             <button class="JO-button JO-success-button" id="confirm-close-btn">Yes, Close Transaction</button>
+        </div>
+    </div>
+</div>
+
+<!-- Job Order Review Modal -->
+<div class="JO-modal" id="jo-review-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Review Job Order</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" id="jo-review-content" style="overflow-y: auto !important; overflow-x: hidden !important;">
+            <!-- Loading state is shown initially -->
+            <div class="JO-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
+                <p style="font-size: 16px; color: #666;">Loading job order details...</p>
+            </div>
+        </div>
+        <div class="JO-modal-footer" style="display: flex; flex-direction: column; align-items: stretch; gap: 15px;">
+            {% if user.job_order_approver %}
+            <div class="JO-form-group" style="margin-bottom: 0;">
+                <label for="review-quality-matter" style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="review-quality-matter" style="width: 16px; height: 16px; cursor: pointer;">
+                    <span>Quality Matter <span style="color: var(--text-muted); font-style: italic;">(Check if the job order needs to be reviewed by the QA personnel)</span></span>
+                </label>
+            </div>
+            
+            <div class="JO-form-group" style="margin-bottom: 0;">
+                <div style="display: flex; gap: 15px; align-items: end;">
+                    <div style="flex: 1;">
+                        <label for="review-priority-level" style="margin-bottom: 5px; display: block;">Priority Level</label>
+                        <select id="review-priority-level" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                    
+                    <div style="flex: 1;" id="review-date-of-completion-group">
+                        <label for="review-date-of-completion" style="margin-bottom: 5px; display: block;">Date of Completion <span style="color: red;">*</span></label>
+                        <input type="date" id="review-date-of-completion" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <small class="text-danger" id="review-date-error" style="display: none;">Date of completion is required for urgent priority</small>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="JO-form-group" style="margin-bottom: 0;">
+                <label for="review-remarks">Remarks</label>
+                <textarea id="review-remarks" rows="2" placeholder="Add your remarks here..." style="width: 100%; resize: vertical;"></textarea>
+                <small class="text-danger" id="review-remarks-error" style="display: none;">Remarks are required when disapproving</small>
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: end;">
+                <button class="JO-button JO-danger-button" id="disapprove-jo-btn">
+                    <i class="fas fa-times-circle"></i> Disapprove
+                </button>
+                <button class="JO-button JO-success-button" id="approve-jo-btn">
+                    <i class="fas fa-check-circle"></i> Approve
+                </button>
+            </div>
         </div>
     </div>
 </div>

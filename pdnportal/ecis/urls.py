@@ -19,4 +19,7 @@ urlpatterns = [
     # Chart data APIs
     path('api/chart-data/', views.ecis_chart_data, name='ecis_chart_data'),
     path('api/requestor-chart-data/', views.ecis_requestor_chart_data, name='ecis_requestor_chart_data'),
+    
+    # Export
+    path('export/', views.ecis_export, name='ecis_export'),
 ]

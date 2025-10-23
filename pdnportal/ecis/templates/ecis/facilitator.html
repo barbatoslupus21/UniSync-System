@@ -42,6 +42,19 @@
     .ecis-review-pending-btn:hover {
         background-color: var(--ecis-primary-dark);
     }
+    
+    /* Export Modal Specific Styles */
+    .ecis-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    @media (max-width: 768px) {
+        .ecis-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -53,6 +66,9 @@
             <h1 class="ecis-page-title">ECIS Registry</h1>
             <p class="ecis-subtitle">Review, approve and manage engineering change requests</p>
         </div>
+        <button id="export-ecis-btn" class="ecis-button ecis-primary-button">
+            <i class="fa fa-download" aria-hidden="true"></i> Export Report
+        </button>
     </div>
 
     <!-- Stats cards -->
@@ -401,6 +417,56 @@
             <div class="ecis-modal-footer">
                 <button type="button" class="ecis-button ecis-secondary-button ecis-cancel-btn">Cancel</button>
                 <button type="submit" class="ecis-button ecis-primary-button">Submit Review</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Export ECIS Modal -->
+<div class="ecis-modal" id="export-ecis-modal">
+    <div class="ecis-modal-content">
+        <div class="ecis-modal-header">
+            <h2>Export ECIS Report</h2>
+            <button class="ecis-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="export-ecis-form" method="GET" action="{% url 'ecis_export' %}">
+            <div class="ecis-modal-body">
+                <div class="ecis-form-section">
+                    <div class="ecis-form-grid">
+                        <div class="ecis-form-group">
+                            <label for="date-from">Date From</label>
+                            <input type="date" id="date-from" name="date_from" class="ecis-input" required>
+                        </div>
+                        <div class="ecis-form-group">
+                            <label for="date-to">Date To</label>
+                            <input type="date" id="date-to" name="date_to" class="ecis-input" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ecis-form-section">
+                    <div class="ecis-form-group">
+                        <label for="export-category-filter">Category</label>
+                        <select id="export-category-filter" name="category" class="ecis-select">
+                            <option value="all">All Categories</option>
+                            <option value="OR">Orange (OR)</option>
+                            <option value="YE">Yellow (YE)</option>
+                            <option value="PN">Pink (PN)</option>
+                            <option value="LG">Light Green (LG)</option>
+                            <option value="GR">Green (GR)</option>
+                            <option value="L">Blue (L)</option>
+                            <option value="GY">Gray (GY)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="ecis-modal-footer">
+                <button type="button" class="ecis-button ecis-secondary-button ecis-cancel-export">Cancel</button>
+                <button type="submit" class="ecis-button ecis-primary-button">
+                    <i class="fa fa-download" aria-hidden="true"></i> Export to Excel
+                </button>
             </div>
         </form>
     </div>

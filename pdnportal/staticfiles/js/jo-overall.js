@@ -1,9 +1,9 @@
-
 // Constants and global variables
 const STATS_REFRESH_INTERVAL = 5 * 60 * 1000;
 const TIMELINE_REFRESH_INTERVAL = 2 * 60 * 1000;
 const DEADLINES_REFRESH_INTERVAL = 5 * 60 * 1000;
 const ALERTS_REFRESH_INTERVAL = 5 * 60 * 1000;
+const QUEUE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 let statsRefreshInterval = null;
 let timelineRefreshInterval = null;
 let currentTimelineView = 'timeline-week';
@@ -15,6 +15,7 @@ let alertFilters = {
     highPriority: true,
     resource: true
 };
+let queueRefreshInterval = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     animateStatsCards();
@@ -55,11 +56,25 @@ document.addEventListener('DOMContentLoaded', function() {
     refreshAlerts();
     startAlertsRefresh();
 
+    // Job Order Queue
+    initializeQueue();
+    refreshQueue();
+    startQueueRefresh();
+
     // Handle responsive layout
     handleResponsiveLayout();
 
     // Add window resize listener for responsive layout
     window.addEventListener('resize', handleResponsiveLayout);
+
+    // Initialize Job Order Compliance Chart
+    initializeComplianceChart();
+
+    // Initialize Maintenance Workload
+    initializeMaintenanceWorkload();
+    
+    // Initialize Compliance Rate Chart
+    initializeComplianceRateChart();
 });
 
 function startStatsRefresh() {
@@ -108,14 +123,29 @@ function updateStatsCards(data) {
     // Update active job orders
     updateStatCard('JO-total-jobs', data.active_jo_count, data.active_jo_percentage);
 
-    // Update completion rate
-    updateStatCard('JO-completion-rate', data.completion_rate + '%', data.completion_rate_change);
+    // Update routing requests (don't add %)
+    if (data.routing_requests_count !== undefined) {
+        updateStatCard('JO-completion-rate', data.routing_requests_count, data.routing_requests_change);
+    } else {
+        // Fallback to completion rate with % if routing requests not available
+        updateStatCard('JO-completion-rate', data.completion_rate + '%', data.completion_rate_change);
+    }
 
-    // Update resolution time
-    updateStatCard('JO-resolution-time', data.avg_resolution_time + ' days', data.resolution_time_change, data.resolution_time_improved);
+    // Update in-progress requests (don't add days)
+    if (data.in_progress_requests_count !== undefined) {
+        updateStatCard('JO-resolution-time', data.in_progress_requests_count, data.in_progress_requests_change, data.in_progress_requests_improved);
+    } else {
+        // Fallback to resolution time with days if in-progress requests not available
+        updateStatCard('JO-resolution-time', data.avg_resolution_time + ' days', data.resolution_time_change, data.resolution_time_improved);
+    }
 
-    // Update overdue tasks
-    updateStatCard('JO-overdue-tasks', data.overdue_tasks, data.overdue_tasks_change, data.overdue_tasks_reduced);
+    // Update completed requests (previously overdue tasks)
+    if (data.completed_requests_count !== undefined) {
+        updateStatCard('JO-overdue-tasks', data.completed_requests_count, data.completed_requests_change, data.completed_requests_improved);
+    } else {
+        // Fallback to overdue tasks if completed requests not available
+        updateStatCard('JO-overdue-tasks', data.overdue_tasks, data.overdue_tasks_change, data.overdue_tasks_reduced);
+    }
 
     // Show a subtle pulse animation on all cards
     pulseStatsCards();
@@ -1117,6 +1147,142 @@ function animateTimelineItems(containerId = null) {
                 min-height: 0; /* Allow proper flex behavior */
                 height: 100%; /* Take full height of parent */
             }
+
+            /* Job Order Queue styles */
+            .JO-queue-wrapper {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                width: 100%;
+            }
+
+            .JO-queue-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 12px;
+                background-color: var(--jo-bg-light, #f9f9f9);
+                border-radius: 6px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+
+            .JO-queue-header h3 {
+                margin: 0;
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: var(--jo-text-dark, #333);
+            }
+
+            .JO-queue-count {
+                font-size: 0.9rem;
+                color: var(--jo-text-light, #666);
+            }
+
+            .JO-queue-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 10px;
+                width: 100%;
+            }
+
+            .JO-queue-item {
+                background-color: white;
+                border-radius: 6px;
+                padding: 12px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                transition: transform 0.3s ease;
+            }
+
+            .JO-queue-item:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            }
+
+            .JO-queue-info {
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .JO-queue-info-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .JO-queue-info-header h4 {
+                margin: 0;
+                font-size: 1rem;
+                font-weight: 500;
+                color: var(--jo-primary, #3366ff);
+            }
+
+            .JO-category-pill {
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                display: inline-block;
+            }
+
+            .JO-priority-badge {
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                display: inline-block;
+                text-align: center;
+            }
+
+            .JO-queue-requestor-info {
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+                font-size: 0.85rem;
+                color: var(--jo-text-dark, #333);
+            }
+
+            .JO-queue-waiting {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                font-size: 0.85rem;
+                color: var(--jo-text-light, #666);
+            }
+
+            .JO-waiting-label {
+                font-weight: 500;
+            }
+
+            .JO-waiting-value {
+                font-weight: 700;
+                color: var(--jo-red, #f44336);
+            }
+
+            /* Empty queue styling */
+            .JO-empty-queue {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                min-height: 200px;
+                color: var(--jo-text-light, #666);
+                grid-column: 1 / -1;
+                padding: 20px;
+                text-align: center;
+            }
+
+            .JO-empty-queue p {
+                margin: 5px 0;
+                font-size: 1rem;
+            }
+
+            .JO-empty-queue .JO-empty-subtitle {
+                font-size: 0.85rem;
+                opacity: 0.7;
+                font-style: italic;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1412,12 +1578,18 @@ function showEmptyDeadlines(message = 'No upcoming deadlines') {
     if (deadlinesContainer) {
         deadlinesContainer.innerHTML = `
             <div class="JO-empty-deadlines">
-                <p>${message}</p>
+                <div class="empty-state">
+                    <i class="fa fa-question-circle" aria-hidden="true"></i>
+                    <h4>No Deadlines Found</h4>
+                    <p>No job order deadlines found</p>
+                </div>
             </div>
         `;
 
         // Update responsive layout based on content
-        handleResponsiveLayout();
+        if (typeof handleResponsiveLayout === 'function') {
+            handleResponsiveLayout();
+        }
     }
 }
 
@@ -1432,79 +1604,101 @@ function updateDeadlines(data) {
         return;
     }
 
-    // Filter deadlines based on current filter
-    let filteredDeadlines = data.deadlines || [];
-    console.log('Total deadlines before filtering:', filteredDeadlines.length);
-
-    if (currentDeadlineFilter !== 'all') {
-        filteredDeadlines = filteredDeadlines.filter(deadline => {
-            const matches = deadline.category &&
-                           deadline.category.toLowerCase() === currentDeadlineFilter.toLowerCase();
-            return matches;
-        });
-        console.log('Deadlines after filtering by', currentDeadlineFilter, ':', filteredDeadlines.length);
-    }
+    let allDeadlines = data.deadlines || [];
+    console.log('Total deadlines:', allDeadlines.length);
 
     // Clear existing deadlines
     deadlinesContainer.innerHTML = '';
 
+    // Separate deadlines by urgency type
+    let urgentDeadlines = [];
+    let criticalDeadlines = [];
+    let upcomingDeadlines = [];
+
+    if (currentDeadlineFilter === 'all') {
+        // Categorize all deadlines
+        urgentDeadlines = allDeadlines.filter(d => d.urgency_type === 'urgent');
+        criticalDeadlines = allDeadlines.filter(d => d.urgency_type === 'critical');
+        upcomingDeadlines = allDeadlines.filter(d => d.urgency_type === 'upcoming');
+    } else {
+        // Filter by selected urgency type
+        if (currentDeadlineFilter === 'urgent') {
+            urgentDeadlines = allDeadlines.filter(d => d.urgency_type === 'urgent');
+        } else if (currentDeadlineFilter === 'critical') {
+            criticalDeadlines = allDeadlines.filter(d => d.urgency_type === 'critical');
+        } else if (currentDeadlineFilter === 'upcoming') {
+            upcomingDeadlines = allDeadlines.filter(d => d.urgency_type === 'upcoming');
+        }
+    }
+
     // If no deadlines after filtering, show empty message
-    if (!filteredDeadlines || filteredDeadlines.length === 0) {
+    if (urgentDeadlines.length === 0 && criticalDeadlines.length === 0 && upcomingDeadlines.length === 0) {
         showEmptyDeadlines();
         return;
     }
 
-    // Add new deadlines
-    filteredDeadlines.forEach((deadline, index) => {
-        try {
-            const deadlineElement = document.createElement('div');
-            deadlineElement.className = `JO-deadline-item ${deadline.is_critical ? 'critical' : ''}`;
-            deadlineElement.setAttribute('data-jo-id', deadline.jo_number);
+    let itemIndex = 0;
 
-            // Create deadline HTML - use safe defaults in case of missing data
-            const day = deadline.day || '-';
-            const month = deadline.month || '-';
-            const joNumber = deadline.jo_number || 'Unknown';
-            const category = (deadline.category || 'Unknown').toLowerCase();
-            const description = deadline.description || 'No description';
-            const countdown = deadline.countdown || 'Unknown';
+    // Add URGENT section
+    if (urgentDeadlines.length > 0) {
+        const urgentSection = document.createElement('div');
+        urgentSection.className = 'JO-deadline-section';
+        urgentDeadlines.forEach((deadline) => {
+            try {
+                const deadlineElement = createDeadlineElement(deadline, 'urgent', itemIndex);
+                deadlinesContainer.appendChild(deadlineElement);
+                itemIndex++;
+            } catch (error) {
+                console.error('Error creating urgent deadline element:', error, deadline);
+            }
+        });
+    }
 
-            deadlineElement.innerHTML = `
-                <div class="JO-deadline-date">
-                    <div class="JO-deadline-day">${day}</div>
-                    <div class="JO-deadline-month">${month}</div>
-                </div>
-                <div class="JO-deadline-info">
-                    <h4>${joNumber} <span class="JO-category-pill JO-category-${category}">${deadline.category || 'Unknown'}</span></h4>
-                    <p>${description}</p>
-                    <div class="JO-deadline-requestor-info">
-                        <span class="JO-deadline-requestor">Requestor: <strong>${deadline.requestor || 'Unknown'}</strong></span>
-                        <span class="JO-deadline-department">Department/Line: <em>${deadline.department || 'N/A'}</em></span>
-                    </div>
-                </div>
-                <div class="JO-deadline-countdown">
-                    <span class="JO-countdown-value">${countdown}</span>
-                </div>
-            `;
+    // Add CRITICAL section
+    if (criticalDeadlines.length > 0) {
+        const criticalSection = document.createElement('div');
+        criticalSection.className = 'JO-deadline-section';
+        criticalSection.innerHTML = `
+            <div class="JO-deadline-section-header critical">
+                <i class="fas fa-fire"></i>
+                <h3>Critical (${criticalDeadlines.length})</h3>
+            </div>
+        `;
+        deadlinesContainer.appendChild(criticalSection);
 
-            // Add the deadline to the container
-            deadlinesContainer.appendChild(deadlineElement);
+        criticalDeadlines.forEach((deadline) => {
+            try {
+                const deadlineElement = createDeadlineElement(deadline, 'critical', itemIndex);
+                deadlinesContainer.appendChild(deadlineElement);
+                itemIndex++;
+            } catch (error) {
+                console.error('Error creating critical deadline element:', error, deadline);
+            }
+        });
+    }
 
-            // Add animation with delay
-            setTimeout(() => {
-                deadlineElement.style.opacity = '0';
-                deadlineElement.style.transform = 'translateY(10px)';
+    // Add UPCOMING section
+    if (upcomingDeadlines.length > 0) {
+        const upcomingSection = document.createElement('div');
+        upcomingSection.className = 'JO-deadline-section';
+        upcomingSection.innerHTML = `
+            <div class="JO-deadline-section-header upcoming">
+                <i class="fas fa-calendar-alt"></i>
+                <h3>Upcoming (${upcomingDeadlines.length})</h3>
+            </div>
+        `;
+        deadlinesContainer.appendChild(upcomingSection);
 
-                // Trigger animation
-                void deadlineElement.offsetWidth; // Force reflow
-                deadlineElement.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
-                deadlineElement.style.opacity = '1';
-                deadlineElement.style.transform = 'translateY(0)';
-            }, index * 100);
-        } catch (error) {
-            console.error('Error creating deadline element:', error, deadline);
-        }
-    });
+        upcomingDeadlines.forEach((deadline) => {
+            try {
+                const deadlineElement = createDeadlineElement(deadline, 'upcoming', itemIndex);
+                deadlinesContainer.appendChild(deadlineElement);
+                itemIndex++;
+            } catch (error) {
+                console.error('Error creating upcoming deadline element:', error, deadline);
+            }
+        });
+    }
 
     // Add click handlers to deadlines
     addDeadlineEventHandlers();
@@ -1512,7 +1706,67 @@ function updateDeadlines(data) {
     // Update responsive layout based on content
     handleResponsiveLayout();
 
-    console.log('Deadlines UI updated with', filteredDeadlines.length, 'items');
+    console.log('Deadlines UI updated with', allDeadlines.length, 'items');
+}
+
+/**
+ * Create a deadline element
+ * @param {Object} deadline - The deadline data
+ * @param {string} urgencyClass - The urgency class (urgent, critical, upcoming)
+ * @param {number} index - The index for animation delay
+ * @returns {HTMLElement} The deadline element
+ */
+function createDeadlineElement(deadline, urgencyClass, index) {
+    const deadlineElement = document.createElement('div');
+    deadlineElement.className = `JO-deadline-item ${urgencyClass} ${deadline.is_critical ? 'critical' : ''}`;
+    deadlineElement.setAttribute('data-jo-id', deadline.jo_number);
+
+    // Create deadline HTML - use safe defaults in case of missing data
+    const day = deadline.day || '-';
+    const month = deadline.month || '-';
+    const joNumber = deadline.jo_number || 'Unknown';
+    const category = (deadline.category || 'Unknown').toLowerCase();
+    const description = deadline.description || 'No description';
+    const countdown = deadline.countdown || 'Unknown';
+    const priorityLevel = deadline.priority_level || 'Low';
+
+    deadlineElement.innerHTML = `
+        <div class="JO-deadline-date">
+            <div class="JO-deadline-day">${day}</div>
+            <div class="JO-deadline-month">${month}</div>
+        </div>
+        <div class="JO-deadline-info">
+            <div class="JO-deadline-info-header">
+                <h4>${joNumber}</h4>
+                <span class="JO-category-pill JO-category-${category}">${deadline.category || 'Unknown'}</span>
+                ${priorityLevel !== 'Low' ? `<div class="JO-priority-badge ${priorityLevel.toLowerCase()}">${priorityLevel}</div>` : ''}
+            </div>
+            
+            <p>${description}</p>
+            <div class="JO-deadline-requestor-info">
+                <span class="JO-deadline-requestor">Requestor: <strong>${deadline.requestor || 'Unknown'}</strong></span>
+                <span class="JO-deadline-department">Line: <strong>${deadline.department || 'N/A'}</strong></span>
+            </div>
+            
+        </div>
+        <div class="JO-deadline-countdown ${urgencyClass}">
+            <span class="JO-countdown-value">${countdown}</span>
+        </div>
+    `;
+
+    // Add animation with delay
+    setTimeout(() => {
+        deadlineElement.style.opacity = '0';
+        deadlineElement.style.transform = 'translateY(10px)';
+
+        // Trigger animation
+        void deadlineElement.offsetWidth; // Force reflow
+        deadlineElement.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        deadlineElement.style.opacity = '1';
+        deadlineElement.style.transform = 'translateY(0)';
+    }, index * 50);
+
+    return deadlineElement;
 }
 
 /**
@@ -1544,6 +1798,7 @@ function refreshAllData() {
     refreshStats();
     refreshTimeline(currentTimelineView);
     refreshDeadlines();
+    refreshQueue();
 }
 
 // Critical Alerts
@@ -1775,6 +2030,943 @@ function addAlertEventHandlers() {
             if (joId && typeof fetchJobOrderDetails === 'function') {
                 console.log('Alert item clicked, fetching details for:', joId);
                 fetchJobOrderDetails(joId);
+            }
+        });
+    });
+}
+
+// Job Order Compliance Chart
+let complianceChart = null;
+
+/**
+ * Initialize the Job Order Compliance Chart
+ */
+function initializeComplianceChart() {
+    const canvas = document.getElementById('jo-analytics-chart');
+    if (!canvas) {
+        console.warn('Job Order Compliance chart canvas not found');
+        return;
+    }
+
+    // Load initial chart with 6 months data (default)
+    loadComplianceChart('6month');
+
+    // Add event listener for period selector
+    const periodSelector = document.getElementById('chart-period-selector');
+    if (periodSelector) {
+        periodSelector.addEventListener('change', function() {
+            loadComplianceChart(this.value);
+        });
+    }
+}
+
+// Custom Chart.js plugin for 3D shadow effects
+const shadow3DPlugin = {
+    id: 'shadow3D',
+    beforeDraw: (chart) => {
+        const ctx = chart.ctx;
+        ctx.save();
+        
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+            
+            if (dataset.type === 'bar' && dataset.shadowOffsetX) {
+                ctx.shadowOffsetX = dataset.shadowOffsetX;
+                ctx.shadowOffsetY = dataset.shadowOffsetY;
+                ctx.shadowBlur = dataset.shadowBlur;
+                ctx.shadowColor = dataset.shadowColor;
+            }
+        });
+    },
+    afterDraw: (chart) => {
+        chart.ctx.restore();
+    }
+};
+
+// Register the plugin
+if (typeof Chart !== 'undefined') {
+    Chart.register(shadow3DPlugin);
+}
+
+/**
+ * Load and render the compliance chart with the specified period
+ * @param {string} period - The time period to display
+ */
+function loadComplianceChart(period) {
+    fetch(`/joborder/api/job-order/compliance-chart/?period=${period}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            renderComplianceChart(data);
+        } else {
+            console.error('Error loading compliance chart:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching compliance chart data:', error);
+    });
+}
+
+/**
+ * Render the compliance chart with bar and line graphs
+ * @param {Object} data - The chart data from the API
+ */
+function renderComplianceChart(data) {
+    const canvas = document.getElementById('jo-analytics-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Destroy existing chart if it exists
+    if (complianceChart) {
+        complianceChart.destroy();
+    }
+
+    // Create new chart with mixed type (bar + line) with 3D effects
+    complianceChart = new Chart(ctx, {
+        data: {
+            labels: data.labels,
+            datasets: [
+                {
+                    type: 'bar',
+                    label: 'Filed JO Requests',
+                    data: data.filed,
+                    backgroundColor: '#0046FF',
+                    borderColor: '#0046FF',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    borderSkipped: false,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8,
+                    order: 3
+                },
+                {
+                    type: 'line',
+                    label: 'Completed JO Requests',
+                    data: data.completed,
+                    borderColor: '#2FDD92',
+                    backgroundColor: function(context) {
+                        const ctx = context.chart.ctx;
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                        gradient.addColorStop(0, 'rgba(47, 221, 146, 0.6)');
+                        gradient.addColorStop(0.5, 'rgba(47, 221, 146, 0.3)');
+                        gradient.addColorStop(1, 'rgba(47, 221, 146, 0.05)');
+                        return gradient;
+                    },
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#2FDD92',
+                    pointBorderWidth: 2,
+                    pointHoverBackgroundColor: '#2FDD92',
+                    pointHoverBorderWidth: 3,
+                    order: 1
+                },
+                {
+                    type: 'line',
+                    label: 'Routing Requests',
+                    data: data.routing || [],
+                    borderColor: '#FFA500',
+                    backgroundColor: function(context) {
+                        const ctx = context.chart.ctx;
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                        gradient.addColorStop(0, 'rgba(255, 165, 0, 0.6)');
+                        gradient.addColorStop(0.5, 'rgba(255, 165, 0, 0.3)');
+                        gradient.addColorStop(1, 'rgba(255, 165, 0, 0.05)');
+                        return gradient;
+                    },
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#FFA500',
+                    pointBorderWidth: 2,
+                    pointHoverBackgroundColor: '#FFA500',
+                    pointHoverBorderWidth: 3,
+                    order: 2
+                },
+                {
+                    type: 'line',
+                    label: 'In Progress',
+                    data: data.inprogress || [],
+                    borderColor: '#FFD700',
+                    backgroundColor: function(context) {
+                        const ctx = context.chart.ctx;
+                        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                        gradient.addColorStop(0, 'rgba(255, 215, 0, 0.6)');
+                        gradient.addColorStop(0.5, 'rgba(255, 215, 0, 0.3)');
+                        gradient.addColorStop(1, 'rgba(255, 215, 0, 0.05)');
+                        return gradient;
+                    },
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointBackgroundColor: '#FFD700',
+                    pointBorderWidth: 2,
+                    pointHoverBackgroundColor: '#FFD700',
+                    pointHoverBorderWidth: 3,
+                    order: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                shadow3D: {
+                    enabled: true
+                },
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        font: {
+                            size: 12,
+                            family: "'Poppins', sans-serif",
+                            weight: '500'
+                        },
+                        boxWidth: 12,
+                        boxHeight: 12
+                    }
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    padding: 12,
+                    cornerRadius: 6,
+                    titleFont: {
+                        size: 13,
+                        family: "'Poppins', sans-serif",
+                        weight: '600'
+                    },
+                    bodyFont: {
+                        size: 12,
+                        family: "'Poppins', sans-serif"
+                    },
+                    displayColors: true,
+                    boxWidth: 10,
+                    boxHeight: 10,
+                    boxPadding: 4,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            label += context.parsed.y;
+                            return label;
+                        },
+                        afterBody: function(tooltipItems) {
+                            // Calculate compliance rate from the tooltip data
+                            let filed = 0;
+                            let completed = 0;
+                            
+                            tooltipItems.forEach(function(tooltipItem) {
+                                const dataset = tooltipItem.dataset;
+                                const dataIndex = tooltipItem.dataIndex;
+                                
+                                if (dataset.label === 'Filed JO Requests') {
+                                    filed = dataset.data[dataIndex] || 0;
+                                } else if (dataset.label === 'Completed JO Requests') {
+                                    completed = dataset.data[dataIndex] || 0;
+                                }
+                            });
+                            
+                            const complianceRate = filed > 0 ? ((completed / filed) * 100).toFixed(1) : 0;
+                            
+                            return [`Compliance Rate: ${complianceRate}%`];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false,
+                        drawBorder: false
+                    },
+                    ticks: {
+                        font: {
+                            size: 11,
+                            family: "'Poppins', sans-serif"
+                        },
+                        maxRotation: 45,
+                        minRotation: 0,
+                        color: '#666'
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.06)',
+                        drawBorder: false,
+                        lineWidth: 1
+                    },
+                    ticks: {
+                        font: {
+                            size: 11,
+                            family: "'Poppins', sans-serif"
+                        },
+                        precision: 0,
+                        color: '#666',
+                        padding: 8
+                    },
+                    title: {
+                        display: true,
+                        text: 'Number of Job Orders',
+                        font: {
+                            size: 12,
+                            family: "'Poppins', sans-serif",
+                            weight: '600'
+                        },
+                        color: '#333',
+                        padding: {
+                            top: 10,
+                            bottom: 0
+                        }
+                    }
+                }
+            },
+            layout: {
+                padding: {
+                    top: 10,
+                    right: 15,
+                    bottom: 10,
+                    left: 5
+                }
+            }
+        }
+    });
+
+    console.log('Compliance chart rendered successfully');
+}
+
+// Maintenance Workload
+/**
+ * Initialize and load maintenance workload data
+ */
+function initializeMaintenanceWorkload() {
+    loadMaintenanceWorkload();
+    // Refresh workload every 5 minutes
+    setInterval(loadMaintenanceWorkload, 5 * 60 * 1000);
+}
+
+/**
+ * Load maintenance workload data from API
+ */
+function loadMaintenanceWorkload() {
+    fetch('/joborder/workload/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            renderMaintenanceWorkload(data.workload_data);
+        } else {
+            console.error('Error loading workload data:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching workload data:', error);
+        showWorkloadError();
+    });
+}
+
+/**
+ * Render maintenance workload list
+ * @param {Array} workloadData - Array of workload data for each staff
+ */
+function renderMaintenanceWorkload(workloadData) {
+    const container = document.getElementById('workload-list');
+    if (!container) return;
+
+    if (!workloadData || workloadData.length === 0) {
+        container.innerHTML = `
+            <div class="JO-empty-workload" style="text-align: center; padding: 2rem; color: #666;">
+                <i class="fas fa-users" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <p>No maintenance personnel found</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort by workload percentage (highest first)
+    workloadData.sort((a, b) => b.workload_percentage - a.workload_percentage);
+
+    let html = '';
+    workloadData.forEach((staff, index) => {
+        const statusClass = staff.workload_percentage >= 80 ? 'high' : 
+                           staff.workload_percentage >= 50 ? 'medium' : 'low';
+        
+        html += `
+            <div class="JO-workload-item" style="animation: fadeIn 0.5s ease ${index * 0.1}s both;">
+                <div class="JO-workload-info">
+                    <div class="JO-workload-name">${staff.name}</div>
+                    <div class="JO-workload-tasks">${staff.active_tasks} active task${staff.active_tasks !== 1 ? 's' : ''}</div>
+                </div>
+                <div class="JO-workload-bar-container">
+                    <div class="JO-workload-bar ${statusClass}" style="width: ${staff.workload_percentage}%"></div>
+                </div>
+                <div class="JO-workload-percentage">${staff.workload_percentage}%</div>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+/**
+ * Show error message in workload container
+ */
+function showWorkloadError() {
+    const container = document.getElementById('workload-list');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="JO-error-workload" style="text-align: center; padding: 2rem; color: #e74c3c;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+            <p>Failed to load workload data</p>
+            <p style="font-size: 0.9rem; opacity: 0.8;">Please refresh the page to try again</p>
+        </div>
+    `;
+}
+
+// Compliance Rate Chart
+let complianceRateChart = null;
+
+/**
+ * Initialize the compliance rate chart
+ */
+function initializeComplianceRateChart() {
+    const selector = document.getElementById('compliance-period-selector');
+    if (selector) {
+        // Load initial data with default period
+        loadComplianceRateChart(selector.value);
+        
+        // Add change event listener
+        selector.addEventListener('change', function() {
+            loadComplianceRateChart(this.value);
+        });
+    }
+}
+
+/**
+ * Load and render the compliance rate chart with the specified period
+ * @param {string} period - The time period to display
+ */
+function loadComplianceRateChart(period) {
+    fetch(`/joborder/api/job-order/compliance-rate/?period=${period}`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            renderComplianceRateChart(data);
+        } else {
+            console.error('Error loading compliance rate chart:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching compliance rate data:', error);
+    });
+}
+
+/**
+ * Render the 3D compliance rate pie chart
+ * @param {Object} data - The chart data from the API
+ */
+function renderComplianceRateChart(data) {
+    const canvas = document.getElementById('compliance-rate-chart');
+    const chartWrapper = document.querySelector('.JO-compliance-chart-wrapper');
+    const centerText = document.getElementById('compliance-center-text');
+    
+    if (!canvas || !chartWrapper) return;
+
+    const ctx = canvas.getContext('2d');
+
+    // Destroy existing chart if it exists
+    if (complianceRateChart) {
+        complianceRateChart.destroy();
+    }
+
+    // Check if there's no data to display
+    if (!data.total_jos || data.total_jos === 0) {
+        // Hide canvas and center text
+        canvas.style.display = 'none';
+        if (centerText) centerText.style.display = 'none';
+        
+        // Show no data message
+        chartWrapper.innerHTML = `
+            <div class="JO-empty-chart" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666; text-align: center; padding: 20px;">
+                <i class="fas fa-chart-pie" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                <p style="margin: 0; font-size: 1.1rem;">No Job Orders Found</p>
+                <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.7;">No data available for the selected period</p>
+            </div>
+        `;
+        
+        // Still render legend with 0 counts
+        renderComplianceLegend(data, {
+            base: 'rgba(47, 221, 146, 0.9)',
+            border: 'rgba(47, 221, 146, 1)',
+            hover: 'rgba(47, 221, 146, 1)'
+        }, {
+            base: 'rgba(0, 70, 255, 0.9)',
+            border: 'rgba(0, 70, 255, 1)',
+            hover: 'rgba(0, 70, 255, 1)'
+        });
+        
+        return;
+    }
+
+    // Show canvas and center text if they were hidden
+    canvas.style.display = 'block';
+    if (centerText) centerText.style.display = 'flex';
+    
+    // Clear any previous no-data message
+    const emptyChart = chartWrapper.querySelector('.JO-empty-chart');
+    if (emptyChart) {
+        emptyChart.remove();
+    }
+
+    // Define colors with 3D gradient effect
+    const completedColor = {
+        base: 'rgba(47, 221, 146, 0.9)',
+        border: 'rgba(47, 221, 146, 1)',
+        hover: 'rgba(47, 221, 146, 1)'
+    };
+    
+    const totalFiledColor = {
+        base: 'rgba(0, 70, 255, 0.9)',
+        border: 'rgba(0, 70, 255, 1)',
+        hover: 'rgba(0, 70, 255, 1)'
+    };
+    
+    const routingColor = {
+        base: 'rgba(255, 165, 0, 0.9)',
+        border: 'rgba(255, 165, 0, 1)',
+        hover: 'rgba(255, 165, 0, 1)'
+    };
+    
+    const inprogressColor = {
+        base: 'rgba(255, 215, 0, 0.9)',
+        border: 'rgba(255, 215, 0, 1)',
+        hover: 'rgba(255, 215, 0, 1)'
+    };
+
+    // Create new pie chart with 3D effect
+    complianceRateChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Completed JO', 'Total JO Filed', 'Routing Request', 'In Progress'],
+            datasets: [{
+                data: [data.completed_jos, data.total_jos, data.routing_jos || 0, data.inprogress_jos || 0],
+                backgroundColor: [completedColor.base, totalFiledColor.base, routingColor.base, inprogressColor.base],
+                borderColor: [completedColor.border, totalFiledColor.border, routingColor.border, inprogressColor.border],
+                borderWidth: 3,
+                hoverBackgroundColor: [completedColor.hover, totalFiledColor.hover, routingColor.hover, inprogressColor.hover],
+                hoverBorderColor: 'transparent',
+                hoverBorderWidth: 0,
+                hoverOffset: 20,
+                offset: [5, 5, 5, 5],
+                borderRadius: 8,
+                spacing: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '65%',
+            rotation: -90,
+            circumference: 360,
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 1500,
+                easing: 'easeInOutQuart'
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    padding: 12,
+                    cornerRadius: 8,
+                    titleFont: {
+                        size: 14,
+                        family: "'Poppins', sans-serif",
+                        weight: '600'
+                    },
+                    bodyFont: {
+                        size: 13,
+                        family: "'Poppins', sans-serif"
+                    },
+                    displayColors: true,
+                    boxWidth: 15,
+                    boxHeight: 15,
+                    boxPadding: 6,
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            },
+            layout: {
+                padding: 10
+            },
+            interaction: {
+                mode: 'nearest',
+                intersect: true
+            }
+        },
+        plugins: [{
+            id: 'pieChartShadow',
+            beforeDraw: (chart) => {
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+                ctx.shadowBlur = 15;
+                ctx.shadowOffsetX = 5;
+                ctx.shadowOffsetY = 5;
+            },
+            afterDraw: (chart) => {
+                chart.ctx.restore();
+            }
+        }]
+    });
+
+    // Render custom legend
+    renderComplianceLegend(data, completedColor, totalFiledColor);
+
+    console.log('Compliance rate chart rendered successfully');
+}
+
+/**
+ * Render custom legend for the compliance rate chart
+ * @param {Object} data - The chart data
+ * @param {Object} completedColor - Color object for completed JOs
+ * @param {Object} totalFiledColor - Color object for total JO filed
+ */
+function renderComplianceLegend(data, completedColor, totalFiledColor) {
+    const legendContainer = document.getElementById('compliance-legend');
+    if (!legendContainer) return;
+
+    const legendItems = [
+        {
+            label: 'Total JO Filed',
+            color: totalFiledColor.base,
+            count: data.total_jos
+        },
+        {
+            label: 'Completed JO',
+            color: '#2FDD92',
+            count: data.completed_jos
+        },
+        {
+            label: 'Routing',
+            color: '#FFA500',
+            count: data.routing_jos || 0
+        },
+        {
+            label: 'In Progress',
+            color: '#FFD700',
+            count: data.inprogress_jos || 0
+        }
+    ];
+
+    let html = '';
+    legendItems.forEach((item, index) => {
+        html += `
+            <div class="JO-compliance-legend-item" style="animation: fadeIn 0.5s ease ${index * 0.2}s both;">
+                <div class="JO-compliance-legend-left">
+                    <div class="JO-compliance-legend-color" style="background-color: ${item.color};"></div>
+                    <div class="JO-compliance-legend-label">${item.label}</div>
+                </div>
+                <div class="JO-compliance-legend-right">
+                    <div class="JO-compliance-legend-count">${item.count}</div>
+                </div>
+            </div>
+        `;
+    });
+
+    legendContainer.innerHTML = html;
+    
+    // Render center text with overall compliance rate
+    renderComplianceCenterText(data);
+}
+
+/**
+ * Render the center text showing overall compliance percentage
+ * @param {Object} data - The chart data
+ */
+function renderComplianceCenterText(data) {
+    const centerTextContainer = document.getElementById('compliance-center-text');
+    if (!centerTextContainer) return;
+    
+    if (!data.total_jos || data.total_jos === 0) {
+        centerTextContainer.innerHTML = `
+            <div class="JO-compliance-rate-value">N/A</div>
+            <div class="JO-compliance-rate-label">No Data</div>
+        `;
+    } else {
+        centerTextContainer.innerHTML = `
+            <div class="JO-compliance-rate-value">${data.completed_percentage}%</div>
+            <div class="JO-compliance-rate-label">Compliance Rate</div>
+        `;
+    }
+}
+
+// JOB ORDER QUEUE
+function initializeQueue() {
+    console.log('Initializing Job Order Queue...');
+}
+
+/**
+ * Start automatic refresh for queue
+ */
+function startQueueRefresh() {
+    clearQueueRefresh();
+    queueRefreshInterval = setInterval(refreshQueue, QUEUE_REFRESH_INTERVAL);
+    console.log('Queue refresh started, interval:', QUEUE_REFRESH_INTERVAL, 'ms');
+}
+
+/**
+ * Clear the queue refresh interval
+ */
+function clearQueueRefresh() {
+    if (queueRefreshInterval) {
+        clearInterval(queueRefreshInterval);
+        queueRefreshInterval = null;
+        console.log('Queue refresh interval cleared');
+    }
+}
+
+/**
+ * Refresh queue data from API
+ */
+function refreshQueue() {
+    console.log('Refreshing queue data from API...');
+
+    fetch('/joborder/api/job-order/queue/', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => {
+        console.log('Queue API response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Queue data received:', data);
+        if (data.status === 'success') {
+            updateQueue(data);
+        } else {
+            console.error('Error in queue data:', data.message);
+            showEmptyQueue('Error loading queue. Please try again later.');
+        }
+    })
+    .catch(error => {
+        console.error('Error refreshing queue:', error);
+        showEmptyQueue('Could not connect to server. Please check your connection.');
+    });
+}
+
+/**
+ * Show empty state message in queue container
+ */
+function showEmptyQueue(message = 'No job orders in queue') {
+    const queueWrapper = document.querySelector('.JO-queue-wrapper');
+    if (queueWrapper) {
+        queueWrapper.innerHTML = `
+            <div class="JO-empty-queue">
+                <div class="empty-state">
+                    <i class="fa fa-clock" aria-hidden="true"></i>
+                    <h4>No Job Orders in Queue</h4>
+                    <p>${message}</p>
+                </div>
+            </div>
+        `;
+
+        // Update responsive layout based on content
+        if (typeof handleResponsiveLayout === 'function') {
+            handleResponsiveLayout();
+        }
+    }
+}
+
+/**
+ * Update queue UI with new data
+ * @param {Object} data - The queue data from the API
+ */
+function updateQueue(data) {
+    const queueWrapper = document.querySelector('.JO-queue-wrapper');
+    if (!queueWrapper) {
+        console.error('Queue wrapper not found in DOM');
+        return;
+    }
+
+    const queueItems = data.queue || [];
+    console.log('Total queue items:', queueItems.length);
+
+    // Clear existing queue
+    queueWrapper.innerHTML = '';
+
+    // If no queue items, show empty message
+    if (!queueItems || queueItems.length === 0) {
+        showEmptyQueue();
+        return;
+    }
+
+    // Create queue container (no header)
+    const queueContainer = document.createElement('div');
+    queueContainer.className = 'JO-queue-container JO-grid-lines';
+    queueWrapper.appendChild(queueContainer);
+
+    // Add queue items
+    queueItems.forEach((item, index) => {
+        try {
+            const queueElement = createQueueElement(item, index);
+            queueContainer.appendChild(queueElement);
+        } catch (error) {
+            console.error('Error creating queue element:', error, item);
+        }
+    });
+
+    // Add click handlers to queue items
+    addQueueEventHandlers();
+
+    // Update responsive layout based on content
+    handleResponsiveLayout();
+
+    console.log('Queue UI updated with', queueItems.length, 'items');
+}
+
+/**
+ * Create a queue element
+ * @param {Object} item - The queue item data
+ * @param {number} index - The index for animation delay
+ * @returns {HTMLElement} The queue element
+ */
+function createQueueElement(item, index) {
+    const queueElement = document.createElement('div');
+    queueElement.className = `JO-queue-item ${item.urgency_type || ''}`;
+    queueElement.setAttribute('data-jo-id', item.jo_number);
+
+    // Create queue HTML - use safe defaults in case of missing data
+    const joNumber = item.jo_number || 'Unknown';
+    const category = (item.category || 'Unknown').toLowerCase();
+    const description = item.description || 'No description';
+    const waitingTime = item.waiting_time || 'Unknown';
+    const priorityLevel = item.priority_level || 'Low';
+    const requestor = item.requestor || 'Unknown';
+    const department = item.department || 'N/A';
+
+    queueElement.innerHTML = `
+        <div class="JO-queue-info">
+            <div class="JO-queue-info-header">
+                <h4>${joNumber}</h4>
+                <span class="JO-category-pill JO-category-${category}">${item.category || 'Unknown'}</span>
+                <div class="JO-priority-badge ${priorityLevel.toLowerCase()}">${priorityLevel}</div>
+            </div>
+
+            <p>${description}</p>
+            <div class="JO-queue-requestor-info">
+                <span class="JO-queue-requestor">Requestor: <strong>${requestor}</strong></span>
+                <span class="JO-queue-department">Line: <strong>${department}</strong></span>
+            </div>
+
+            <div class="JO-queue-waiting">
+                <span class="JO-waiting-label">Waiting:</span>
+                <span class="JO-waiting-value">${waitingTime}</span>
+            </div>
+        </div>
+    `;
+
+    // Add animation with delay
+    setTimeout(() => {
+        queueElement.style.opacity = '0';
+        queueElement.style.transform = 'translateY(10px)';
+
+        // Trigger animation
+        void queueElement.offsetWidth; // Force reflow
+        queueElement.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        queueElement.style.opacity = '1';
+        queueElement.style.transform = 'translateY(0)';
+    }, index * 50);
+
+    return queueElement;
+}
+
+/**
+ * Add click event handlers to queue items
+ */
+function addQueueEventHandlers() {
+    const queueItems = document.querySelectorAll('.JO-queue-item');
+    console.log('Adding click handlers to', queueItems.length, 'queue items');
+
+    queueItems.forEach(item => {
+        item.addEventListener('click', function() {
+            const joId = this.getAttribute('data-jo-id');
+            if (joId && typeof fetchJobOrderDetails === 'function') {
+                console.log('Fetching job order details for:', joId);
+                fetchJobOrderDetails(joId);
+            } else {
+                console.log('Click on queue item:', joId);
+                // Optional: Show a toast message if fetchJobOrderDetails isn't available
+                if (typeof createToast === 'function') {
+                    createToast(`Selected Job Order: ${joId}`, 'info', 3000);
+                }
             }
         });
     });

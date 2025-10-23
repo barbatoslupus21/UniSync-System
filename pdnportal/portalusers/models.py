@@ -15,7 +15,7 @@ class Users(AbstractUser):
     id_number = models.CharField(max_length=10, null=True)
     name = models.CharField(max_length=100, null=True)
     position = models.CharField(max_length=100, choices=POSITION, null=True)
-    line = models.ForeignKey(Line, on_delete=models.CASCADE, null=True, related_name='user_line')
+    line = models.ManyToManyField(Line, related_name='user_line')
     username = models.CharField(max_length=50, null=True, unique=True)
     is_admin = models.BooleanField(default=False)
 
@@ -26,6 +26,7 @@ class Users(AbstractUser):
     job_order_maintenance = models.BooleanField(default=False)
     job_order_facilitator = models.BooleanField(default=False)
     job_order_spectator = models.BooleanField(default=False)
+    job_order_pmd = models.BooleanField(default=False)
     
     # Manhours Permissions
     manhours_user = models.BooleanField(default=False)

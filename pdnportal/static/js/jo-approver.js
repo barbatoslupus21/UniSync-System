@@ -125,6 +125,11 @@ function initializeApprovalChart() {
                                 cornerRadius: 6,
                                 displayColors: true,
                                 callbacks: {
+                                    title: function(context) {
+                                        const index = context[0].dataIndex;
+                                        const total = totalData[index];
+                                        return `Total JO: ${total}`;
+                                    },
                                     label: function(context) {
                                         const index = context.dataIndex;
                                         const value = context.raw;
@@ -134,13 +139,8 @@ function initializeApprovalChart() {
                                             return `${context.dataset.label}: ${value}`;
                                         } else {
                                             const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                            return `${context.dataset.label}: ${value} (${percentage}% of total)`;
+                                            return `${context.dataset.label}: ${value} (${percentage}%)`;
                                         }
-                                    },
-                                    afterLabel: function(context) {
-                                        const index = context.dataIndex;
-                                        const total = totalData[index];
-                                        return `Total JO: ${total}`;
                                     }
                                 }
                             }

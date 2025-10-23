@@ -13,29 +13,36 @@ urlpatterns = [
     path('job-order-details/<int:jo_id>/', views.get_job_order_details, name='job-order-details'),
     path('cancel-jo-request/<int:jo_id>/', views.cancel_jo_request, name='cancel-job-order'),
     path('close-jo-transaction/<int:jo_id>/', views.close_transaction, name='close-jo'),
+    path('review-job-order/<int:jo_id>/', views.review_job_order, name='review-job-order'),
     path('chart-data/<str:period>/', views.job_order_chart_data, name='jo-chart-data'),
+    path('check-approver/', views.check_user_approver, name='check-user-approver'),
+    path('search-job-orders/', views.search_job_orders, name='search-job-orders'),
 
     # APPROVERS AND CHECKING
-    path('job-order-approval/', views.supervisor_view, name='approval'),
-    path('job-order-chart-data/<str:period>/', views.approver_job_order_chart_data, name='job_order_chart_data'),
-    path('approve-job-order/', views.approve_job_order, name='approve_job_order'),
-    path('approve-checking/', views.approve_checking, name='approve_checking'),
-    path('reject-job-order/', views.reject_job_order, name='reject_job_order'),
-    path('reject-checking/', views.reject_checking, name='reject_checking'),
+    path('job-order-approval/', views.supervisor_view, name='approval'), # not needed
+    path('job-order-chart-data/<str:period>/', views.approver_job_order_chart_data, name='job_order_chart_data'), # not needed
+    path('approve-job-order/', views.approve_job_order, name='approve_job_order'), # not needed
+    path('approve-checking/', views.approve_checking, name='approve_checking'),  # not needed
+    path('reject-job-order/', views.reject_job_order, name='reject_job_order'), # not needed
+    path('reject-checking/', views.reject_checking, name='reject_checking'), # not needed
 
     # FACILITATOR
     path('assign-personnel/', views.job_order_facilitator, name='facilitator'),
     path('analytics/', views.job_order_analytics, name='analytics'),
-    path('workload/', views.maintenance_workload, name='workload'),
+    path('workload/', views.maintenance_workload, name='workload'), 
     path('assign-incharge/', views.assign_person_in_charge, name='assign-incharge'),
     path('export/', views.export_job_orders, name='export-job-orders'),
+    path('get-maintenance-personnel/', views.get_maintenance_personnel, name='get-maintenance-personnel'),
 
     # OVERALL DASHBOARD
     path('job-order-request-overview/', views.queue_overview, name="queue"),
     path('api/job-order/stats/', views.job_order_stats_api, name='job-order-stats-api'),
+    path('api/job-order/queue/', views.job_order_queue_api, name='job-order-queue-api'),
     path('api/job-order/timeline/<str:view_type>/', views.job_order_timeline_api, name='job-order-timeline-api'),
     path('api/job-order/deadlines/', views.job_order_deadlines_api, name='job-order-deadlines-api'),
     path('api/job-order/alerts/', views.job_order_alerts_api, name='job-order-alerts-api'),
+    path('api/job-order/compliance-chart/', views.job_order_compliance_chart_api, name='job-order-compliance-chart-api'),
+    path('api/job-order/compliance-rate/', views.compliance_rate_api, name='compliance-rate-api'),
 
     # MAINTENANCE
     path('maintenance/', views.maintenance_personnel, name="maintenance"),

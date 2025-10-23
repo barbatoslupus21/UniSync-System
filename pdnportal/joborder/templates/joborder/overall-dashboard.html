@@ -10,12 +10,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static "css/style-ver2.css" %}">
-    <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+    <link rel="stylesheet" href="{% static 'css/job-order.css' %}">.
     <link rel="stylesheet" href="{% static 'css/jo-overall.css' %}">
+    <link rel="stylesheet" href="{% static 'css/jo-facilitator.css' %}">
+    <link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+    
     {% block extra_css %}{% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
-
     <main class="overall-content">
         <!-- Header with page title -->
         <div class="JO-header">
@@ -25,27 +28,27 @@
             </div>
         </div>
 
-        <!-- KPI Summary Cards -->
+        <!-- Summary Cards -->
         <div class="JO-stats-container">
             <div class="JO-stats-card JO-total-jobs">
                 <div class="JO-stats-icon">
-                    <i class="fas fa-clipboard-list"></i>
+                    <i class="fas fa-briefcase"></i>
                 </div>
                 <div class="JO-stats-content">
                     <h3>Active Job Orders</h3>
                     <h2 class="JO-stats-number">{{ active_jo_count }}</h2>
-                    <p><span class="up"><i class="fas fa-arrow-up"></i> {{ active_jo_percentage }}%</span> vs last period</p>
+                    <p><span class="{% if active_jo_percentage >= 0 %}up{% else %}down{% endif %}"><i class="fas fa-arrow-{% if active_jo_percentage >= 0 %}up{% else %}down{% endif %}"></i> {{ active_jo_percentage }}%</span> {% if active_jo_percentage > 0 %}increase{% elif active_jo_percentage < 0 %}decrease{% else %}no change{% endif %} from last month</p>
                 </div>
             </div>
 
-            <div class="JO-stats-card JO-completion-rate">
+            <div class="JO-stats-card JO-pending">
                 <div class="JO-stats-icon">
-                    <i class="fas fa-tasks"></i>
+                    <i class="fas fa-route"></i>
                 </div>
                 <div class="JO-stats-content">
-                    <h3>Completion Rate</h3>
-                    <h2 class="JO-stats-number">{{ completion_rate }}%</h2>
-                    <p><span class="up"><i class="fas fa-arrow-up"></i> {{ completion_rate_change }}%</span> vs last period</p>
+                    <h3>Routing Requests</h3>
+                    <h2 class="JO-stats-number">{{ routing_requests_count }}</h2>
+                    <p><span class="up"><i class="fas fa-arrow-up"></i> {{ routing_requests_change }}%</span> {% if routing_requests_change > 0 %}increase{% elif routing_requests_change < 0 %}decrease{% else %}no change{% endif %} from last month</p>
                 </div>
             </div>
 
@@ -54,116 +57,91 @@
                     <i class="fas fa-hourglass-half"></i>
                 </div>
                 <div class="JO-stats-content">
-                    <h3>Avg. Resolution Time</h3>
-                    <h2 class="JO-stats-number">{{ avg_resolution_time }}d</h2>
-                    <p><span class="{% if resolution_time_improved %}down{% else %}up{% endif %}"><i class="fas fa-arrow-{% if resolution_time_improved %}down{% else %}up{% endif %}"></i> {{ resolution_time_change }}%</span> vs last period</p>
+                    <h3>In-Progress Requests</h3>
+                    <h2 class="JO-stats-number">{{ in_progress_requests_count }}</h2>
+                    <p><span class="{% if in_progress_requests_improved %}down{% else %}up{% endif %}"><i class="fas fa-arrow-{% if in_progress_requests_improved %}down{% else %}up{% endif %}"></i> {{ in_progress_requests_change }}%</span> {% if in_progress_requests_change > 0 %}increase{% elif in_progress_requests_change < 0 %}decrease{% else %}no change{% endif %} from last month</p>
                 </div>
             </div>
 
-            <div class="JO-stats-card JO-overdue-tasks">
+            <div class="JO-stats-card JO-approved">
                 <div class="JO-stats-icon">
-                    <i class="fas fa-exclamation-circle"></i>
+                    <i class="fas fa-check-circle"></i>
                 </div>
                 <div class="JO-stats-content">
-                    <h3>Overdue Tasks</h3>
-                    <h2 class="JO-stats-number">{{ overdue_tasks }}</h2>
-                    <p><span class="{% if overdue_tasks_reduced %}down{% else %}up{% endif %}"><i class="fas fa-arrow-{% if overdue_tasks_reduced %}down{% else %}up{% endif %}"></i> {{ overdue_tasks_change }}%</span> vs last period</p>
+                    <h3>Completed Requests</h3>
+                    <h2 class="JO-stats-number">{{ completed_requests_count }}</h2>
+                    <p><span class="{% if completed_requests_improved %}down{% else %}up{% endif %}"><i class="fas fa-arrow-{% if completed_requests_improved %}down{% else %}up{% endif %}"></i> {{ completed_requests_change }}%</span> {% if completed_requests_change > 0 %}increase{% elif completed_requests_change < 0 %}decrease{% else %}no change{% endif %} from last month</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Graphs -->
+        <div class="JO-content-grid">
+            <!-- Job Order Compliance -->
+            <div class="chart-main-container">
+                <div class="JO-card-header">
+                    <h2>Job Order Compliance</h2>
+                    <div class="JO-card-actions">
+                        <select id="chart-period-selector" class="JO-select">
+                            <option value="thismonth">This Month</option>
+                            <option value="1month">Last Month</option>
+                            <option value="3month">3 Months</option>
+                            <option value="6month" selected>6 Months</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="JO-chart-wrapper">
+                    <canvas id="jo-analytics-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Compliance Rate-->
+            <div class="chart-main-container">
+                <div class="JO-card-header">
+                    <h2>Compliance Rate</h2>
+                    <div class="JO-card-actions">
+                        <select id="compliance-period-selector" class="JO-select">
+                            <option value="thismonth">This Month</option>
+                            <option value="1month">Last Month</option>
+                            <option value="6month" selected>6 Months</option>
+                            <option value="fiscalyear">This Fiscal Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="JO-compliance-chart-container">
+                    <div class="JO-compliance-legend" id="compliance-legend">
+                        <!-- Will be populated by JS -->
+                    </div>
+                    <div class="JO-compliance-chart-wrapper">
+                        <canvas id="compliance-rate-chart"></canvas>
+                        <div class="JO-compliance-center-text" id="compliance-center-text">
+                            <!-- Will be populated by JS -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Job Order Timeline and Upcoming Deadlines -->
-        <div class="JO-main-content-grid">
+        <div class="JO-content-grid">
             <!-- Job Order Timeline -->
             <div class="JO-left-column">
                 <div class="JO-card JO-timeline-section">
                     <div class="JO-card-header">
-                        <h2>Job Order Timeline <span class="JO-timeline-view-indicator" id="timeline-view-indicator">Today</span></h2>
+                        <h2>Job Order Queue <span class="JO-timeline-view-indicator" id="queue-view-indicator">Today</span></h2>
                         <div class="JO-card-actions">
-                            <button class="JO-button JO-text-button active" id="timeline-today-btn">
+                            <button class="JO-button JO-text-button active" id="queue-today-btn">
                                 Today
                             </button>
-                            <button class="JO-button JO-text-button" id="timeline-week-btn">
+                            <button class="JO-button JO-text-button" id="queue-week-btn">
                                 This Week
                             </button>
-                            <button class="JO-button JO-text-button" id="timeline-month-btn">
+                            <button class="JO-button JO-text-button" id="queue-month-btn">
                                 This Month
                             </button>
                         </div>
                     </div>
-                    <div class="JO-timeline-wrapper">
-                        <!-- Today View -->
-                        <div class="JO-horizontal-timeline" id="timeline-today-view">
-                            <div class="JO-timeline-days">
-                                <div class="JO-timeline-day active" style="width: 100%;">
-                                    <span class="JO-day-name">{{ today_name }}</span>
-                                    <span class="JO-day-date">{{ today_date }}</span>
-                                </div>
-                            </div>
-                            <div class="JO-timeline-events">
-
-                            </div>
-                        </div>
-
-                        <!-- Week View (Hidden by default) -->
-                        <div class="JO-horizontal-timeline" id="timeline-week-view" style="display: none;">
-                            <div class="JO-timeline-days">
-                                {% for day in week_days %}
-                                <div class="JO-timeline-day {% if day.is_today %}active{% endif %}">
-                                    <span class="JO-day-name">{{ day.name }}</span>
-                                    <span class="JO-day-date">{{ day.date }}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <div class="JO-timeline-events">
-                                {% for event in week_events %}
-                                <div class="JO-timeline-event {% if event.status == 'completed' %}completed{% elif event.status == 'delayed' %}delayed{% elif event.status == 'upcoming' %}upcoming{% endif %}"
-                                     style="grid-column: {{ event.day_column }}; grid-row: {{ event.row }};"
-                                     data-jo-id="{{ event.jo_number }}">
-                                    <div class="JO-event-content">
-                                        <span class="JO-event-time">{{ event.time }}</span>
-                                        <span class="JO-event-title">{{ event.title }}</span>
-                                    </div>
-                                </div>
-                                {% empty %}
-                                <div class="JO-empty-timeline">
-                                    <i class="fas fa-calendar-week"></i>
-                                    <p>No events for this week</p>
-                                    <p class="JO-empty-subtitle">All pending job orders will appear here</p>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <!-- Month View (Hidden by default) -->
-                        <div class="JO-horizontal-timeline" id="timeline-month-view" style="display: none;">
-                            <div class="JO-timeline-days">
-                                {% for week in month_weeks %}
-                                <div class="JO-timeline-day {% if week.is_current %}active{% endif %}">
-                                    <span class="JO-day-name">Week {{ week.number }}</span>
-                                    <span class="JO-day-date">{{ week.date_range }}</span>
-                                </div>
-                                {% endfor %}
-                            </div>
-                            <div class="JO-timeline-events">
-                                {% for event in month_events %}
-                                <div class="JO-timeline-event {% if event.status == 'completed' %}completed{% elif event.status == 'delayed' %}delayed{% elif event.status == 'upcoming' %}upcoming{% endif %}"
-                                     style="grid-column: {{ event.week_column }}; grid-row: {{ event.row }};"
-                                     data-jo-id="{{ event.jo_number }}">
-                                    <div class="JO-event-content">
-                                        <span class="JO-event-time">{{ event.time }}</span>
-                                        <span class="JO-event-title">{{ event.title }}</span>
-                                    </div>
-                                </div>
-                                {% empty %}
-                                <div class="JO-empty-timeline">
-                                    <i class="fas fa-calendar-alt"></i>
-                                    <p>No events for this month</p>
-                                    <p class="JO-empty-subtitle">All pending job orders will appear here</p>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
+                    <div class="JO-queue-wrapper">
                     </div>
                 </div>
             </div>
@@ -173,14 +151,13 @@
                 <!-- Upcoming Deadlines -->
                 <div class="JO-card JO-deadlines-section">
                     <div class="JO-card-header">
-                        <h2>Upcoming Deadlines</h2>
+                        <h2>Assignment Reminders</h2>
                         <div class="JO-card-actions">
                             <select id="deadline-filter" class="JO-select">
-                                <option value="all" selected>All Categories</option>
-                                <option value="green">Green</option>
-                                <option value="yellow">Yellow</option>
-                                <option value="white">White</option>
-                                <option value="orange">Orange</option>
+                                <option value="all" selected>All Status</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="critical">Critical</option>
+                                <option value="upcoming">Upcoming</option>
                             </select>
                         </div>
                     </div>
@@ -189,29 +166,6 @@
                         <div class="JO-empty-deadlines">
                             <p>Loading deadlines...</p>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Critical Alerts -->
-                <div class="JO-card JO-alerts-section">
-                    <div class="JO-card-header">
-                        <h2>Critical Alerts</h2>
-                        <div class="JO-card-actions">
-                            <div class="JO-alert-filter">
-                                <span class="JO-alert-filter-label">Show:</span>
-                                <div class="JO-alert-filter-options">
-                                    <label class="JO-alert-filter-option">
-                                        <input type="checkbox" checked> Overdue
-                                    </label>
-                                    <label class="JO-alert-filter-option">
-                                        <input type="checkbox" checked> Resource Issues
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="JO-alerts-container JO-grid-lines">
-
                     </div>
                 </div>
             </div>

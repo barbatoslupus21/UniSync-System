@@ -245,14 +245,15 @@ def receive_stock_declaration(request, declaration_id):
     declaration = get_object_or_404(StockDeclaration, id=declaration_id)
     
     # Check if user has a line assigned
-    if not request.user.line:
+    if not request.user.line.exists():
         return JsonResponse({
             'success': False,
             'message': 'You do not have a production line assigned.'
         }, status=403)
     
-    # Check if user's line is in the declaration's lines
-    if not declaration.lines.filter(id=request.user.line.id).exists():
+    # Check if any of user's lines are in the declaration's lines
+    user_line_ids = request.user.line.values_list('id', flat=True)
+    if not declaration.lines.filter(id__in=user_line_ids).exists():
         return JsonResponse({
             'success': False,
             'message': 'This stock declaration is not assigned to your production line.'
@@ -722,12 +723,12 @@ def stock_notifications_api(request):
     
     notifications = []
     
-    if hasattr(request.user, 'line') and request.user.line:
-        user_line = request.user.line
+    if hasattr(request.user, 'line') and request.user.line.exists():
+        user_lines = request.user.line.all()
         today = timezone.now().date()
         
         stock_declarations = StockDeclaration.objects.filter(
-            lines=user_line
+            lines__in=user_lines
         ).filter(created_at__date=today, received_by_production=False).distinct().select_related('created_by').prefetch_related('lines').exclude(status='cancelled')
 
         for declaration in stock_declarations:

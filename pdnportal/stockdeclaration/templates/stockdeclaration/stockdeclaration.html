@@ -75,12 +75,12 @@
                     <table class="Unisync-table" id="trial-run-table">
                         <thead>
                             <tr>
-                                <th>Control Number</th>
+                                <th class="hide-column">Control Number</th>
                                 <th>Date Declared</th>
                                 <th>Product Number</th>
                                 <th class="hide-column">Product Name</th>
                                 <th class="hide-column">Stock Type</th>
-                                <th class="hide-column">Lines</th>
+                                <th>Lines</th>
                                 <th class="hide-column" style="text-align: center;">Status</th>
                                 <th style="text-align: center;">Actions</th>
                             </tr>
@@ -88,12 +88,12 @@
                         <tbody id="trial-run-tbody">
                             {% for declaration in stock_declarations %}
                             <tr data-control-number="{{ declaration.control_number|lower }}" data-product="{{ declaration.product_name|lower }}" data-stock-type="{{ declaration.stock_type }}" data-product-number="{{ declaration.product_number }}" data-quantity="{{ declaration.quantity }}" data-lines="{% for line in declaration.lines.all %}{{ line.id }}{% if not forloop.last %},{% endif %}{% endfor %}" data-created-by="{{ declaration.created_by.name }}" data-created-at="{{ declaration.created_at|date:'M d, Y' }}" data-updated-at="{{ declaration.updated_at|date:'M d, Y' }}" data-is-updated="{% if declaration.updated_at != declaration.created_at %}true{% else %}false{% endif %}" data-status="{{ declaration.status }}" data-in-transit="{{ declaration.in_transit|default_if_none:''|escape }}" data-received-by-production="{{ declaration.received_by_production }}" data-date-received-by-production="{% if declaration.date_received_by_production %}{{ declaration.date_received_by_production|date:'M d, Y g:i A' }}{% endif %}">
-                                <td data-label="Control Number">{{ declaration.control_number }}</td>
+                                <td class="hide-column" data-label="Control Number">{{ declaration.control_number }}</td>
                                 <td data-label="Date Declared">{{ declaration.created_at|date:"M d, Y" }}</td>
                                 <td data-label="Product Number">{{ declaration.product_number }}</td>
                                 <td class="hide-column" data-label="Product Name">{{ declaration.product_name }}</td>
                                 <td class="hide-column" data-label="Stock Type">{{ declaration.get_stock_type_display }}</td>
-                                <td class="hide-column lines-cell" data-label="Lines">{% for line in declaration.lines.all %}<span class="line-container">{{ line.line_name }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</td>
+                                <td class="lines-cell" data-label="Lines">{% for line in declaration.lines.all %}<span class="line-container">{{ line.line_name }}</span>{% if not forloop.last %} {% endif %}{% endfor %}</td>
                                 <td class="hide-column text-center" data-label="Status" class="text-center">
                                     {% if declaration.status == 'arrived' %}
                                     <span class="JO-status JO-status-approved">{{ declaration.get_status_display }}</span>
@@ -106,7 +106,7 @@
                                     {% endif %}
                                 </td>
                                 <td data-label="Actions" class="text-center">
-                                    {% if request.user.line and request.user.line in declaration.lines.all and not declaration.received_by_production %}
+                                    {% if request.user.line.all and not declaration.received_by_production %}
                                         {% if declaration.status == 'in_transit' or declaration.status == 'arrived' or declaration.status == 'filed' %}
                                             <button class="btn btn-icon view-stock-declaration-btn receive-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="View">
                                                 <i class="fas fa-eye"></i>
@@ -136,7 +136,7 @@
                                         <button class="btn btn-icon btn-success intransit-stock-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Mark In Transit">
                                             <i class="fa fa-truck" aria-hidden="true"></i>
                                         </button>
-                                    {% else %}
+                                    {% elif request.user.stock_declaration_purchasing and declaration.status == 'in_transit'  %}
                                         <button class="btn btn-icon btn-warning add-intransit-declaration-btn" data-declaration-id="{{ declaration.id }}" title="Mark In Transit">
                                             <i class="fa fa-plus-circle" aria-hidden="true"></i>
                                         </button>

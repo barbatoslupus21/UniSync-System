@@ -51,7 +51,7 @@
     {% endif %}
 
     {% if request.user.monitoring_user and request.user.monitoring_staff %}
-        {% if request.user.line.assigned_lines.exists %}
+        {% if request.user.line.exists %}
                 <a href="{% url 'production-dashboard' %}" class="nav-item">
                     <div class="d-flex align-items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" height="30px" viewBox="0 -960 960 960" width="30px" fill="#e8eaed">
