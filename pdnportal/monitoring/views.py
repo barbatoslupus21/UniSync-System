@@ -1418,10 +1418,10 @@ def production_dashboard(request):
 
     current_shift = 'AM' if 7 <= current_hour < 19 else 'PM'
 
-    user_lines = request.user.line.all()
+    user_lines = request.user.default_line
 
     schedule = ProductionSchedulePlan.objects.filter(
-        product_number__line__in=user_lines,
+        product_number__line=user_lines,
         date_planned=today,
         shift=current_shift,
         status="Planned",
@@ -1430,7 +1430,7 @@ def production_dashboard(request):
 
     if not schedule:
         schedule = ProductionSchedulePlan.objects.filter(
-            product_number__line__in=user_lines,
+            product_number__line=user_lines,
             date_planned=today,
             shift=current_shift,
             status="Change Load",
@@ -1439,7 +1439,7 @@ def production_dashboard(request):
 
     if not schedule:
         schedule = ProductionSchedulePlan.objects.filter(
-            product_number__line__in=user_lines,
+            product_number__line=user_lines,
             date_planned=today,
             shift=current_shift,
             status="Backlog",

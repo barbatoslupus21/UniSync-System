@@ -1033,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const label = context.label || '';
                                 const value = context.parsed || 0;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
                                 return `${label}: ${value} (${percentage}%)`;
                             }
                         }
@@ -1106,7 +1106,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (charts.scheduleSummary) charts.scheduleSummary.destroy();
             
             const completedPercentage = data.scheduleSummary.total > 0 
-                ? ((data.scheduleSummary.completed / data.scheduleSummary.total) * 100).toFixed(1)
+                ? Math.round((data.scheduleSummary.completed / data.scheduleSummary.total) * 100)
                 : 0;
             
             charts.scheduleSummary = createPieChart('scheduleSummaryChart', {
@@ -1161,7 +1161,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (charts.shiftDistribution) charts.shiftDistribution.destroy();
             
             const amPercentage = data.shiftDistribution.total > 0
-                ? ((data.shiftDistribution.am / data.shiftDistribution.total) * 100).toFixed(1)
+                ? Math.round((data.shiftDistribution.am / data.shiftDistribution.total) * 100)
                 : 0;
             
             charts.shiftDistribution = createPieChart('shiftDistributionChart', {
@@ -1188,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (charts.scheduleStatus) charts.scheduleStatus.destroy();
             
             const plannedPercentage = data.scheduleStatus.total > 0
-                ? ((data.scheduleStatus.planned / data.scheduleStatus.total) * 100).toFixed(1)
+                ? Math.round((data.scheduleStatus.planned / data.scheduleStatus.total) * 100)
                 : 0;
             
             charts.scheduleStatus = createPieChart('scheduleStatusChart', {
