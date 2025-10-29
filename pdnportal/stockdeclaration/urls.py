@@ -11,4 +11,5 @@ urlpatterns = [
     path('export/', views.export_stock_declaration_report, name='export_stock_declaration_report'),
     path('api/chart-data/', views.stock_declaration_chart_data, name='stock_declaration_chart_data'),
     path('api/notifications/', views.stock_notifications_api, name='stock_notifications_api'),
+    path('api/mark-viewed/', views.mark_stock_declarations_viewed, name='mark_stock_declarations_viewed'),
 ]

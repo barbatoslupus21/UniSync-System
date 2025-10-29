@@ -73,7 +73,7 @@
             </div>
             <div class="FGD-stat-content">
                 <h3>Products</h3>
-                <h2 class="FGD-stat-number">{{ products.count }}</h2>
+                <h2 class="FGD-stat-number">{{ distinct_products_count }}</h2>
                 <p>Active products</p>
             </div>
         </div>
@@ -105,54 +105,42 @@
     </div>
 
     <div class="FGD-content-tabs">
-        <div class="FGD-tab-nav">
-            <button class="FGD-tab-btn active" data-tab="products">Products</button>
-            <button class="FGD-tab-btn" data-tab="schedules">Schedule Plans</button>
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="products-tab">Products</button>
+            <button class="tab-btn" data-tab="schedules-tab">Schedule Plans</button>
+            <div class="tab-slider"></div>
         </div>
 
-        <div class="FGD-tab-content active" id="products-tab">
-            <div class="JO-card">
-                <div class="JO-card-header">
-                    <h2>Schedule Management</h2>
-                    <div class="FGD-schedule-actions-col">
-                        
-                        <div class="FGD-schedule-filters-row">
-                            <div class="JO-search-container">
-                                <input type="text" id="products-search" class="JO-search-input" placeholder="Search products..." >
-                                <button class="JO-search-button">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-
-                            <select id="products-line-filter" class="JO-select">
-                                <option value="">All Lines</option>
-                                {% for line in available_lines %}
-                                <option value="{{ line.line_name }}">{{ line.line_name }}</option>
-                                {% endfor %}
-                            </select>
+        <div class="tab-content active" id="products-tab">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <div class="JO-search-container">
+                            <input type="text" id="products-search" class="JO-search-input" placeholder="Search by Product, line..." value="{{ search_query }}">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
-                        <div class="FGD-schedule-buttons-row">
-                            <button id="import-products-btn" class="JO-button JO-secondary-button">
+                        <button id="import-products-btn" class="btn btn-secondary">
                                 <i class="fas fa-upload"></i> Import
-                            </button>
-                            <button id="add-product-btn" class="JO-button JO-primary-button">
+                        </button>
+                        <button id="add-product-btn" class="btn btn-primary" style="white-space: nowrap;">
                                 <i class="fas fa-plus"></i> Add Product
-                            </button>
-                        </div>
+                        </button>
                     </div>
                 </div>
                 
-                <div class="JO-table-container">
-                    <table class="JO-table" id="products-table">
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="products-table">
                         <thead>
                             <tr>
                                 <th>Product Name</th>
                                 <th>Description</th>
                                 <th>Line</th>
-                                <th>Qty/Box</th>
-                                <th>Qty/Hour</th>
-                                <th>Created</th>
-                                <th class="JO-actions-header">Actions</th>
+                                <th class="hide-column">Qty/Box</th>
+                                <th class="hide-column">Qty/Hour</th>
+                                <th style="text-align: center;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="products-tbody">
@@ -161,10 +149,9 @@
                                 <td data-label="Product Name">{{ product.product_name }}</td>
                                 <td data-label="Description">{{ product.description|truncatechars:50 }}</td>
                                 <td data-label="Line">{{ product.line.line_name }}</td>
-                                <td data-label="Qty/Box">{{ product.qty_per_box }}</td>
-                                <td data-label="Qty/Hour">{{ product.qty_per_hour }}</td>
-                                <td data-label="Created">{{ product.created_at|date:"M d, Y" }}</td>
-                                <td data-label="Actions">
+                                <td data-label="Qty/Box" class="hide-column">{{ product.qty_per_box }}</td>
+                                <td data-label="Qty/Hour" class="hide-column">{{ product.qty_per_hour }}</td>
+                                <td data-label="Actions" class="text-center">
                                     <div class="JO-action-buttons JO-action-buttons-row">
                                         <button class="JO-action-btn edit-product-btn" data-product-id="{{ product.id }}" title="Edit">
                                             <i class="fas fa-edit"></i>
@@ -179,10 +166,15 @@
                             </tr>
                             {% empty %}
                             <tr>
-                                <td colspan="7" class="JO-empty-table">
-                                    <div class="FGD-empty-state">
-                                        <i class="fas fa-cube"></i>
-                                        <p>No products found</p>
+                                <td colspan="6" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No products found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No products have been added yet</p>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -190,44 +182,74 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div class="JO-pagination">
+                    {% if products.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-info">
+                        Showing {{ products.start_index }} to {{ products.end_index }} of {{ products.paginator.count }} entries
+                    </div>
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if products.has_previous %}
+                            <a href="?page={{ products.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if schedules_page and schedules_page != '1' %}&schedules_page={{ schedules_page }}{% endif %}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in products.paginator.page_range %}
+                                {% if products.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > products.number|add:'-3' and num < products.number|add:'3' %}
+                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if schedules_page and schedules_page != '1' %}&schedules_page={{ schedules_page }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if products.has_next %}
+                            <a href="?page={{ products.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if schedules_page and schedules_page != '1' %}&schedules_page={{ schedules_page }}{% endif %}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
-        <div class="FGD-tab-content" id="schedules-tab">
-            <div class="JO-card">
-                <div class="JO-card-header">
-                    <h2>Schedule Management</h2>
-                    <div class="FGD-schedule-actions-col">
-                        <div class="FGD-schedule-search-row">
-                            <input type="text" id="schedules-search" class="JO-search-input" placeholder="Search schedules...">
+        <div class="tab-content" id="schedules-tab">
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <div class="JO-search-container">
+                            <input type="text" id="schedules-search" class="JO-search-input" placeholder="Search by Schedule, line..." value="{{ schedules_search_query }}">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
                         <div class="FGD-schedule-filters-row">
-                            <input type="date" id="schedules-date-filter" class="JO-input">
-                            <select id="schedules-shift-filter" class="JO-select">
-                                <option value="">All Shifts</option>
-                                <option value="AM">AM</option>
-                                <option value="PM">PM</option>
-                            </select>
-                            <select id="schedules-status-filter" class="JO-select">
-                                <option value="">All Status</option>
-                                <option value="Planned">Planned</option>
-                                <option value="Change Load">Change Load</option>
-                                <option value="Backlog">Backlog</option>
-                            </select>
+                            <input type="date" id="schedules-date-filter" class="JO-input" value="{{ today_date }}">
                         </div>
-                        <div class="FGD-schedule-buttons-row">
-                            <button id="import-schedules-btn" class="JO-button JO-secondary-button">
+                        <button id="import-schedules-btn" class="btn btn-secondary">
                                 <i class="fas fa-upload"></i> Import
-                            </button>
-                            <button id="add-schedule-btn" class="JO-button JO-primary-button" style="white-space: nowrap;">
+                        </button>
+                        <button id="add-schedule-btn" class="btn btn-primary" style="white-space: nowrap;">
                                 <i class="fas fa-plus"></i> Add Schedule
-                            </button>
-                        </div>
+                        </button>
                     </div>
                 </div>
                 
-                <div class="JO-table-container">
-                    <table class="JO-table" id="schedules-table">
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="schedules-table">
                         <thead>
                             <tr>
                                 <th>Date</th>
@@ -237,7 +259,7 @@
                                 <th>Planned Qty</th>
                                 <th>Balance</th>
                                 <th>Status</th>
-                                <th class="JO-actions-header">Actions</th>
+                                <th style="text-align: center;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="schedules-tbody">
@@ -252,13 +274,13 @@
                                 <td data-label="Status">
                                     <span class="JO-status JO-status-{{ schedule.status|lower|cut:' ' }}">{{ schedule.status }}</span>
                                 </td>
-                                <td data-label="Actions">
+                                <td data-label="Actions" class="text-center">
                                     <div class="JO-action-buttons JO-action-buttons-row">
-                                        <button class="JO-action-btn edit-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Edit">
+                                        <button class="btn btn-icon edit-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Edit">
                                             <i class="fas fa-edit"></i>
                                             <span class="sr-only">Edit</span>
                                         </button>
-                                        <button class="JO-action-btn delete-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Delete">
+                                        <button class="btn btn-icon btn-error delete-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Delete">
                                             <i class="fas fa-trash"></i>
                                             <span class="sr-only">Delete</span>
                                         </button>
@@ -268,9 +290,14 @@
                             {% empty %}
                             <tr>
                                 <td colspan="8" class="JO-empty-table">
-                                    <div class="FGD-empty-state">
-                                        <i class="fas fa-calendar-alt"></i>
-                                        <p>No schedules found</p>
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No schedules found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No schedules have been added yet</p>
+                                        {% endif %}
                                     </div>
                                 </td>
                             </tr>
@@ -278,7 +305,47 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
+
+                <div class="JO-pagination">
+                    {% if schedules.paginator.num_pages > 1 %}
+                    <div class="JO-pagination-info">
+                        Showing {{ schedules.start_index }} to {{ schedules.end_index }} of {{ schedules.paginator.count }} entries
+                    </div>
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if schedules.has_previous %}
+                            <a href="?schedules_page={{ schedules.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if page and page != '1' %}&page={{ page }}{% endif %}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in schedules.paginator.page_range %}
+                                {% if schedules.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > schedules.number|add:'-3' and num < schedules.number|add:'3' %}
+                                <a href="?schedules_page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if page and page != '1' %}&page={{ page }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if schedules.has_next %}
+                            <a href="?schedules_page={{ schedules.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if page and page != '1' %}&page={{ page }}{% endif %}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
         </div>
     </div>
 </main>
@@ -389,8 +456,12 @@
             </div>
             
             <div class="JO-modal-footer">
-                <button type="button" class="JO-button JO-secondary-button" id="cancel-add-product">Cancel</button>
-                <button type="submit" class="JO-button JO-primary-button">Add Product</button>
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-add-product">
+                    <i class="fa fa-times" aria-hidden="true"></i> Cancel
+                </button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fa fa-check" aria-hidden="true"></i> Add Product
+                </button>
             </div>
         </form>
     </div>
@@ -438,8 +509,12 @@
             </div>
             
             <div class="JO-modal-footer">
-                <button type="button" class="JO-button JO-secondary-button" id="cancel-edit-product">Cancel</button>
-                <button type="submit" class="JO-button JO-primary-button">Update Product</button>
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-edit-product">
+                    <i class="fa fa-times" aria-hidden="true"></i> Cancel
+                </button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fa fa-check" aria-hidden="true"></i> Update Product
+                </button>
             </div>
         </form>
     </div>
@@ -466,7 +541,7 @@
                         <label for="{{ schedule_form.product_number.id_for_label }}">{{ schedule_form.product_number.label }}</label>
                         <select id="{{ schedule_form.product_number.id_for_label }}" name="{{ schedule_form.product_number.name }}" class="JO-select JO-product-line-col" required>
                             <option value="">Select a product</option>
-                            {% for product in products %}
+                            {% for product in all_products %}
                             <option value="{{ product.id }}">{{ product.product_name }} - {{ product.line.line_name }}</option>
                             {% endfor %}
                         </select>
@@ -497,8 +572,12 @@
                 </div>
             </div>
             <div class="JO-modal-footer">
-                <button type="button" class="JO-button JO-secondary-button" id="cancel-add-schedule">Cancel</button>
-                <button type="submit" class="JO-button JO-primary-button">Add Schedule</button>
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-add-schedule">
+                    <i class="fa fa-times" aria-hidden="true"></i> Cancel
+                </button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fa fa-check" aria-hidden="true"></i> Add Schedule
+                </button>
             </div>
         </form>
     </div>
@@ -520,7 +599,7 @@
                     <div class="JO-product-qty-col">
                         <label for="edit-schedule-product">Product</label>
                         <select id="edit-schedule-product" name="product_number" class="JO-select JO-product-qty-col" required>
-                            {% for product in products %}
+                            {% for product in all_products %}
                             <option value="{{ product.id }}">{{ product.product_name }} - {{ product.line.line_name }}</option>
                             {% endfor %}
                         </select>
@@ -555,8 +634,12 @@
             </div>
             
             <div class="JO-modal-footer">
-                <button type="button" class="JO-button JO-secondary-button" id="cancel-edit-schedule">Cancel</button>
-                <button type="submit" class="JO-button JO-primary-button">Update Schedule</button>
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-edit-schedule">
+                    <i class="fa fa-times" aria-hidden="true"></i>  Cancel
+                </button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fa fa-check" aria-hidden="true"></i> Update Schedule
+                </button>
             </div>
         </form>
     </div>
@@ -606,8 +689,12 @@
             </div>
             
             <div class="JO-modal-footer">
-                <button type="button" class="JO-button JO-secondary-button" id="cancel-import-products">Cancel</button>
-                <button type="submit" class="JO-button JO-primary-button">Import Products</button>
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-import-products">
+                    <i class="fa fa-times" aria-hidden="true"></i> Cancel
+                </button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fa fa-check" aria-hidden="true"></i> Import Products
+                </button>
             </div>
         </form>
     </div>
@@ -658,8 +745,12 @@
             </div>
             
             <div class="JO-modal-footer">
-                <button type="button" class="JO-button JO-secondary-button" id="cancel-import-schedules">Cancel</button>
-                <button type="submit" class="JO-button JO-primary-button">Import Schedules</button>
+                <button type="button" class="JO-button JO-secondary-button" id="cancel-import-schedules">
+                    <i class="fa fa-times" aria-hidden="true"></i> Cancel
+                </button>
+                <button type="submit" class="JO-button JO-primary-button">
+                    <i class="fa fa-check" aria-hidden="true"></i> Import Schedules
+                </button>
             </div>
         </form>
     </div>
@@ -683,8 +774,12 @@
             </div>
         </div>
         <div class="JO-modal-footer">
-            <button type="button" class="JO-button JO-secondary-button" id="cancel-delete">Cancel</button>
-            <button type="button" class="JO-button JO-danger-button" id="confirm-delete">Delete</button>
+            <button type="button" class="JO-button JO-secondary-button" id="cancel-delete">
+                <i class="fa fa-times" aria-hidden="true"></i> Cancel
+            </button>
+            <button type="button" class="JO-button JO-danger-button" id="confirm-delete">
+                <i class="fa fa-check" aria-hidden="true"></i> Confirm
+            </button>
         </div>
     </div>
 </div>
@@ -700,12 +795,12 @@
     const facilitatorDashboardUrl = "{% url 'monitoring_dashboard' %}";
     const chartDataUrl = "{% url 'facilitator_group_chart_data' monitoring.id %}";
     const exportDataUrl = "{% url 'facilitator_export_output_data' monitoring.id %}";
-    const getProductUrl = "{% url 'get_product' 0 %}".replace('0', '');
-    const editProductUrl = "{% url 'edit_product' 0 %}".replace('0', '');
-    const deleteProductUrl = "{% url 'delete_product' 0 %}".replace('0', '');
-    const getScheduleUrl = "{% url 'get_schedule' 0 %}".replace('0', '');
-    const editScheduleUrl = "{% url 'edit_schedule' 0 %}".replace('0', '');
-    const deleteScheduleUrl = "{% url 'delete_schedule' 0 %}".replace('/0/delete/', '/');
+    const getProductUrl = "/monitoring/product/";
+    const editProductUrl = "/monitoring/product/";
+    const deleteProductUrl = "/monitoring/product/";
+    const getScheduleUrl = "/monitoring/schedule/";
+    const editScheduleUrl = "/monitoring/schedule/";
+    const deleteScheduleUrl = "/monitoring/schedule/";
     const exportProductTemplateUrl = "{% url 'export_product_template' %}";
     const exportScheduleTemplateUrl = "{% url 'export_schedule_template' %}";
 </script>

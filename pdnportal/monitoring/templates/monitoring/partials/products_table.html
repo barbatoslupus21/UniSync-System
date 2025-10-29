@@ -1,0 +1,92 @@
+<div class="common-table-container">
+    <table class="Unisync-table" id="products-table">
+        <thead>
+            <tr>
+                <th>Product Name</th>
+                <th>Description</th>
+                <th>Line</th>
+                <th class="hide-column">Qty/Box</th>
+                <th class="hide-column">Qty/Hour</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="products-tbody">
+            {% for product in products %}
+            <tr data-product-name="{{ product.product_name|lower }}" data-line="{{ product.line.line_name|lower }}">
+                <td data-label="Product Name">{{ product.product_name }}</td>
+                <td data-label="Description">{{ product.description|truncatechars:50 }}</td>
+                <td data-label="Line">{{ product.line.line_name }}</td>
+                <td data-label="Qty/Box" class="hide-column">{{ product.qty_per_box }}</td>
+                <td data-label="Qty/Hour" class="hide-column">{{ product.qty_per_hour }}</td>
+                <td data-label="Actions" class="text-center">
+                    <div class="JO-action-buttons JO-action-buttons-row">
+                        <button class="JO-action-btn edit-product-btn" data-product-id="{{ product.id }}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                            <span class="sr-only">Edit</span>
+                        </button>
+                        <button class="JO-action-btn delete-product-btn" data-product-id="{{ product.id }}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                            <span class="sr-only">Delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="JO-empty-table">
+                    <div class="empty-state">
+                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                        <h4>No products found</h4>
+                        {% if search_query %}
+                            <p>No results found for "{{ search_query }}"</p>
+                        {% else %}
+                            <p>No products have been added yet</p>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="JO-pagination">
+    {% if products.paginator.num_pages > 1 %}
+    <div class="JO-pagination-info">
+        Showing {{ products.start_index }} to {{ products.end_index }} of {{ products.paginator.count }} entries
+    </div>
+    <div class="JO-pagination-controls">
+        <div class="JO-pagination-nav-container">
+            {% if products.has_previous %}
+            <a href="?page={{ products.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if schedules_page and schedules_page != '1' %}&schedules_page={{ schedules_page }}{% endif %}" class="JO-pagination-btn">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </span>
+            {% endif %}
+            
+            <div class="JO-pagination-pages">
+                {% for num in products.paginator.page_range %}
+                {% if products.number == num %}
+                <span class="JO-pagination-page active">{{ num }}</span>
+                {% elif num > products.number|add:'-3' and num < products.number|add:'3' %}
+                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if schedules_page and schedules_page != '1' %}&schedules_page={{ schedules_page }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            
+            {% if products.has_next %}
+            <a href="?page={{ products.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if schedules_page and schedules_page != '1' %}&schedules_page={{ schedules_page }}{% endif %}" class="JO-pagination-btn">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>

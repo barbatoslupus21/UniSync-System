@@ -1,9 +1,10 @@
 // Constants and global variables
-const STATS_REFRESH_INTERVAL = 5 * 60 * 1000;
-const TIMELINE_REFRESH_INTERVAL = 2 * 60 * 1000;
-const DEADLINES_REFRESH_INTERVAL = 5 * 60 * 1000;
-const ALERTS_REFRESH_INTERVAL = 5 * 60 * 1000;
-const QUEUE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+const STATS_REFRESH_INTERVAL = 60 * 1000; // 1 minute
+const TIMELINE_REFRESH_INTERVAL = 60 * 1000; // 1 minute
+const DEADLINES_REFRESH_INTERVAL = 60 * 1000; // 1 minute
+const ALERTS_REFRESH_INTERVAL = 60 * 1000; // 1 minute
+const QUEUE_REFRESH_INTERVAL = 60 * 1000; // 1 minute
+const CHARTS_REFRESH_INTERVAL = 60 * 1000; // 1 minute
 let statsRefreshInterval = null;
 let timelineRefreshInterval = null;
 let currentTimelineView = 'timeline-week';
@@ -16,6 +17,7 @@ let alertFilters = {
     resource: true
 };
 let queueRefreshInterval = null;
+let chartsRefreshInterval = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     animateStatsCards();
@@ -75,6 +77,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize Compliance Rate Chart
     initializeComplianceRateChart();
+
+    // Start auto-refresh for charts
+    startChartsRefresh();
 });
 
 function startStatsRefresh() {
@@ -286,6 +291,43 @@ function pulseStatsCards() {
             card.classList.remove('refreshed');
         }, 1000);
     });
+}
+
+/**
+ * Start auto-refresh for charts
+ */
+function startChartsRefresh() {
+    clearChartsRefresh();
+    chartsRefreshInterval = setInterval(refreshCharts, CHARTS_REFRESH_INTERVAL);
+}
+
+/**
+ * Clear chart refresh interval
+ */
+function clearChartsRefresh() {
+    if (chartsRefreshInterval) {
+        clearInterval(chartsRefreshInterval);
+        chartsRefreshInterval = null;
+    }
+}
+
+/**
+ * Refresh both charts with current selected periods
+ */
+function refreshCharts() {
+    // Refresh Job Order Compliance Chart
+    const complianceSelector = document.getElementById('chart-period-selector');
+    if (complianceSelector) {
+        loadComplianceChart(complianceSelector.value);
+    }
+
+    // Refresh Compliance Rate Chart
+    const rateSelector = document.getElementById('compliance-period-selector');
+    if (rateSelector) {
+        loadComplianceRateChart(rateSelector.value);
+    }
+
+    console.log('Charts refreshed at', new Date().toLocaleTimeString());
 }
 
 /**
@@ -806,7 +848,12 @@ function updateTimeline(data, viewType) {
             const daysOverdue = Math.abs(event.days_until_target);
             targetDateIndicator = `<span class="JO-target-date-overdue"><i class="fas fa-exclamation-triangle"></i> Overdue by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}</span>`;
         } else if (event.is_approaching) {
-            targetDateIndicator = `<span class="JO-target-date-approaching"><i class="fas fa-clock"></i> Due in ${event.days_until_target} day${event.days_until_target !== 1 ? 's' : ''}</span>`;
+            // Special case for today (0 days)
+            if (event.days_until_target === 0) {
+                targetDateIndicator = `<span class="JO-target-date-approaching"><i class="fas fa-clock"></i> Due today</span>`;
+            } else {
+                targetDateIndicator = `<span class="JO-target-date-approaching"><i class="fas fa-clock"></i> Due in ${event.days_until_target} day${event.days_until_target !== 1 ? 's' : ''}</span>`;
+            }
         } else {
             targetDateIndicator = `<span class="JO-target-date-ontrack"><i class="fas fa-check-circle"></i> On track</span>`;
         }
@@ -862,431 +909,7 @@ function animateTimelineItems(containerId = null) {
     });
 }
 
-// Add necessary CSS for animations
-(function addStyles() {
-    // Only add if these animations don't already exist
-    if (!document.getElementById('timeline-animations')) {
-        const style = document.createElement('style');
-        style.id = 'timeline-animations';
-        style.textContent = `
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                    transform: translateY(10px);
-                }
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .JO-timeline-event {
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-                padding: 10px 12px;
-                border-radius: 6px;
-                margin-bottom: 8px;
-                height: auto;
-                display: flex;
-                flex-direction: column;
-                align-self: start;
-                margin: 5px;
-                z-index: 1;
-            }
-
-            .JO-timeline-event:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-                z-index: 10;
-            }
-
-            /* Status-based styling */
-            .JO-timeline-event.approved,
-            .JO-timeline-event.completed {
-                background-color: var(--jo-green-light, #e8f5e9);
-            }
-
-            .JO-timeline-event.processing,
-            .JO-timeline-event.upcoming {
-                background-color: var(--jo-primary-light, #e0e8ff);
-            }
-
-            .JO-timeline-event.delayed {
-                background-color: var(--jo-yellow-light, #fff8e1);
-            }
-
-            /* Target date based styling */
-            .JO-timeline-event.on-track {
-                background-color: var(--jo-green-light, #e8f5e9);
-            }
-
-            .JO-timeline-event.approaching {
-                background-color: var(--jo-yellow-light, #fff8e1);
-            }
-
-            .JO-timeline-event.overdue {
-                background-color: var(--jo-red-light, #ffebee);
-            }
-
-            .JO-timeline-event.no-target {
-                background-color: var(--jo-orange-light, #fff3e0);
-            }
-
-            /* Event content styling */
-            .JO-event-content {
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-                width: 100%;
-            }
-
-            .JO-event-header {
-                display: flex;
-                justify-content: flex-start;
-                align-items: center;
-                margin-bottom: 2px;
-            }
-
-            .JO-event-jo-number {
-                font-size: 1.2rem;
-                font-weight: 700;
-                color: var(--jo-primary, #3366ff);
-                margin-bottom: 8px;
-                padding: 2px 0;
-                border-bottom: 1px dashed rgba(51, 102, 255, 0.3);
-                letter-spacing: 0.5px;
-                text-align: center;
-            }
-
-            .JO-event-body {
-                display: flex;
-                flex-direction: column;
-                gap: 3px;
-            }
-
-            .JO-event-time {
-                font-weight: 500;
-                color: var(--jo-text-dark, #333);
-                font-size: 0.85rem;
-            }
-
-            .JO-event-description {
-                font-size: 0.85rem;
-                color: var(--jo-text-light, #666);
-                font-style: italic;
-            }
-
-            .JO-event-requestor {
-                font-size: 0.85rem;
-                color: var(--jo-text-dark, #333);
-                font-weight: 500;
-            }
-
-            .JO-event-department {
-                font-size: 0.85rem;
-                color: var(--jo-text-dark, #333);
-                font-style: italic;
-                margin-bottom: 4px;
-            }
-
-            .JO-target-date-missing {
-                font-size: 0.8rem;
-                color: #e65100; /* Dark orange */
-                font-weight: 500;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-
-            .JO-target-date-overdue {
-                font-size: 0.8rem;
-                color: var(--jo-red, #f44336);
-                font-weight: 500;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-
-            .JO-target-date-approaching {
-                font-size: 0.8rem;
-                color: var(--jo-status-pending, #ffc107);
-                font-weight: 500;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-
-            .JO-target-date-ontrack {
-                font-size: 0.8rem;
-                color: var(--jo-green, #4caf50);
-                font-weight: 500;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-            }
-
-            /* Empty timeline styling */
-            .JO-empty-timeline {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                min-height: 200px;
-                color: var(--jo-text-light, #666);
-                grid-column: 1 / -1;
-                padding: 20px;
-                text-align: center;
-            }
-
-            .JO-empty-timeline p {
-                margin: 5px 0;
-                font-size: 1rem;
-            }
-
-            .JO-empty-timeline .JO-empty-subtitle {
-                font-size: 0.85rem;
-                opacity: 0.7;
-                font-style: italic;
-            }
-
-            .JO-clear-filter-btn {
-                margin-top: 10px;
-                padding: 5px 10px;
-                background-color: var(--jo-primary-light, #e0e8ff);
-                color: var(--jo-primary, #3366ff);
-                border: 1px solid var(--jo-primary, #3366ff);
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 0.85rem;
-                transition: all 0.2s ease;
-            }
-
-            .JO-clear-filter-btn:hover {
-                background-color: var(--jo-primary, #3366ff);
-                color: white;
-            }
-
-            /* Clickable date styling */
-            .JO-timeline-day {
-                cursor: pointer;
-                transition: all 0.2s ease;
-                position: relative;
-            }
-
-            .JO-timeline-day:hover {
-                background-color: var(--jo-primary-light, #e0e8ff);
-            }
-
-            .JO-timeline-day.date-selected {
-                background-color: var(--jo-primary, #3366ff);
-                color: white;
-            }
-
-            .JO-timeline-day.date-selected::after {
-                content: '';
-                position: absolute;
-                bottom: -5px;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 0;
-                height: 0;
-                border-left: 6px solid transparent;
-                border-right: 6px solid transparent;
-                border-top: 6px solid var(--jo-primary, #3366ff);
-            }
-
-            /* Optimize page layout for 100% viewport height */
-            .JO-dashboard-container {
-                display: flex;
-                flex-direction: column;
-                min-height: 100vh;
-                padding: 20px;
-            }
-
-            .JO-main-content {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .JO-stats-row {
-                margin-bottom: 20px;
-            }
-
-            .JO-timeline-section {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                min-height: 400px;
-            }
-
-            .JO-timeline-card {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .JO-timeline-content {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-            }
-
-            .JO-timeline-view {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                min-height: 0; /* Allow proper flex behavior */
-                overflow: hidden; /* Prevent overflow at this level */
-            }
-
-            .JO-timeline-events {
-                flex: 1;
-                overflow-y: auto;
-                min-height: 0; /* Allow proper flex behavior */
-                height: 100%; /* Take full height of parent */
-            }
-
-            /* Job Order Queue styles */
-            .JO-queue-wrapper {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                width: 100%;
-            }
-
-            .JO-queue-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 10px 12px;
-                background-color: var(--jo-bg-light, #f9f9f9);
-                border-radius: 6px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            }
-
-            .JO-queue-header h3 {
-                margin: 0;
-                font-size: 1.1rem;
-                font-weight: 600;
-                color: var(--jo-text-dark, #333);
-            }
-
-            .JO-queue-count {
-                font-size: 0.9rem;
-                color: var(--jo-text-light, #666);
-            }
-
-            .JO-queue-container {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                gap: 10px;
-                width: 100%;
-            }
-
-            .JO-queue-item {
-                background-color: white;
-                border-radius: 6px;
-                padding: 12px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-                transition: transform 0.3s ease;
-            }
-
-            .JO-queue-item:hover {
-                transform: translateY(-3px);
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-            }
-
-            .JO-queue-info {
-                display: flex;
-                flex-direction: column;
-                gap: 5px;
-            }
-
-            .JO-queue-info-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-
-            .JO-queue-info-header h4 {
-                margin: 0;
-                font-size: 1rem;
-                font-weight: 500;
-                color: var(--jo-primary, #3366ff);
-            }
-
-            .JO-category-pill {
-                padding: 3px 8px;
-                border-radius: 12px;
-                font-size: 0.75rem;
-                font-weight: 500;
-                display: inline-block;
-            }
-
-            .JO-priority-badge {
-                padding: 3px 8px;
-                border-radius: 12px;
-                font-size: 0.75rem;
-                font-weight: 500;
-                display: inline-block;
-                text-align: center;
-            }
-
-            .JO-queue-requestor-info {
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-                font-size: 0.85rem;
-                color: var(--jo-text-dark, #333);
-            }
-
-            .JO-queue-waiting {
-                display: flex;
-                align-items: center;
-                gap: 5px;
-                font-size: 0.85rem;
-                color: var(--jo-text-light, #666);
-            }
-
-            .JO-waiting-label {
-                font-weight: 500;
-            }
-
-            .JO-waiting-value {
-                font-weight: 700;
-                color: var(--jo-red, #f44336);
-            }
-
-            /* Empty queue styling */
-            .JO-empty-queue {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                min-height: 200px;
-                color: var(--jo-text-light, #666);
-                grid-column: 1 / -1;
-                padding: 20px;
-                text-align: center;
-            }
-
-            .JO-empty-queue p {
-                margin: 5px 0;
-                font-size: 1rem;
-            }
-
-            .JO-empty-queue .JO-empty-subtitle {
-                font-size: 0.85rem;
-                opacity: 0.7;
-                font-style: italic;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-})();
+// CSS styles are now defined in jo-overall.css
 
 function directUpdateTimeline() {
     // Get current date
@@ -1611,12 +1234,14 @@ function updateDeadlines(data) {
     deadlinesContainer.innerHTML = '';
 
     // Separate deadlines by urgency type
+    let overdueAssignedDeadlines = [];
     let urgentDeadlines = [];
     let criticalDeadlines = [];
     let upcomingDeadlines = [];
 
     if (currentDeadlineFilter === 'all') {
         // Categorize all deadlines
+        overdueAssignedDeadlines = allDeadlines.filter(d => d.urgency_type === 'overdue_assigned');
         urgentDeadlines = allDeadlines.filter(d => d.urgency_type === 'urgent');
         criticalDeadlines = allDeadlines.filter(d => d.urgency_type === 'critical');
         upcomingDeadlines = allDeadlines.filter(d => d.urgency_type === 'upcoming');
@@ -1632,12 +1257,29 @@ function updateDeadlines(data) {
     }
 
     // If no deadlines after filtering, show empty message
-    if (urgentDeadlines.length === 0 && criticalDeadlines.length === 0 && upcomingDeadlines.length === 0) {
+    if (overdueAssignedDeadlines.length === 0 && urgentDeadlines.length === 0 && criticalDeadlines.length === 0 && upcomingDeadlines.length === 0) {
         showEmptyDeadlines();
         return;
     }
 
     let itemIndex = 0;
+
+    // Add OVERDUE ASSIGNED section (highest priority - appears first)
+    if (overdueAssignedDeadlines.length > 0) {
+        const overdueAssignedSection = document.createElement('div');
+        overdueAssignedSection.className = 'JO-deadline-section';
+        deadlinesContainer.appendChild(overdueAssignedSection);
+
+        overdueAssignedDeadlines.forEach((deadline) => {
+            try {
+                const deadlineElement = createDeadlineElement(deadline, 'overdue_assigned', itemIndex);
+                deadlinesContainer.appendChild(deadlineElement);
+                itemIndex++;
+            } catch (error) {
+                console.error('Error creating overdue_assigned deadline element:', error, deadline);
+            }
+        });
+    }
 
     // Add URGENT section
     if (urgentDeadlines.length > 0) {
@@ -1658,12 +1300,6 @@ function updateDeadlines(data) {
     if (criticalDeadlines.length > 0) {
         const criticalSection = document.createElement('div');
         criticalSection.className = 'JO-deadline-section';
-        criticalSection.innerHTML = `
-            <div class="JO-deadline-section-header critical">
-                <i class="fas fa-fire"></i>
-                <h3>Critical (${criticalDeadlines.length})</h3>
-            </div>
-        `;
         deadlinesContainer.appendChild(criticalSection);
 
         criticalDeadlines.forEach((deadline) => {
@@ -1681,12 +1317,6 @@ function updateDeadlines(data) {
     if (upcomingDeadlines.length > 0) {
         const upcomingSection = document.createElement('div');
         upcomingSection.className = 'JO-deadline-section';
-        upcomingSection.innerHTML = `
-            <div class="JO-deadline-section-header upcoming">
-                <i class="fas fa-calendar-alt"></i>
-                <h3>Upcoming (${upcomingDeadlines.length})</h3>
-            </div>
-        `;
         deadlinesContainer.appendChild(upcomingSection);
 
         upcomingDeadlines.forEach((deadline) => {
@@ -1739,7 +1369,7 @@ function createDeadlineElement(deadline, urgencyClass, index) {
             <div class="JO-deadline-info-header">
                 <h4>${joNumber}</h4>
                 <span class="JO-category-pill JO-category-${category}">${deadline.category || 'Unknown'}</span>
-                ${priorityLevel !== 'Low' ? `<div class="JO-priority-badge ${priorityLevel.toLowerCase()}">${priorityLevel}</div>` : ''}
+                <div class="JO-priority-badge ${priorityLevel.toLowerCase()}">${priorityLevel}</div>
             </div>
             
             <p>${description}</p>
@@ -2527,6 +2157,7 @@ function renderComplianceRateChart(data) {
     // Destroy existing chart if it exists
     if (complianceRateChart) {
         complianceRateChart.destroy();
+        complianceRateChart = null;
     }
 
     // Check if there's no data to display
@@ -2535,14 +2166,20 @@ function renderComplianceRateChart(data) {
         canvas.style.display = 'none';
         if (centerText) centerText.style.display = 'none';
         
-        // Show no data message
-        chartWrapper.innerHTML = `
-            <div class="JO-empty-chart" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666; text-align: center; padding: 20px;">
+        // Check if empty chart message already exists
+        let emptyChart = chartWrapper.querySelector('.JO-empty-chart');
+        if (!emptyChart) {
+            // Create and insert empty chart message before the canvas
+            emptyChart = document.createElement('div');
+            emptyChart.className = 'JO-empty-chart';
+            emptyChart.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666; text-align: center; padding: 20px; position: absolute; top: 0; left: 0; right: 0; bottom: 0;';
+            emptyChart.innerHTML = `
                 <i class="fas fa-chart-pie" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
                 <p style="margin: 0; font-size: 1.1rem;">No Job Orders Found</p>
                 <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.7;">No data available for the selected period</p>
-            </div>
-        `;
+            `;
+            chartWrapper.appendChild(emptyChart);
+        }
         
         // Still render legend with 0 counts
         renderComplianceLegend(data, {
@@ -2868,16 +2505,11 @@ function updateQueue(data) {
         return;
     }
 
-    // Create queue container (no header)
-    const queueContainer = document.createElement('div');
-    queueContainer.className = 'JO-queue-container JO-grid-lines';
-    queueWrapper.appendChild(queueContainer);
-
-    // Add queue items
+    // Add queue items directly to wrapper for grid layout
     queueItems.forEach((item, index) => {
         try {
             const queueElement = createQueueElement(item, index);
-            queueContainer.appendChild(queueElement);
+            queueWrapper.appendChild(queueElement);
         } catch (error) {
             console.error('Error creating queue element:', error, item);
         }
@@ -2900,8 +2532,27 @@ function updateQueue(data) {
  */
 function createQueueElement(item, index) {
     const queueElement = document.createElement('div');
-    queueElement.className = `JO-queue-item ${item.urgency_type || ''}`;
-    queueElement.setAttribute('data-jo-id', item.jo_number);
+    
+    // Calculate if past due date for styling
+    let isPastDue = false;
+    if (item.target_date_raw) {
+        const targetDate = new Date(item.target_date_raw);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        targetDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = targetDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+            isPastDue = true;
+        }
+    }
+    
+    // Add 'past-due' class if the job is past due date
+    queueElement.className = `JO-queue-item ${item.urgency_type || ''} ${isPastDue ? 'past-due' : ''}`;
+    queueElement.setAttribute('data-jo-id', item.id); // Store the database ID
+    queueElement.setAttribute('data-jo-number', item.jo_number); // Store JO number for display
 
     // Create queue HTML - use safe defaults in case of missing data
     const joNumber = item.jo_number || 'Unknown';
@@ -2912,12 +2563,39 @@ function createQueueElement(item, index) {
     const requestor = item.requestor || 'Unknown';
     const department = item.department || 'N/A';
 
+    // Calculate days until/past due date
+    let dueDateInfo = '';
+    if (item.target_date_raw) {
+        const targetDate = new Date(item.target_date_raw);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        targetDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = targetDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+            const daysPast = Math.abs(diffDays);
+            dueDateInfo = `<span style="color: #f44336;"><i class="fas fa-exclamation-triangle"></i> ${daysPast} ${daysPast === 1 ? 'day' : 'days'} past due date</span>`;
+        } else if (diffDays === 0) {
+            dueDateInfo = `<span style="color: #ff9800;"><i class="fas fa-clock"></i> Due today</span>`;
+        } else if (diffDays === 1) {
+            dueDateInfo = `<span style="color: #ff9800;"><i class="fas fa-calendar-day"></i> Due tomorrow</span>`;
+        } else {
+            dueDateInfo = `<span style="color: #4caf50;"><i class="fas fa-calendar-check"></i> ${diffDays} days until due date</span>`;
+        }
+    } else {
+        dueDateInfo = `<span style="color: #9e9e9e; font-style: italic;"><i class="fas fa-calendar-times"></i> No target date set</span>`;
+    }
+
     queueElement.innerHTML = `
         <div class="JO-queue-info">
             <div class="JO-queue-info-header">
                 <h4>${joNumber}</h4>
-                <span class="JO-category-pill JO-category-${category}">${item.category || 'Unknown'}</span>
-                <div class="JO-priority-badge ${priorityLevel.toLowerCase()}">${priorityLevel}</div>
+                <div>
+                    <span class="JO-category-pill JO-category-${category}">${item.category || 'Unknown'}</span>
+                    <div class="JO-priority-badge ${priorityLevel.toLowerCase()}">${priorityLevel}</div>
+                </div>
             </div>
 
             <p>${description}</p>
@@ -2927,8 +2605,7 @@ function createQueueElement(item, index) {
             </div>
 
             <div class="JO-queue-waiting">
-                <span class="JO-waiting-label">Waiting:</span>
-                <span class="JO-waiting-value">${waitingTime}</span>
+                ${dueDateInfo}
             </div>
         </div>
     `;
@@ -2971,3 +2648,382 @@ function addQueueEventHandlers() {
         });
     });
 }
+
+// ========================================================================
+// MODAL FUNCTIONS
+// ========================================================================
+
+/**
+ * Open modal
+ * @param {string|HTMLElement} modal - Modal element or ID
+ */
+function openModal(modal) {
+    const modalElement = typeof modal === 'string' ? document.getElementById(modal) : modal;
+    console.log('Opening modal:', modalElement);
+    if (modalElement) {
+        console.log('Adding active class to modal');
+        modalElement.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        console.log('Modal classes after adding active:', modalElement.className);
+    } else {
+        console.error('Modal element is null or undefined');
+    }
+}
+
+/**
+ * Close modal
+ * @param {string|HTMLElement} modal - Modal element or ID
+ */
+function closeModal(modal) {
+    const modalElement = typeof modal === 'string' ? document.getElementById(modal) : modal;
+    if (modalElement) {
+        modalElement.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+}
+
+/**
+ * Setup modal close event handlers
+ */
+function setupModalHandlers() {
+    // Close buttons
+    document.querySelectorAll('.JO-modal-close, .close-details-modal').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = this.closest('.JO-modal');
+            if (modal) {
+                closeModal(modal);
+            }
+        });
+    });
+
+    // Click outside to close
+    document.querySelectorAll('.JO-modal').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal(this);
+            }
+        });
+    });
+}
+
+// ========================================================================
+// JOB ORDER DETAILS MODAL
+// ========================================================================
+
+/**
+ * Fetch and display job order details
+ * @param {string} joId - The job order ID
+ */
+function fetchJobOrderDetails(joId) {
+    console.log('Fetching job order details for:', joId);
+    const detailsModal = document.getElementById('jo-details-modal');
+    
+    if (!detailsModal) {
+        console.error('Modal element not found! Make sure #jo-details-modal exists in the HTML');
+        return;
+    }
+    
+    console.log('Modal element found:', detailsModal);
+    openModal(detailsModal);
+
+    // Show loading spinner
+    const contentElement = document.getElementById('jo-details-content');
+    if (!contentElement) {
+        console.error('Modal content element not found!');
+        return;
+    }
+    
+    contentElement.innerHTML = `
+        <div class="JO-loading text-center p-5">
+            <i class="fas fa-spinner fa-spin fa-2x mb-3" style="color: #3366ff;"></i>
+            <p>Loading job order details...</p>
+        </div>
+    `;
+
+    fetch(`/joborder/job-order-details/${joId}/`, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            renderJobOrderDetails(data);
+        } else {
+            // Show error in modal
+            document.getElementById('jo-details-content').innerHTML = `
+                <div class="JO-error-message text-center p-5">
+                    <i class="fas fa-exclamation-circle fa-2x text-danger mb-3"></i>
+                    <p>${data.message || 'Failed to load job order details'}</p>
+                    <button class="JO-button JO-primary-button mt-3 retry-fetch-btn" data-id="${joId}">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+
+            // Setup retry button
+            document.querySelector('.retry-fetch-btn').addEventListener('click', function() {
+                const retryId = this.dataset.id;
+                fetchJobOrderDetails(retryId);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching job order details:', error);
+        document.getElementById('jo-details-content').innerHTML = `
+            <div class="JO-error-message text-center p-5">
+                <i class="fas fa-exclamation-circle fa-2x text-danger mb-3"></i>
+                <p>An error occurred while loading the job order details: ${error.message}</p>
+                <button class="JO-button JO-primary-button mt-3 retry-fetch-btn" data-id="${joId}">
+                    <i class="fas fa-sync-alt"></i> Retry
+                </button>
+            </div>
+        `;
+
+        document.querySelector('.retry-fetch-btn').addEventListener('click', function() {
+            fetchJobOrderDetails(joId);
+        });
+    });
+}
+
+/**
+ * Render job order details in the modal
+ * @param {Object} data - Job order data
+ */
+function renderJobOrderDetails(data) {
+    // Create timeline HTML based on the standard sequence
+    const timelineHtml = generateTimelineItems(data.routing, data.jo_status);
+
+    const modalContent = `
+        <div class="JO-details-header">
+            <div class="JO-details-id">
+                <h3>${data.jo_number || 'N/A'}</h3>
+                <span class="JO-category-pill JO-category-${data.category?.toLowerCase()}">${data.category || 'N/A'}</span>
+                <span class="JO-status JO-status-${data.jo_status?.toLowerCase()}">${data.jo_status || 'N/A'}</span>
+            </div>
+
+            <div class="JO-details-date">
+                <p>Submitted: ${data.submitted_date || 'N/A'}</p>
+            </div>
+        </div>
+
+        <div class="JO-details-section">
+            <h4>Job Order Information</h4>
+            <div class="JO-details-grid">
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Tool:</span>
+                    <span class="JO-details-value">${data.tool || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Nature:</span>
+                    <span class="JO-details-value">${data.nature || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Line:</span>
+                    <span class="JO-details-value">${data.line || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Requestor:</span>
+                    <span class="JO-details-value">${data.requestor || 'N/A'}</span>
+                </div>
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Status:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-status JO-status-${data.jo_status?.toLowerCase()}">${data.jo_status || 'N/A'}</span>
+                    </span>
+                </div>
+                ${data.priority_level ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Priority Level:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-priority JO-priority-${data.priority_level.toLowerCase()}">${data.priority_level}</span>
+                    </span>
+                </div>
+                ` : ''}
+                ${data.priority_level === 'Urgent' && data.date_of_completion ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date of Completion:</span>
+                    <span class="JO-details-value">${data.date_of_completion}</span>
+                </div>
+                ` : ''}
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Quality Matter:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-status ${data.quality_matter ? 'JO-status-approved' : 'JO-status-pending'}">${data.quality_matter ? 'Yes' : 'No'}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="JO-details-section">
+            <span class="JO-details-label">Details:</span>
+            <p class="JO-details-text">${data.details || 'No details provided'}</p>
+        </div>
+
+        ${(data.in_charge || data.date_received || data.target_date || data.date_complete) ? `
+        <div class="JO-details-section">
+            <h4>Maintenance Information</h4>
+            <div class="JO-details-grid">
+                ${data.in_charge ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Person In-charge:</span>
+                    <span class="JO-details-value">${data.in_charge || 'Not Yet Assigned'}</span>
+                </div>
+                ` : ''}
+
+                ${data.date_received ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date Received:</span>
+                    <span class="JO-details-value">${data.date_received}</span>
+                </div>
+                ` : ''}
+
+                ${data.target_date ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Target Date:</span>
+                    <span class="JO-details-value">${data.target_date}</span>
+                </div>
+                ` : ''}
+
+                ${data.date_complete ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date Completed:</span>
+                    <span class="JO-details-value">${data.date_complete}</span>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+        ` : ''}
+
+        <div class="JO-details-section">
+            <h4>Approval Status Timeline</h4>
+            <div class="JO-timeline-container">
+                ${timelineHtml}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('jo-details-content').innerHTML = modalContent;
+}
+
+/**
+ * Generate timeline items for approval status
+ * @param {Array} routingData - Routing data
+ * @param {string} joStatus - Current job order status
+ * @returns {string} HTML string for timeline
+ */
+function generateTimelineItems(routingData, joStatus) {
+    if (!routingData || routingData.length === 0) {
+        return '<p class="text-muted">No approval information available</p>';
+    }
+
+    let timelineHtml = '';
+
+    // Process each routing entry and create timeline items
+    routingData.forEach((entry, index) => {
+        let timelineClass = '';
+        let icon = '<i class="fas fa-clock"></i>';
+        let statusLabel = '';
+        let dateText = '';
+        let remarks = '';
+
+        // Determine the timeline state based on entry status
+        if (entry.status === 'Approved' || entry.status === 'Submitted') {
+            timelineClass = 'JO-timeline-complete';
+            icon = '<i class="fas fa-check"></i>';
+            statusLabel = entry.status === 'Approved' ? 'Approved' : 'Submitted';
+            dateText = `${entry.status === 'Approved' ? 'Approved' : 'Submitted'} by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Disapproved') {
+            timelineClass = 'JO-timeline-rejected';
+            icon = '<i class="fas fa-times"></i>';
+            statusLabel = 'Disapproved';
+            dateText = `Disapproved by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Pending') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-hourglass-half"></i>';
+            statusLabel = 'Pending Approval';
+            dateText = `Waiting for ${entry.approver_name || entry.approver}'s approval`;
+        } else if (entry.status === 'Viewed') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-eye"></i>';
+            statusLabel = 'Viewed';
+            dateText = `Viewed by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Cancelled') {
+            timelineClass = 'JO-timeline-rejected';
+            icon = '<i class="fas fa-times"></i>';
+            statusLabel = 'Cancelled';
+            dateText = `Cancelled by ${entry.approver_name || entry.approver} on ${entry.approved_at || entry.request_at}`;
+        } else if (entry.status === 'Processing') {
+            timelineClass = 'JO-timeline-active';
+            icon = '<i class="fas fa-spinner"></i>';
+            statusLabel = 'Processing';
+            dateText = `Being processed by ${entry.approver_name || entry.approver}`;
+        } else {
+            // Default case for any other status
+            timelineClass = 'JO-timeline-pending';
+            icon = '<i class="fas fa-circle"></i>';
+            statusLabel = entry.status;
+            dateText = `${entry.approver_name || entry.approver} - ${entry.request_at || ''}`;
+        }
+
+        // Add remarks if available
+        if (entry.remarks && entry.remarks.trim() !== '') {
+            remarks = `<p class="JO-timeline-remarks"><em>"${entry.remarks}"</em></p>`;
+        }
+
+        timelineHtml += `
+            <div class="JO-timeline-item ${timelineClass}">
+                <div class="JO-timeline-icon">
+                    ${icon}
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>${entry.approver_name || entry.approver} - ${statusLabel}</h5>
+                    <p class="JO-timeline-date">${dateText}</p>
+                    ${remarks}
+                </div>
+            </div>
+        `;
+    });
+
+    // If job order is closed, add a final closure item
+    if (joStatus === 'Closed') {
+        timelineHtml += `
+            <div class="JO-timeline-item JO-timeline-complete">
+                <div class="JO-timeline-icon">
+                    <i class="fas fa-check-double"></i>
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>Job Order Closed</h5>
+                    <p class="JO-timeline-date">The job order has been successfully closed</p>
+                </div>
+            </div>
+        `;
+    }
+
+    // If job order is cancelled or rejected, add a final cancellation/rejection item
+    if (joStatus === 'Cancelled') {
+        timelineHtml += `
+            <div class="JO-timeline-item JO-timeline-rejected">
+                <div class="JO-timeline-icon">
+                    <i class="fas fa-ban"></i>
+                </div>
+                <div class="JO-timeline-content">
+                    <h5>Job Order Cancelled</h5>
+                    <p class="JO-timeline-date">This job order has been cancelled</p>
+                </div>
+            </div>
+        `;
+    }
+
+    return timelineHtml;
+}
+
+// Initialize modal handlers on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setupModalHandlers();
+});

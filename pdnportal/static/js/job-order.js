@@ -452,6 +452,23 @@ function setupEventListeners() {
         });
     });
 
+    // Set Date buttons (for maintenance personnel)
+    const setDateButtons = document.querySelectorAll('.jo-set-date-btn');
+    setDateButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const joId = this.dataset.id;
+            const joNumber = this.dataset.number || joId;
+            if (joId) {
+                openSetDateModal(joId, joNumber);
+            } else {
+                createToast('Cannot find job order ID', 'error');
+            }
+        });
+    });
+
     // Cancel confirmation
     const cancelConfirmationBtn = document.getElementById('cancel-confirmation');
     if (cancelConfirmationBtn) {
@@ -465,6 +482,24 @@ function setupEventListeners() {
     if (closeConfirmationCancelBtn) {
         closeConfirmationCancelBtn.addEventListener('click', function() {
             closeModal(document.getElementById('confirm-close-modal'));
+        });
+    }
+
+    // Hold request cancel button
+    const holdConfirmationCancelBtn = document.getElementById('hold-confirmation-cancel');
+    if (holdConfirmationCancelBtn) {
+        holdConfirmationCancelBtn.addEventListener('click', function() {
+            closeModal(document.getElementById('confirm-hold-modal'));
+        });
+    }
+
+    // Confirm hold button
+    const confirmHoldBtn = document.getElementById('confirm-hold-btn');
+    if (confirmHoldBtn) {
+        confirmHoldBtn.addEventListener('click', function() {
+            const joId = this.getAttribute('data-id');
+            const remarks = document.getElementById('hold-remarks').value.trim();
+            processHoldRequest(joId, remarks);
         });
     }
 
@@ -533,7 +568,7 @@ function setupEventListeners() {
                     }
                 } else {
                     // User doesn't have approver assigned
-                    createToast(data.message || 'You must have an approver assigned before submitting a job order request. Please contact your administrator.', 'error');
+                    createToast(data.message || 'Requestor must have an approver assigned before submitting a job order request. Please contact your administrator.', 'error');
                 }
             })
             .catch(error => {
@@ -818,7 +853,10 @@ function fetchJobOrderDetails(joId, joNumber) {
 
 function renderJobOrderDetails(data) {
     const canCancelJO = data.jo_status === 'Routing' && data.is_creator === true;
-    const canCloseTransaction = data.jo_status === 'Checked' && data.is_creator === true;
+    // Close Transaction button visible for Completed, Checked, or On Hold status
+    const canCloseTransaction = (data.jo_status === 'Completed' || data.jo_status === 'Checked' || data.jo_status === 'On Hold') && data.is_creator === true;
+    // Hold Request button visible only if status is Completed or Checked (not On Hold)
+    const canHoldRequest = (data.jo_status === 'Completed' || data.jo_status === 'Checked') && data.is_creator === true;
 
     // Create timeline HTML based on the standard sequence
     const timelineHtml = generateTimelineItems(data.routing, data.jo_status);
@@ -857,7 +895,9 @@ function renderJobOrderDetails(data) {
                 </div>
                 <div class="JO-details-item">
                     <span class="JO-details-label">Status:</span>
-                    <span class="JO-details-value">${data.jo_status || 'N/A'}</span>
+                    <span class="JO-details-value">
+                        <span class="JO-status JO-status-${data.jo_status?.toLowerCase()}">${data.jo_status || 'N/A'}</span>
+                    </span>
                 </div>
                 ${data.priority_level ? `
                 <div class="JO-details-item">
@@ -873,6 +913,12 @@ function renderJobOrderDetails(data) {
                     <span class="JO-details-value">${data.date_of_completion}</span>
                 </div>
                 ` : ''}
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Quality Matter:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-status ${data.quality_matter ? 'JO-status-approved' : 'JO-status-pending'}">${data.quality_matter ? 'Yes' : 'No'}</span>
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -883,6 +929,7 @@ function renderJobOrderDetails(data) {
 
         ${(data.in_charge || data.date_received || data.target_date || data.date_complete) ? `
         <div class="JO-details-section">
+            <h4>Maintenance Information</h4>
             <div class="JO-details-grid">
                 ${data.in_charge ? `
                 <div class="JO-details-item">
@@ -946,8 +993,12 @@ function renderJobOrderDetails(data) {
         <button class="JO-button JO-danger-button" id="cancel-jo-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}">
             <i class="fas fa-times-circle"></i> Cancel Request
         </button>` : ''}
+        ${canHoldRequest ? `
+        <button class="JO-button" id="hold-request-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}" style="background-color: #ff9800; color: white;">
+            <i class="fas fa-pause-circle"></i> Hold Request
+        </button>` : ''}
         ${canCloseTransaction ? `
-        <button class="JO-button JO-success-button" id="close-transaction-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}">
+        <button class="JO-button JO-success-button" id="close-transaction-btn" data-id="${data.id}" data-number="${data.jo_number || data.id}" data-status="${data.jo_status}">
             <i class="fas fa-check-circle"></i> Close Transaction
         </button>` : ''}
     `;
@@ -964,12 +1015,22 @@ function renderJobOrderDetails(data) {
         });
     }
 
+    const holdRequestBtn = document.getElementById('hold-request-btn');
+    if (holdRequestBtn) {
+        holdRequestBtn.addEventListener('click', function() {
+            const joId = this.dataset.id;
+            const joNumber = this.dataset.number || joId;
+            confirmHoldRequest(joId, joNumber);
+        });
+    }
+
     const closeTransactionBtn = document.getElementById('close-transaction-btn');
     if (closeTransactionBtn) {
         closeTransactionBtn.addEventListener('click', function() {
             const joId = this.dataset.id;
             const joNumber = this.dataset.number || joId;
-            confirmCloseTransaction(joId, joNumber);
+            const joStatus = this.dataset.status || '';
+            confirmCloseTransaction(joId, joNumber, joStatus);
         });
     }
 
@@ -1055,16 +1116,16 @@ function generateTimelineItems(routingData, joStatus) {
         `;
     });
 
-    // If job order is completed or closed, add a final completion item
-    if (joStatus === 'Closed' || joStatus === 'Completed') {
+    // If job order is closed, add a final closure item
+    if (joStatus === 'Closed') {
         timelineHtml += `
             <div class="JO-timeline-item JO-timeline-complete">
                 <div class="JO-timeline-icon">
                     <i class="fas fa-check-double"></i>
                 </div>
                 <div class="JO-timeline-content">
-                    <h5>Job Order ${joStatus}</h5>
-                    <p class="JO-timeline-date">The job order has been successfully ${joStatus.toLowerCase()}</p>
+                    <h5>Job Order Closed</h5>
+                    <p class="JO-timeline-date">The job order has been successfully closed</p>
                 </div>
             </div>
         `;
@@ -1109,10 +1170,22 @@ function openReviewModal(joId, joNumber) {
     document.getElementById('review-remarks-error').style.display = 'none';
 
     // Store JO ID and Number for later use
-    document.getElementById('approve-jo-btn').setAttribute('data-id', joId);
-    document.getElementById('approve-jo-btn').setAttribute('data-number', joNumber);
-    document.getElementById('disapprove-jo-btn').setAttribute('data-id', joId);
-    document.getElementById('disapprove-jo-btn').setAttribute('data-number', joNumber);
+    const approveBtn = document.getElementById('approve-jo-btn');
+    const disapproveBtn = document.getElementById('disapprove-jo-btn');
+    const completeBtn = document.getElementById('complete-jo-btn');
+    
+    if (approveBtn) {
+        approveBtn.setAttribute('data-id', joId);
+        approveBtn.setAttribute('data-number', joNumber);
+    }
+    if (disapproveBtn) {
+        disapproveBtn.setAttribute('data-id', joId);
+        disapproveBtn.setAttribute('data-number', joNumber);
+    }
+    if (completeBtn) {
+        completeBtn.setAttribute('data-id', joId);
+        completeBtn.setAttribute('data-number', joNumber);
+    }
 
     // Fetch job order details
     fetch(`/joborder/job-order-details/${joId}/`, {
@@ -1192,6 +1265,26 @@ function renderReviewModalContent(data) {
                     <span class="JO-details-label">Prepared By:</span>
                     <span class="JO-details-value">${data.prepared_by || 'N/A'}</span>
                 </div>
+                ${data.priority_level ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Priority Level:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-priority JO-priority-${data.priority_level.toLowerCase()}">${data.priority_level}</span>
+                    </span>
+                </div>
+                ` : ''}
+                ${data.priority_level === 'Urgent' && data.date_of_completion ? `
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Date of Completion:</span>
+                    <span class="JO-details-value">${data.date_of_completion}</span>
+                </div>
+                ` : ''}
+                <div class="JO-details-item">
+                    <span class="JO-details-label">Quality Matter:</span>
+                    <span class="JO-details-value">
+                        <span class="JO-status ${data.quality_matter ? 'JO-status-approved' : 'JO-status-pending'}">${data.quality_matter ? 'Yes' : 'No'}</span>
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -1251,14 +1344,37 @@ function renderReviewModalContent(data) {
 }
 
 function setupReviewButtonHandlers() {
+    // Check if user is maintenance
+    const isMaintenanceUser = document.querySelector('.user-maintenance-role')?.textContent.trim() === 'true';
+    
     const approveBtn = document.getElementById('approve-jo-btn');
     const disapproveBtn = document.getElementById('disapprove-jo-btn');
+    const completeBtn = document.getElementById('complete-jo-btn');
+
+    // Show/hide buttons based on user role
+    if (isMaintenanceUser) {
+        if (approveBtn) approveBtn.style.display = 'none';
+        if (disapproveBtn) disapproveBtn.style.display = 'none';
+        if (completeBtn) completeBtn.style.display = 'inline-flex';
+    } else {
+        if (approveBtn) approveBtn.style.display = 'inline-flex';
+        if (disapproveBtn) disapproveBtn.style.display = 'inline-flex';
+        if (completeBtn) completeBtn.style.display = 'none';
+    }
 
     // Remove any existing event listeners by cloning
-    const newApproveBtn = approveBtn.cloneNode(true);
-    const newDisapproveBtn = disapproveBtn.cloneNode(true);
-    approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
-    disapproveBtn.parentNode.replaceChild(newDisapproveBtn, disapproveBtn);
+    if (approveBtn) {
+        const newApproveBtn = approveBtn.cloneNode(true);
+        approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
+    }
+    if (disapproveBtn) {
+        const newDisapproveBtn = disapproveBtn.cloneNode(true);
+        disapproveBtn.parentNode.replaceChild(newDisapproveBtn, disapproveBtn);
+    }
+    if (completeBtn) {
+        const newCompleteBtn = completeBtn.cloneNode(true);
+        completeBtn.parentNode.replaceChild(newCompleteBtn, completeBtn);
+    }
 
     // Set up priority level change listener
     const priorityLevelSelect = document.getElementById('review-priority-level');
@@ -1284,54 +1400,75 @@ function setupReviewButtonHandlers() {
     }
 
     // Add new event listeners
-    newApproveBtn.addEventListener('click', function() {
-        const joId = this.getAttribute('data-id');
-        const joNumber = this.getAttribute('data-number');
-        const remarks = document.getElementById('review-remarks').value.trim();
-        
-        // Hide error messages
-        document.getElementById('review-remarks-error').style.display = 'none';
-        const dateError = document.getElementById('review-date-error');
-        if (dateError) dateError.style.display = 'none';
-        
-        // Validate date of completion if priority is urgent
-        const priorityLevel = document.getElementById('review-priority-level');
-        const dateCompletion = document.getElementById('review-date-of-completion');
-        
-        if (priorityLevel && priorityLevel.value === 'Urgent') {
-            if (!dateCompletion || !dateCompletion.value) {
-                if (dateError) {
-                    dateError.style.display = 'block';
-                    dateCompletion.focus();
+    if (document.getElementById('approve-jo-btn')) {
+        const newApproveBtn = document.getElementById('approve-jo-btn');
+        newApproveBtn.addEventListener('click', function() {
+            const joId = this.getAttribute('data-id');
+            const joNumber = this.getAttribute('data-number');
+            const remarks = document.getElementById('review-remarks').value.trim();
+            
+            // Hide error messages
+            document.getElementById('review-remarks-error').style.display = 'none';
+            const dateError = document.getElementById('review-date-error');
+            if (dateError) dateError.style.display = 'none';
+            
+            // Validate date of completion if priority is urgent
+            const priorityLevel = document.getElementById('review-priority-level');
+            const dateCompletion = document.getElementById('review-date-of-completion');
+            
+            if (priorityLevel && priorityLevel.value === 'Urgent') {
+                if (!dateCompletion || !dateCompletion.value) {
+                    if (dateError) {
+                        dateError.style.display = 'block';
+                        dateCompletion.focus();
+                    }
+                    return;
                 }
+            }
+            
+            handleApproveJobOrder(joId, joNumber, remarks);
+        });
+    }
+
+    if (document.getElementById('disapprove-jo-btn')) {
+        const newDisapproveBtn = document.getElementById('disapprove-jo-btn');
+        newDisapproveBtn.addEventListener('click', function() {
+            const joId = this.getAttribute('data-id');
+            const joNumber = this.getAttribute('data-number');
+            const remarks = document.getElementById('review-remarks').value.trim();
+            
+            // Validate remarks are required for disapproval
+            if (!remarks) {
+                document.getElementById('review-remarks-error').style.display = 'block';
+                document.getElementById('review-remarks').focus();
                 return;
             }
-        }
-        
-        handleApproveJobOrder(joId, joNumber, remarks);
-    });
-
-    newDisapproveBtn.addEventListener('click', function() {
-        const joId = this.getAttribute('data-id');
-        const joNumber = this.getAttribute('data-number');
-        const remarks = document.getElementById('review-remarks').value.trim();
-        
-        // Validate remarks are required for disapproval
-        if (!remarks) {
-            document.getElementById('review-remarks-error').style.display = 'block';
-            document.getElementById('review-remarks').focus();
-            return;
-        }
-        
-        // Hide error message
-        document.getElementById('review-remarks-error').style.display = 'none';
-        
-        handleDisapproveJobOrder(joId, joNumber, remarks);
-    });
+            
+            // Hide error message
+            document.getElementById('review-remarks-error').style.display = 'none';
+            
+            handleDisapproveJobOrder(joId, joNumber, remarks);
+        });
+    }
+    
+    // Add complete button event listener for maintenance users
+    if (document.getElementById('complete-jo-btn')) {
+        const newCompleteBtn = document.getElementById('complete-jo-btn');
+        newCompleteBtn.addEventListener('click', function() {
+            const joId = this.getAttribute('data-id');
+            const joNumber = this.getAttribute('data-number');
+            handleCompleteJobOrder(joId, joNumber);
+        });
+    }
 }
 
 function handleApproveJobOrder(joId, joNumber, remarks) {
     const approveBtn = document.getElementById('approve-jo-btn');
+    if (!approveBtn) {
+        console.error('Approve button not found');
+        return;
+    }
+    
     approveBtn.classList.add('loading');
     approveBtn.disabled = true;
 
@@ -1397,6 +1534,11 @@ function handleApproveJobOrder(joId, joNumber, remarks) {
 
 function handleDisapproveJobOrder(joId, joNumber, remarks) {
     const disapproveBtn = document.getElementById('disapprove-jo-btn');
+    if (!disapproveBtn) {
+        console.error('Disapprove button not found');
+        return;
+    }
+    
     disapproveBtn.classList.add('loading');
     disapproveBtn.disabled = true;
 
@@ -1439,6 +1581,68 @@ function handleDisapproveJobOrder(joId, joNumber, remarks) {
         disapproveBtn.classList.remove('loading');
         disapproveBtn.disabled = false;
         createToast('An error occurred while disapproving the job order', 'error');
+    });
+}
+
+function handleCompleteJobOrder(joId, joNumber) {
+    const actionTakenInput = document.getElementById('review-action-taken');
+    const actionTakenError = document.getElementById('review-action-taken-error');
+    const completeBtn = document.getElementById('complete-jo-btn');
+    
+    // Clear previous errors
+    if (actionTakenError) actionTakenError.style.display = 'none';
+    
+    // Validate action taken
+    if (!actionTakenInput || !actionTakenInput.value.trim()) {
+        createToast('Action taken is required', 'error');
+        if (actionTakenError) actionTakenError.style.display = 'block';
+        if (actionTakenInput) actionTakenInput.focus();
+        return;
+    }
+    
+    const actionTaken = actionTakenInput.value.trim();
+    
+    // Show loading state
+    completeBtn.classList.add('loading');
+    completeBtn.disabled = true;
+    completeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Completing...';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('action_taken', actionTaken);
+    
+    // Submit to server
+    fetch(`/joborder/complete-job-order/${joId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCSRFToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        completeBtn.classList.remove('loading');
+        completeBtn.disabled = false;
+        completeBtn.innerHTML = '<i class="fas fa-check-double"></i> Complete Request';
+        
+        if (data.status === 'success') {
+            closeModal(document.getElementById('jo-review-modal'));
+            createToast(data.message || `Job Order ${joNumber} has been completed successfully!`, 'success');
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            createToast(data.message || 'Error completing job order', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        completeBtn.classList.remove('loading');
+        completeBtn.disabled = false;
+        completeBtn.innerHTML = '<i class="fas fa-check-double"></i> Complete Request';
+        createToast('An error occurred while completing the job order', 'error');
     });
 }
 
@@ -1502,10 +1706,21 @@ function processCancelJobOrder(joId, remarks) {
     });
 }
 
-function confirmCloseTransaction(joId, joNumber) {
+function confirmCloseTransaction(joId, joNumber, joStatus) {
     document.getElementById('close-jo-number').textContent = joNumber;
     document.getElementById('confirm-close-btn').setAttribute('data-id', joId);
+    document.getElementById('confirm-close-btn').setAttribute('data-status', joStatus);
     document.getElementById('close-remarks').value = '';
+    
+    // Update label based on status
+    const remarksLabel = document.querySelector('#confirm-close-modal label[for="close-remarks"]');
+    if (remarksLabel) {
+        if (joStatus === 'On Hold') {
+            remarksLabel.innerHTML = 'Feedback <span style="color: red;">*</span>';
+        } else {
+            remarksLabel.innerHTML = 'Closing Remarks (Optional)';
+        }
+    }
 
     openModal(document.getElementById('confirm-close-modal'));
 
@@ -1516,6 +1731,15 @@ function confirmCloseTransaction(joId, joNumber) {
 
 function processCloseTransaction(joId, remarks) {
     const confirmBtn = document.getElementById('confirm-close-btn');
+    const joStatus = confirmBtn.getAttribute('data-status');
+    
+    // Validate remarks if status is "On Hold"
+    if (joStatus === 'On Hold' && (!remarks || remarks.trim() === '')) {
+        createToast('Feedback is required when closing a job order that is on hold', 'error');
+        document.getElementById('close-remarks').focus();
+        return;
+    }
+    
     confirmBtn.classList.add('loading');
     confirmBtn.textContent = '';
 
@@ -1555,6 +1779,69 @@ function processCloseTransaction(joId, remarks) {
         confirmBtn.textContent = 'Yes, Close Transaction';
 
         createToast('An error occurred while closing the transaction. Please try again.', 'error');
+    });
+}
+
+// Hold Request Functions
+function confirmHoldRequest(joId, joNumber) {
+    document.getElementById('hold-jo-number').textContent = joNumber;
+    document.getElementById('confirm-hold-btn').setAttribute('data-id', joId);
+    document.getElementById('hold-remarks').value = '';
+    document.getElementById('hold-remarks-error').style.display = 'none';
+
+    openModal(document.getElementById('confirm-hold-modal'));
+
+    setTimeout(() => {
+        document.getElementById('hold-remarks').focus();
+    }, 300);
+}
+
+function processHoldRequest(joId, remarks) {
+    // Validate remarks
+    if (!remarks || remarks.trim() === '') {
+        document.getElementById('hold-remarks-error').style.display = 'block';
+        document.getElementById('hold-remarks').focus();
+        return;
+    }
+
+    document.getElementById('hold-remarks-error').style.display = 'none';
+    const confirmBtn = document.getElementById('confirm-hold-btn');
+    confirmBtn.classList.add('loading');
+    confirmBtn.textContent = '';
+
+    const formData = new FormData();
+    formData.append('remarks', remarks);
+    formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+    fetch(`/joborder/hold-request/${joId}/`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        closeModal(document.getElementById('confirm-hold-modal'));
+        closeModal(document.getElementById('jo-details-modal'));
+
+        createToast(data.message || 'Request successfully put on hold', 'success');
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        confirmBtn.classList.remove('loading');
+        confirmBtn.innerHTML = '<i class="fas fa-pause"></i> Yes, Hold Request';
+
+        createToast('An error occurred while putting the request on hold. Please try again.', 'error');
     });
 }
 
@@ -1858,6 +2145,380 @@ function cancelFieldChanges(field, originalValue) {
     field.classList.remove('JO-editing');
     field.style.backgroundColor = '';
     field.innerHTML = originalValue === '' || originalValue === 'N/A' ? 'N/A' : originalValue;
+}
+
+// ========================================================================
+// Set Target Date Modal Functions
+// ========================================================================
+
+let currentSetDateJobOrder = null;
+
+/**
+ * Open the Set Date modal and load job order details
+ * @param {number} joId - The job order ID
+ * @param {string} joNumber - The job order number
+ */
+function openSetDateModal(joId, joNumber) {
+    const modal = document.getElementById('set-target-date-modal');
+    if (!modal) {
+        console.error('Set Target Date modal not found');
+        return;
+    }
+
+    // Show loading state
+    const loadingDiv = modal.querySelector('.JO-loading');
+    const formContainer = document.getElementById('set-date-form-container');
+    const confirmBtn = document.getElementById('confirm-set-date');
+    
+    if (loadingDiv) loadingDiv.style.display = 'flex';
+    if (formContainer) formContainer.style.display = 'none';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+
+    // Open the modal
+    openModal(modal);
+
+    // Fetch job order details
+    fetch(`/joborder/get-job-order-for-date-setting/${joId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            currentSetDateJobOrder = data.job_order;
+            displaySetDateForm(data.job_order);
+            
+            // Hide loading, show form
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (formContainer) formContainer.style.display = 'block';
+        } else {
+            throw new Error(data.message || 'Failed to load job order details');
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching job order details:', error);
+        createToast('Failed to load job order details', 'error');
+        closeModal(modal);
+    });
+}
+
+/**
+ * Display the Set Date form with job order details
+ * @param {Object} jobOrder - The job order data
+ */
+function displaySetDateForm(jobOrder) {
+    // Update job order information
+    document.getElementById('set-date-jo-number').textContent = jobOrder.jo_number || 'N/A';
+    
+    // Display category with color badge
+    const categoryElement = document.getElementById('set-date-jo-category');
+    const categoryColor = (jobOrder.jo_color || 'unknown').toLowerCase();
+    categoryElement.innerHTML = `<span class="JO-category-pill JO-category-${categoryColor}">${jobOrder.jo_color || 'Unknown'}</span>`;
+    
+    // Display tool
+    document.getElementById('set-date-jo-tool').textContent = jobOrder.jo_tools || 'N/A';
+    
+    // Display nature
+    document.getElementById('set-date-jo-nature').textContent = jobOrder.jo_type || 'N/A';
+    
+    // Display line
+    document.getElementById('set-date-jo-line').textContent = jobOrder.line || 'N/A';
+    
+    // Display requestor
+    document.getElementById('set-date-jo-requestor').textContent = jobOrder.requestor || 'N/A';
+    
+    // Display status with status pill
+    const statusElement = document.getElementById('set-date-jo-status');
+    const statusValue = jobOrder.status || 'N/A';
+    const statusClass = statusValue.toLowerCase();
+    statusElement.innerHTML = `<span class="JO-status JO-status-${statusClass}">${statusValue}</span>`;
+    
+    // Display details
+    document.getElementById('set-date-jo-details').textContent = jobOrder.details || 'N/A';
+    
+    // Display priority level with badge
+    const priorityElement = document.getElementById('set-date-priority-level');
+    const priorityLevel = (jobOrder.priority_level || 'low').toLowerCase();
+    priorityElement.innerHTML = `<span class="JO-priority JO-priority-${priorityLevel}">${jobOrder.priority_level || 'Low'}</span>`;
+    
+    // Show/hide date of completion based on priority
+    const completionDateContainer = document.getElementById('set-date-completion-date-container');
+    if (jobOrder.priority_level === 'Urgent' && jobOrder.date_of_completion) {
+        completionDateContainer.style.display = 'block';
+        document.getElementById('set-date-completion-date').textContent = 
+            new Date(jobOrder.date_of_completion).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    } else {
+        completionDateContainer.style.display = 'none';
+    }
+    
+    // Display quality matter with status pill
+    const qualityMatterElement = document.getElementById('set-date-quality-matter');
+    const qualityMatterValue = jobOrder.quality_matter ? 'Yes' : 'No';
+    const qualityMatterClass = jobOrder.quality_matter ? 'JO-status-approved' : 'JO-status-pending';
+    qualityMatterElement.innerHTML = `<span class="JO-status ${qualityMatterClass}">${qualityMatterValue}</span>`;
+    
+    // Pre-fill target date if exists
+    const targetDateInput = document.getElementById('target-date-input');
+    
+    // Clone the input to remove all old event listeners
+    const newTargetDateInput = targetDateInput.cloneNode(true);
+    targetDateInput.parentNode.replaceChild(newTargetDateInput, targetDateInput);
+    
+    // Use the new input reference
+    const dateInput = document.getElementById('target-date-input');
+    
+    if (jobOrder.current_target_date) {
+        dateInput.value = jobOrder.current_target_date;
+    } else {
+        dateInput.value = '';
+    }
+    
+    // Pre-fill reason if exists
+    const reasonInput = document.getElementById('target-date-reason-input');
+    if (jobOrder.current_target_date_reason) {
+        reasonInput.value = jobOrder.current_target_date_reason;
+    } else {
+        reasonInput.value = '';
+    }
+    
+    // Clear any previous error states
+    document.getElementById('target-date-error').style.display = 'none';
+    document.getElementById('target-date-reason-error').style.display = 'none';
+    document.getElementById('target-date-reason-group').style.display = 'none';
+    
+    console.log('Setting up event listeners for date input. Job Order:', {
+        jo_number: jobOrder.jo_number,
+        jo_color: jobOrder.jo_color,
+        last_approved_date: jobOrder.last_approved_date,
+        priority_level: jobOrder.priority_level
+    });
+    
+    // Set up date input change handler - use 'input' event for immediate feedback
+    dateInput.addEventListener('input', function() {
+        console.log('Input event triggered, validating...');
+        validateTargetDate(jobOrder);
+    });
+    
+    dateInput.addEventListener('change', function() {
+        console.log('Change event triggered, validating...');
+        validateTargetDate(jobOrder);
+    });
+    
+    // Validate immediately if there's a pre-filled date
+    if (jobOrder.current_target_date) {
+        console.log('Pre-filled date detected, validating immediately...');
+        validateTargetDate(jobOrder);
+    }
+    
+    // Set up confirm button
+    const confirmBtn = document.getElementById('confirm-set-date');
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    
+    newConfirmBtn.addEventListener('click', function() {
+        submitTargetDate(jobOrder);
+    });
+    
+    // Show the confirm button now that it's set up
+    newConfirmBtn.style.display = 'inline-flex';
+    
+    // Set up cancel button
+    const cancelBtn = document.getElementById('cancel-set-date');
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    newCancelBtn.addEventListener('click', function() {
+        closeModal(document.getElementById('set-target-date-modal'));
+    });
+}
+
+/**
+ * Validate the target date and show/hide reason field
+ * @param {Object} jobOrder - The job order data
+ */
+function validateTargetDate(jobOrder) {
+    console.log('=== validateTargetDate called ===');
+    
+    const targetDateInput = document.getElementById('target-date-input');
+    const reasonGroup = document.getElementById('target-date-reason-group');
+    const reasonHint = document.getElementById('target-date-reason-hint');
+    const targetDateError = document.getElementById('target-date-error');
+    
+    console.log('Elements found:', {
+        targetDateInput: !!targetDateInput,
+        reasonGroup: !!reasonGroup,
+        reasonHint: !!reasonHint,
+        targetDateError: !!targetDateError
+    });
+    
+    if (!targetDateInput || !targetDateInput.value) {
+        console.log('No target date value, hiding reason field');
+        if (reasonGroup) reasonGroup.style.display = 'none';
+        if (targetDateError) targetDateError.style.display = 'none';
+        return;
+    }
+    
+    // Parse target date at midnight to avoid time zone issues
+    const targetDate = new Date(targetDateInput.value + 'T00:00:00');
+    
+    let showReasonField = false;
+    let reasonMessage = '';
+    
+    console.log('Validating target date:', {
+        targetDateValue: targetDateInput.value,
+        targetDateParsed: targetDate,
+        joColor: jobOrder.jo_color,
+        lastApprovedDate: jobOrder.last_approved_date,
+        priorityLevel: jobOrder.priority_level,
+        dateOfCompletion: jobOrder.date_of_completion
+    });
+    
+    // Get last approved date
+    if (jobOrder.last_approved_date) {
+        const lastApprovedDate = new Date(jobOrder.last_approved_date + 'T00:00:00');
+        const daysDifference = Math.ceil((targetDate - lastApprovedDate) / (1000 * 60 * 60 * 24));
+        
+        console.log('Days difference from last approved:', daysDifference, 'Last approved:', lastApprovedDate);
+        
+        // Check based on JO color
+        if (['Green', 'Yellow', 'White'].includes(jobOrder.jo_color)) {
+            console.log('Checking Green/Yellow/White: daysDifference > 30?', daysDifference > 30);
+            if (daysDifference > 30) {
+                showReasonField = true;
+                reasonMessage = `Target date is more than 1 month (${daysDifference} days) after the last approved routing date.`;
+                console.log('✓ Reason required: More than 30 days for Green/Yellow/White');
+            }
+        } else if (jobOrder.jo_color === 'Orange') {
+            console.log('Checking Orange: daysDifference > 7?', daysDifference > 7);
+            if (daysDifference > 7) {
+                showReasonField = true;
+                reasonMessage = `Target date is more than 1 week (${daysDifference} days) after the last approved routing date.`;
+                console.log('✓ Reason required: More than 7 days for Orange');
+            }
+        }
+    } else {
+        console.log('No last_approved_date found in jobOrder');
+    }
+    
+    // Check for Urgent priority and date_of_completion
+    if (jobOrder.priority_level === 'Urgent' && jobOrder.date_of_completion) {
+        const completionDate = new Date(jobOrder.date_of_completion + 'T00:00:00');
+        console.log('Checking Urgent priority: targetDate > completionDate?', targetDate > completionDate);
+        if (targetDate > completionDate) {
+            showReasonField = true;
+            const daysDiff = Math.ceil((targetDate - completionDate) / (1000 * 60 * 60 * 24));
+            reasonMessage = `Target date is ${daysDiff} day(s) later than the date of completion for an Urgent job order.`;
+            console.log('✓ Reason required: Target date after completion date for Urgent priority');
+        }
+    }
+    
+    // Show/hide reason field
+    console.log('Final decision - showReasonField:', showReasonField);
+    if (showReasonField) {
+        console.log('>>> SHOWING reason field with message:', reasonMessage);
+        reasonGroup.style.display = 'block';
+        reasonHint.textContent = reasonMessage;
+    } else {
+        console.log('>>> HIDING reason field');
+        reasonGroup.style.display = 'none';
+        reasonHint.textContent = '';
+        // Only clear the reason if we're hiding the field
+        document.getElementById('target-date-reason-input').value = '';
+    }
+    
+    targetDateError.style.display = 'none';
+    console.log('=== validateTargetDate completed ===');
+}
+
+/**
+ * Submit the target date to the server
+ * @param {Object} jobOrder - The job order data
+ */
+function submitTargetDate(jobOrder) {
+    const targetDateInput = document.getElementById('target-date-input');
+    const reasonInput = document.getElementById('target-date-reason-input');
+    const reasonGroup = document.getElementById('target-date-reason-group');
+    const targetDateError = document.getElementById('target-date-error');
+    const reasonError = document.getElementById('target-date-reason-error');
+    const confirmBtn = document.getElementById('confirm-set-date');
+    
+    // Clear previous errors
+    targetDateError.style.display = 'none';
+    reasonError.style.display = 'none';
+    
+    // Validate target date
+    if (!targetDateInput.value) {
+        createToast('Please select a target date', 'error');
+        targetDateInput.focus();
+        return;
+    }
+    
+    // Validate reason if field is visible
+    if (reasonGroup.style.display !== 'none' && !reasonInput.value.trim()) {
+        createToast('Reason is required when setting an extended target date', 'error');
+        reasonInput.focus();
+        return;
+    }
+    
+    // Show loading state
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Setting Date...';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('job_id', jobOrder.id);
+    formData.append('target_date', targetDateInput.value);
+    formData.append('target_date_reason', reasonInput.value.trim());
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Submit to server
+    fetch('/joborder/set-target-date/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.message || 'Server error');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            createToast('Target date set successfully', 'success');
+            closeModal(document.getElementById('set-target-date-modal'));
+            
+            // Reload the page to show updated data
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.message || 'Failed to set target date');
+        }
+    })
+    .catch(error => {
+        console.error('Error setting target date:', error);
+        createToast(error.message || 'Failed to set target date', 'error');
+        
+        // Reset button
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-calendar-check"></i> Set Target Date';
+    });
 }
 
 /**

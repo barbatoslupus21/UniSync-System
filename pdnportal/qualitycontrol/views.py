@@ -3,6 +3,7 @@ from django.core.paginator import Paginator
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.urls import reverse
+from django.views.decorators.http import require_http_methods
 from .models import TrialRunRequest, LotOutInspection, CutAway
 from .forms import TrialRunRequestForm, LotOutInspectionForm, CutAwayForm
 from settings.models import Line
@@ -511,6 +512,197 @@ def export_lot_out_report(request):
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     filename = f'Lot_Out_Inspection_Report_{date_from}_to_{date_to}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    wb.save(response)
+    return response
+
+@require_http_methods(["GET"])
+def export_cut_away_report(request):
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    status = request.GET.get('status')
+    
+    if not date_from or not date_to or not status:
+        messages.error(request, 'Please provide all required fields.')
+        return redirect('quality_control_home')
+    
+    # Convert string dates to date objects
+    try:
+        date_from_obj = datetime.strptime(date_from, '%Y-%m-%d').date()
+        date_to_obj = datetime.strptime(date_to, '%Y-%m-%d').date()
+    except ValueError:
+        messages.error(request, 'Invalid date format.')
+        return redirect('quality_control_home')
+    
+    # Filter cut-away requests by date range
+    cut_aways = CutAway.objects.filter(
+        date_prepared__gte=date_from_obj,
+        date_prepared__lte=date_to_obj
+    )
+    
+    # Filter by status if not 'all'
+    if status != 'all':
+        cut_aways = cut_aways.filter(status_of_cut_away=status)
+    
+    # Create workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Cut-Away Report"
+    
+    # Format dates for display
+    date_from_formatted = date_from_obj.strftime('%B %d, %Y')
+    date_to_formatted = date_to_obj.strftime('%B %d, %Y')
+    
+    # Add header
+    ws.merge_cells('A1:P1')
+    header_cell = ws['A1']
+    header_cell.value = "Ryonan Electric Philippines Corporation"
+    header_cell.font = Font(bold=True, size=14)
+    header_cell.alignment = Alignment(horizontal='left', vertical='center')
+    
+    # Add subtitle
+    ws.merge_cells('A2:P2')
+    subtitle_cell = ws['A2']
+    subtitle_cell.value = f"Cut-Away Summary Report for {date_from_formatted} to {date_to_formatted}"
+    subtitle_cell.font = Font(italic=True, size=11)
+    subtitle_cell.alignment = Alignment(horizontal='left', vertical='center')
+    
+    # Add empty row
+    ws.append([])
+    
+    # Define table headers
+    headers = [
+        'Control Number',
+        'Date Prepared',
+        'Assembly Line',
+        'Product Number',
+        'Schedule Date',
+        'Date Received',
+        'Machine Number',
+        'Applicator Code',
+        'Crimped Quantity',
+        'Terminal Part Number',
+        'Purpose',
+        'Reason for Changing Parts',
+        'Leadwire Partnumber',
+        'Rubber Seal Partnumber',
+        'Requested By',
+        'Status'
+    ]
+    
+    # Add headers with formatting
+    ws.append(headers)
+    header_row = ws[4]
+    
+    # Style for headers
+    header_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
+    header_font = Font(bold=True)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for cell in header_row:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = border
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+    
+    # Add data rows
+    for cut_away in cut_aways:
+        status_text = {
+            'pending': 'Pending',
+            'scheduled': 'Scheduled',
+            'in_progress': 'In Progress',
+            'completed': 'Completed',
+            'cancelled': 'Cancelled'
+        }.get(cut_away.status_of_cut_away, cut_away.status_of_cut_away)
+        
+        # Map purpose codes to readable labels
+        purpose_labels = {
+            'new_product': 'New Product',
+            'reached_50000': 'Reached 50,000',
+            'reached_100000': 'Reached 100,000',
+            'new_applicator': 'New Applicator',
+            'change_wire_crimper': 'Change Wire Crimper',
+            'change_wire_anvil': 'Change Wire Anvil',
+            'new_combination': 'New Combination',
+            'big_burr': 'Big Burr',
+            'change_supplier': 'Change Supplier'
+        }
+        
+        row_data = [
+            cut_away.control_number,
+            cut_away.date_prepared.strftime('%B %d, %Y'),
+            cut_away.assy_line.line_name,
+            cut_away.product_number,
+            cut_away.schedule_of_cut_away.strftime('%B %d, %Y') if cut_away.schedule_of_cut_away else 'Not Set',
+            cut_away.received_date_by_qa.strftime('%B %d, %Y') if cut_away.received_date_by_qa else 'Not Set',
+            cut_away.machine_number or 'N/A',
+            cut_away.applicator_number_code or 'N/A',
+            cut_away.crimped_quantity or 'N/A',
+            cut_away.terminal_part_number or 'N/A',
+            purpose_labels.get(cut_away.purpose, 'N/A') if cut_away.purpose else 'N/A',
+            cut_away.purpose_reason or 'N/A',
+            cut_away.leadwire_partnumber or 'N/A',
+            cut_away.rubber_seal_partnumber or 'N/A',
+            cut_away.requested_by.name,
+            status_text
+        ]
+        ws.append(row_data)
+        
+        # Get the current row
+        current_row = ws.max_row
+        
+        # Apply borders to all cells in the row
+        for col_num in range(1, 17):
+            cell = ws.cell(row=current_row, column=col_num)
+            cell.border = border
+            
+            # Apply status color
+            if col_num == 16:  # Status column (now column P)
+                if cut_away.status_of_cut_away == 'completed':
+                    cell.fill = PatternFill(start_color='90EE90', end_color='90EE90', fill_type='solid')
+                elif cut_away.status_of_cut_away == 'cancelled':
+                    cell.fill = PatternFill(start_color='FFB6C1', end_color='FFB6C1', fill_type='solid')
+                elif cut_away.status_of_cut_away == 'in_progress':
+                    cell.fill = PatternFill(start_color='FFE4B5', end_color='FFE4B5', fill_type='solid')
+                elif cut_away.status_of_cut_away == 'scheduled':
+                    cell.fill = PatternFill(start_color='E6E6FA', end_color='E6E6FA', fill_type='solid')
+                else:  # pending
+                    cell.fill = PatternFill(start_color='FFFACD', end_color='FFFACD', fill_type='solid')
+    
+    # Adjust column widths
+    column_widths = {
+        'A': 18,  # Control Number
+        'B': 18,  # Date Prepared
+        'C': 15,  # Assembly Line
+        'D': 18,  # Product Number
+        'E': 18,  # Schedule Date
+        'F': 18,  # Date Received
+        'G': 18,  # Machine Number
+        'H': 18,  # Applicator Code
+        'I': 18,  # Crimped Quantity
+        'J': 20,  # Terminal Part Number
+        'K': 20,  # Purpose
+        'L': 25,  # Reason for Changing Parts
+        'M': 25,  # Leadwire Partnumber
+        'N': 25,  # Rubber Seal Partnumber
+        'O': 20,  # Requested By
+        'P': 15   # Status
+    }
+    
+    for col, width in column_widths.items():
+        ws.column_dimensions[col].width = width
+    
+    # Create response
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f'Cut_Away_Report_{date_from}_to_{date_to}.xlsx'
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
     wb.save(response)

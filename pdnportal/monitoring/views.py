@@ -12,7 +12,7 @@ import json
 import pandas as pd
 import openpyxl
 from io import BytesIO
-from datetime import datetime, timedelta, time
+from datetime import datetime, timedelta, time, date
 from .models import (
     Monitoring, Product, ProductionSchedulePlan, ProductionOutput, 
     LineToMonitor, SupervisorToMonitor, RecentActivity, OutputLog
@@ -33,7 +33,7 @@ def monitoring_dashboard(request):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dashboard')
 
-    today = timezone.now().date()
+    today = date.today()
 
     if request.user.monitoring_sales:
         monitoring_groups = Monitoring.objects.all()
@@ -130,50 +130,45 @@ def edit_monitoring_group(request, group_id):
         messages.error(request, "You don't have permission to edit this group.")
         return redirect('monitoring_dashboard')
 
-    form = MonitoringGroupForm(request.POST, instance=monitoring)
+    try:
+        form = MonitoringGroupForm(request.POST, instance=monitoring)
 
-    # Fix: Only show lines not assigned to other groups, plus lines already assigned to this group
-    assigned_line_ids = LineToMonitor.objects.exclude(monitoring=monitoring).values_list('line_id', flat=True)
-    available_lines = Line.objects.exclude(id__in=assigned_line_ids)
-
-    if form.is_valid():
-        monitoring = form.save(commit=False)
-        # Set status manually from group_status
-        group_status = request.POST.get('status')
-        if group_status in ['Running', 'On Hold', 'Stopped']:
+        if form.is_valid():
+            # Set status manually from group_status
+            group_status = request.POST.get('status')
+            if group_status in ['Running', 'On Hold', 'Stopped']:
+                monitoring.status = group_status
+            
+            # Save using the form's custom save method
+            monitoring = form.save(commit=True, created_by=None)
             monitoring.status = group_status
-        monitoring.save()
-        form.save_m2m()
+            monitoring.save()
 
-        # Also update lines and supervisors
-        lines = form.cleaned_data.get('lines', [])
-        supervisors = form.cleaned_data.get('supervisors', [])
-        LineToMonitor.objects.filter(monitoring=monitoring).delete()
-        for line in lines:
-            LineToMonitor.objects.get_or_create(monitoring=monitoring, line=line)
-        SupervisorToMonitor.objects.filter(monitoring=monitoring).delete()
-        for supervisor in supervisors:
-            SupervisorToMonitor.objects.get_or_create(monitoring=monitoring, supervisor=supervisor)
+            RecentActivity.objects.create(
+                monitoring=monitoring,
+                title="Monitoring Group Updated",
+                description=f"{monitoring.title} has been updated",
+                activity_type='info',
+                shift='AM' if timezone.now().hour < 12 else 'PM',
+                created_by=request.user
+            )
 
-        RecentActivity.objects.create(
-            monitoring=monitoring,
-            title="Monitoring Group Updated",
-            description=f"{monitoring.title} has been updated",
-            activity_type='info',
-            shift='AM' if timezone.now().hour < 12 else 'PM',
-            created_by=request.user
-        )
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'status': 'success', 'message': f"Monitoring group '{monitoring.title}' updated successfully!"})
+            messages.success(request, f"Monitoring group '{monitoring.title}' updated successfully!")
+            return redirect('monitoring_dashboard')
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({'status': 'success', 'message': f"Monitoring group '{monitoring.title}' updated successfully!"})
-        messages.success(request, f"Monitoring group '{monitoring.title}' updated successfully!")
+            errors = form.errors.get_json_data()
+            return JsonResponse({'status': 'error', 'message': 'Please correct the errors in the form.', 'errors': errors}, status=400)
+        messages.error(request, "Please correct the errors in the form.")
         return redirect('monitoring_dashboard')
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        errors = form.errors.get_json_data()
-        return JsonResponse({'status': 'error', 'message': 'Please correct the errors in the form.', 'errors': errors}, status=400)
-    messages.error(request, "Please correct the errors in the form.")
-    return redirect('monitoring_dashboard')
+    
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        messages.error(request, f"Error updating group: {str(e)}")
+        return redirect('monitoring_dashboard')
 
 @login_required(login_url="user-login")
 def get_monitoring_group(request, group_id):
@@ -203,6 +198,49 @@ def get_monitoring_group(request, group_id):
         return JsonResponse({
             'status': 'error',
             'message': 'Error retrieving group details'
+        }, status=500)
+
+@login_required(login_url="user-login")
+def get_available_options(request, group_id):
+    """Get available lines and supervisors for editing a monitoring group"""
+    try:
+        monitoring = get_object_or_404(Monitoring, id=group_id)
+
+        if not (request.user.monitoring_sales or monitoring.created_by == request.user or 
+                SupervisorToMonitor.objects.filter(monitoring=monitoring, supervisor=request.user).exists()):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'You do not have permission to view this data'
+            }, status=403)
+
+        # Get lines assigned to other monitoring groups (excluding current group)
+        assigned_line_ids = LineToMonitor.objects.exclude(monitoring=monitoring).values_list('line_id', flat=True)
+        # Get all lines not assigned to other groups
+        available_lines = Line.objects.exclude(id__in=assigned_line_ids)
+        
+        # Get all supervisors/managers
+        supervisors = Users.objects.filter(
+            Q(monitoring_user=True) & (Q(monitoring_supervisor=True) | Q(monitoring_manager=True))
+        )
+
+        data = {
+            'available_lines': [
+                {'id': line.id, 'line_name': line.line_name}
+                for line in available_lines
+            ],
+            'supervisors': [
+                {'id': sup.id, 'name': sup.get_full_name() or sup.username}
+                for sup in supervisors
+            ],
+            'status': 'success'
+        }
+
+        return JsonResponse(data)
+
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Error retrieving options'
         }, status=500)
 
 @login_required(login_url="user-login")
@@ -490,6 +528,28 @@ def add_schedule(request):
     form = ScheduleForm(request.POST, monitoring=monitoring)
 
     if form.is_valid():
+        # Check for duplicate schedule before saving
+        product_number = form.cleaned_data.get('product_number')
+        date_planned = form.cleaned_data.get('date_planned')
+        shift = form.cleaned_data.get('shift')
+        
+        existing_schedule = ProductionSchedulePlan.objects.filter(
+            monitoring=monitoring,
+            product_number=product_number,
+            date_planned=date_planned,
+            shift=shift
+        ).first()
+        
+        if existing_schedule:
+            error_message = f"A schedule for '{product_number.product_name}' on {date_planned} ({shift} shift) already exists for this line."
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'error',
+                    'message': error_message
+                }, status=400)
+            messages.error(request, error_message)
+            return redirect('group_detail', group_id=monitoring_id)
+        
         schedule = form.save(commit=False)
         schedule.monitoring = monitoring
         schedule.save()
@@ -1119,6 +1179,15 @@ def import_products(request):
             created_by=request.user
         )
 
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success' if not errors else 'warning',
+                'message': f"Successfully imported {products_created} products and updated {products_updated}" + (f" with {len(errors)} errors" if errors else ""),
+                'products_created': products_created,
+                'products_updated': products_updated,
+                'errors': errors[:5]  # Return first 5 errors
+            })
+
         if errors:
             messages.warning(request, f"Imported {products_created} products, updated {products_updated} with {len(errors)} errors. Example: {errors[0] if errors else ''}")
         else:
@@ -1126,6 +1195,11 @@ def import_products(request):
         return redirect(request.META.get('HTTP_REFERER', 'monitoring_dashboard'))
 
     except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': f"Error processing Excel file: {str(e)}"
+            }, status=400)
         messages.error(request, f"Error processing Excel file: {str(e)}")
         return redirect(request.META.get('HTTP_REFERER', 'monitoring_dashboard'))
 
@@ -1311,6 +1385,15 @@ def import_schedules(request):
             created_by=request.user
         )
 
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'success' if not errors else 'warning',
+                'message': f"Successfully imported {schedules_created} schedules and updated {schedules_updated}" + (f" with {len(errors)} errors" if errors else ""),
+                'schedules_created': schedules_created,
+                'schedules_updated': schedules_updated,
+                'errors': errors[:5]  # Return first 5 errors
+            })
+
         if errors:
             messages.warning(request, f"Imported {schedules_created} schedules, updated {schedules_updated} with {len(errors)} errors. Example: {errors[0] if errors else ''}")
         else:
@@ -1318,6 +1401,11 @@ def import_schedules(request):
         return redirect(request.META.get('HTTP_REFERER', 'monitoring_dashboard'))
 
     except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': f"Error processing Excel file: {str(e)}"
+            }, status=400)
         messages.error(request, f"Error processing Excel file: {str(e)}")
         return redirect(request.META.get('HTTP_REFERER', 'monitoring_dashboard'))
 
@@ -1540,6 +1628,10 @@ def facilitator_dashboard(request):
         messages.error(request, "You do not have permission to access this page")
         return redirect('monitoring_dashboard')
 
+    # Search and filter parameters
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', 'all')
+
     if request.user.monitoring_sales:
         monitoring_groups = Monitoring.objects.all()
     else:
@@ -1551,13 +1643,45 @@ def facilitator_dashboard(request):
             Q(id__in=assigned_monitoring_ids) | Q(created_by=request.user)
         )
 
+    # Apply search filter
+    if search_query:
+        monitoring_groups = monitoring_groups.filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(monitoring_lines__line__line_name__icontains=search_query)
+        ).distinct()
+
+    # Apply status filter
+    if status_filter and status_filter != 'all':
+        monitoring_groups = monitoring_groups.filter(status=status_filter)
+
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(monitoring_groups, 10)  # 10 items per page
+    page_number = request.GET.get('page')
+    monitoring_groups = paginator.get_page(page_number)
+
     today = timezone.now().date()
     
-    total_groups = monitoring_groups.count()
-    total_lines = LineToMonitor.objects.filter(monitoring__in=monitoring_groups).values('line').distinct().count()
-    todays_outputs = ProductionOutput.objects.filter(monitoring__in=monitoring_groups, recorded_at__date=today)
+    # Get stats for all groups (not just paginated ones for accurate totals)
+    all_groups = monitoring_groups.object_list if hasattr(monitoring_groups, 'object_list') else monitoring_groups
+    total_groups = all_groups.count()
+    total_lines = LineToMonitor.objects.filter(monitoring__in=all_groups).values('line').distinct().count()
+    todays_outputs = ProductionOutput.objects.filter(monitoring__in=all_groups, recorded_at__date=today)
     todays_output = todays_outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
-    backlog_issues = ProductionSchedulePlan.objects.filter(monitoring__in=monitoring_groups, status='Backlog').count()
+    backlog_issues = ProductionSchedulePlan.objects.filter(monitoring__in=all_groups, status='Backlog').count()
+
+    # Exclude lines already assigned to a monitoring group for create modal
+    assigned_line_ids = LineToMonitor.objects.values_list('line_id', flat=True)
+    available_lines = Line.objects.exclude(id__in=assigned_line_ids)
+
+    supervisors = Users.objects.filter(
+        Q(monitoring_user=True) & (Q(monitoring_supervisor=True) | Q(monitoring_manager=True))
+    )
+
+    form = MonitoringGroupForm()
+    # Ensure the form has the correct queryset for available lines
+    form.fields['lines'].queryset = available_lines
 
     context = {
         'monitoring_groups': monitoring_groups,
@@ -1565,10 +1689,12 @@ def facilitator_dashboard(request):
         'total_lines': total_lines,
         'todays_output': todays_output,
         'backlog_issues': backlog_issues,
-        'available_lines': Line.objects.all(),
-        'supervisors': Users.objects.filter(Q(monitoring_user=True) & (Q(monitoring_supervisor=True) | Q(monitoring_manager=True))),
-        'form': MonitoringGroupForm(),
-        'today_date': today.isoformat()
+        'available_lines': available_lines,
+        'supervisors': supervisors,
+        'form': form,
+        'today_date': today.isoformat(),
+        'search_query': search_query,
+        'status_filter': status_filter,
     }
 
     return render(request, 'monitoring/monitoring-supervisor.html', context)
@@ -1578,69 +1704,112 @@ def facilitator_chart_data(request):
     if not (request.user.monitoring_supervisor or request.user.monitoring_manager or request.user.monitoring_sales):
         return JsonResponse({'error': 'Permission denied'}, status=403)
 
-    time_range = request.GET.get('timeRange', 'today')
+    time_range = request.GET.get('timeRange', 'week')
     group_id = request.GET.get('groupId', 'all')
 
     today = timezone.now().date()
 
-    if time_range == 'today':
-        start_date = today
-        end_date = today
-    elif time_range == 'week':
+    # Calculate date range based on time_range
+    if time_range == 'week':
         start_date = today - timedelta(days=today.weekday())
         end_date = start_date + timedelta(days=6)
+        group_by = 'day'
     elif time_range == 'month':
         start_date = today.replace(day=1)
         next_month = (start_date.replace(day=28) + timedelta(days=4)).replace(day=1)
         end_date = next_month - timedelta(days=1)
+        group_by = 'day'
     elif time_range == 'year':
         start_date = today.replace(month=1, day=1)
         end_date = today.replace(month=12, day=31)
+        group_by = 'month'
     else:
-        start_date = today
-        end_date = today
+        start_date = today - timedelta(days=today.weekday())
+        end_date = start_date + timedelta(days=6)
+        group_by = 'day'
 
+    # Get monitoring groups based on user permissions
     if request.user.monitoring_sales:
         monitoring_groups = Monitoring.objects.all()
     else:
-        monitoring_groups = Monitoring.objects.filter(created_by=request.user)
+        assigned_monitoring_ids = SupervisorToMonitor.objects.filter(
+            supervisor=request.user
+        ).values_list('monitoring_id', flat=True)
+        monitoring_groups = Monitoring.objects.filter(
+            Q(id__in=assigned_monitoring_ids) | Q(created_by=request.user)
+        )
 
     if group_id != 'all':
         monitoring_groups = monitoring_groups.filter(id=group_id)
 
+    # Get schedules for the date range
     schedules = ProductionSchedulePlan.objects.filter(
         monitoring__in=monitoring_groups,
         date_planned__range=[start_date, end_date]
-    )
-    
-    outputs = ProductionOutput.objects.filter(
-        monitoring__in=monitoring_groups,
-        recorded_at__date__range=[start_date, end_date]
     )
 
     labels = []
     target_data = []
     actual_data = []
 
-    current_date = start_date
-    while current_date <= end_date:
-        labels.append(current_date.strftime('%Y-%m-%d'))
-        
-        daily_schedules = schedules.filter(date_planned=current_date)
-        daily_outputs = outputs.filter(recorded_at__date=current_date)
-        
-        daily_target = daily_schedules.aggregate(
-            total=Sum('planned_qty')
-        )['total'] or 0
-        
-        daily_actual = daily_outputs.aggregate(
-            total=Sum('quantity_produced')
-        )['total'] or 0
-        
-        target_data.append(daily_target)
-        actual_data.append(daily_actual)
-        
-        current_date += timedelta(days=1)
+    if group_by == 'month':
+        # Group by month for yearly view
+        current_date = start_date
+        while current_date <= end_date:
+            month_start = current_date.replace(day=1)
+            if current_date.month == 12:
+                month_end = current_date.replace(month=12, day=31)
+            else:
+                next_month = current_date.replace(month=current_date.month + 1, day=1)
+                month_end = next_month - timedelta(days=1)
+            
+            labels.append(current_date.strftime('%b'))
+            
+            # Filter schedules for this month
+            month_schedules = schedules.filter(
+                date_planned__range=[month_start, month_end]
+            )
+            
+            # Target Output = Sum of planned_qty
+            monthly_target = month_schedules.aggregate(
+                total=Sum('planned_qty')
+            )['total'] or 0
+            
+            # Current Output = Sum of (planned_qty - balance)
+            monthly_actual = 0
+            for schedule in month_schedules:
+                monthly_actual += (schedule.planned_qty - schedule.balance)
+            
+            target_data.append(monthly_target)
+            actual_data.append(monthly_actual)
+            
+            # Move to next month
+            if current_date.month == 12:
+                current_date = current_date.replace(year=current_date.year + 1, month=1, day=1)
+            else:
+                current_date = current_date.replace(month=current_date.month + 1, day=1)
+    else:
+        # Group by day for week/month view
+        current_date = start_date
+        while current_date <= end_date:
+            labels.append(current_date.strftime('%b %d'))
+            
+            daily_schedules = schedules.filter(date_planned=current_date)
+            
+            # Target Output = Sum of planned_qty
+            daily_target = daily_schedules.aggregate(
+                total=Sum('planned_qty')
+            )['total'] or 0
+            
+            # Current Output = Sum of (planned_qty - balance)
+            daily_actual = 0
+            for schedule in daily_schedules:
+                daily_actual += (schedule.planned_qty - schedule.balance)
+            
+            target_data.append(daily_target)
+            actual_data.append(daily_actual)
+            
+            current_date += timedelta(days=1)
 
     return JsonResponse({
         'labels': labels,
@@ -1664,7 +1833,7 @@ def facilitator_group_detail(request, group_id):
             messages.error(request, "You do not have permission to view this group")
             return redirect('facilitator_dashboard')
 
-    today = timezone.now().date()
+    today = date.today()
     
     # Only show lines assigned to this monitoring group
     line_ids = LineToMonitor.objects.filter(monitoring=monitoring).values_list('line_id', flat=True)
@@ -1681,6 +1850,56 @@ def facilitator_group_detail(request, group_id):
     products = monitoring.monitoring_product.all().order_by('-created_at')
     schedules = ProductionSchedulePlan.objects.filter(monitoring=monitoring).order_by('-created_at')
     
+    # Calculate distinct product count
+    distinct_products_count = monitoring.monitoring_product.values('product_name').distinct().count()
+    
+    # Handle search query
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        products = products.filter(
+            Q(product_name__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(line__line_name__icontains=search_query)
+        )
+    
+    # Handle date filter for schedules
+    date_filter = request.GET.get('date_filter', '')
+    if date_filter:
+        try:
+            filter_date = datetime.strptime(date_filter, '%Y-%m-%d').date()
+            schedules = schedules.filter(date_planned=filter_date)
+        except ValueError:
+            pass
+    
+    # Handle search query for schedules
+    schedules_search_query = request.GET.get('schedules_search', '').strip()
+    if schedules_search_query:
+        schedules = schedules.filter(
+            Q(product_number__product_name__icontains=schedules_search_query) |
+            Q(product_number__line__line_name__icontains=schedules_search_query) |
+            Q(shift__icontains=schedules_search_query) |
+            Q(status__icontains=schedules_search_query)
+        )
+    
+    # Get all products for forms (not paginated)
+    all_products = monitoring.monitoring_product.all().order_by('product_name')
+    
+    # Paginate products - 10 per page
+    page = request.GET.get('page', 1)
+    products_paginator = Paginator(products, 10)
+    try:
+        products_page = products_paginator.page(page)
+    except:
+        products_page = products_paginator.page(1)
+    
+    # Paginate schedules - 10 per page
+    schedules_page = request.GET.get('schedules_page', 1)
+    schedules_paginator = Paginator(schedules, 10)
+    try:
+        schedules_page_obj = schedules_paginator.page(schedules_page)
+    except:
+        schedules_page_obj = schedules_paginator.page(1)
+    
     product_form = ProductForm(monitoring=monitoring)
     schedule_form = ScheduleForm(monitoring=monitoring)
     export_form = ExportForm(monitoring=monitoring)
@@ -1691,13 +1910,35 @@ def facilitator_group_detail(request, group_id):
         'total_planned': total_planned,
         'total_produced': total_produced,
         'efficiency_percentage': efficiency_percentage,
-        'products': products,
-        'schedules': schedules,
+        'products': products_page,
+        'all_products': all_products,
+        'schedules': schedules_page_obj,
+        'distinct_products_count': distinct_products_count,
         'product_form': product_form,
         'schedule_form': schedule_form,
         'export_form': export_form,
-        'today_date': today.isoformat()
+        'today_date': today.isoformat(),
+        'search_query': search_query,
+        'schedules_search_query': schedules_search_query,
+        'page': page,
+        'schedules_page': schedules_page
     }
+
+    # Check if this is an AJAX request for partial content
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        ajax_type = request.GET.get('ajax')
+        if ajax_type == 'products':
+            return render(request, 'monitoring/partials/products_table.html', context)
+        elif ajax_type == 'schedules':
+            return render(request, 'monitoring/partials/schedules_table.html', context)
+        elif ajax_type == 'stats':
+            # Return statistics as JSON for auto-refresh
+            return JsonResponse({
+                'total_planned': total_planned,
+                'total_produced': total_produced,
+                'efficiency_percentage': efficiency_percentage,
+                'distinct_products_count': distinct_products_count
+            })
 
     return render(request, 'monitoring/group-detail.html', context)
 
@@ -1765,6 +2006,29 @@ def facilitator_group_chart_data(request, group_id):
         if hour in hours_range:
             hour_index = list(hours_range).index(hour)
             actual_data[hour_index] = log.output
+
+    # Only show data up to current hour if viewing today's data
+    today = timezone.localdate()
+    if filter_date == today:
+        current_time = timezone.localtime()
+        current_hour = current_time.hour
+        
+        # Zero out target and actual data for future hours
+        for i, hour in enumerate(hours_range):
+            # For hours 0-6 (midnight to 6 AM next day), they should be hidden if current time hasn't reached them yet
+            if hour < 7:
+                # These are next-day hours (00:00-06:00), hide them if we're still in current day
+                if current_hour >= 7:  # If it's still daytime (7 AM or later), hide next day hours
+                    target_data[i] = 0
+                    actual_data[i] = 0
+                elif hour > current_hour:  # If it's past midnight but not reached this hour yet
+                    target_data[i] = 0
+                    actual_data[i] = 0
+            else:
+                # For hours 7-23 (current day), hide if we haven't reached them yet
+                if hour > current_hour:
+                    target_data[i] = 0
+                    actual_data[i] = 0
 
     return JsonResponse({
         'labels': labels,
@@ -1897,7 +2161,6 @@ def group_dashboard_data(request, group_id):
             **_get_production_metrics(base_filters),
             **_get_chart_data(base_filters),
             **_get_schedule_data(base_filters),
-            'xLabels': _generate_chart_labels(start_date, end_date),
             'periodLabel': _get_period_label(date_filter, start_date, end_date),
             'lastUpdated': timezone.now().isoformat(),
             'refreshInterval': 60000
@@ -1907,6 +2170,95 @@ def group_dashboard_data(request, group_id):
     except Exception as e:
         return JsonResponse({
             'error': 'Failed to load dashboard data',
+            'message': str(e),
+            'success': False
+        }, status=500)
+
+@login_required(login_url="user-login")
+def group_dashboard_pie_charts(request, group_id):
+    """Get data for all 4 pie charts"""
+    try:
+        monitoring = get_object_or_404(Monitoring, id=group_id)
+        
+        if not _check_dashboard_permission(request.user, monitoring):
+            return JsonResponse({'error': 'Permission denied'}, status=403)
+        
+        date_filter = request.GET.get('dateFilter', 'today')
+        specific_date = request.GET.get('specificDate')
+        shift_filter = request.GET.get('shiftFilter', 'all')
+        
+        date_range = _calculate_date_range(date_filter, specific_date)
+        start_date, end_date = date_range
+        
+        # Get schedules for the selected date range
+        schedules_query = ProductionSchedulePlan.objects.filter(
+            monitoring=monitoring,
+            date_planned__range=[start_date, end_date]
+        )
+        
+        if shift_filter != 'all':
+            schedules_query = schedules_query.filter(shift=shift_filter.upper())
+        
+        # 1. Schedule Summary: Completed vs Ongoing
+        completed_schedules = schedules_query.filter(balance=0).count()
+        ongoing_schedules = schedules_query.filter(balance__gt=0).count()
+        total_schedules = schedules_query.count()
+        
+        # 2. Output Rate: Planned vs Actual Output
+        total_planned = schedules_query.aggregate(total=Sum('planned_qty'))['total'] or 0
+        total_balance = schedules_query.aggregate(total=Sum('balance'))['total'] or 0
+        actual_output = total_planned - total_balance
+        output_progress = round((actual_output / total_planned) * 100) if total_planned > 0 else 0
+        
+        # 3. Shift Distribution: AM vs PM
+        am_schedules = ProductionSchedulePlan.objects.filter(
+            monitoring=monitoring,
+            date_planned__range=[start_date, end_date],
+            shift='AM'
+        ).count()
+        
+        pm_schedules = ProductionSchedulePlan.objects.filter(
+            monitoring=monitoring,
+            date_planned__range=[start_date, end_date],
+            shift='PM'
+        ).count()
+        
+        # 4. Schedule Status: Planned, Change Load, Backlog
+        planned_status = schedules_query.filter(status='Planned').count()
+        change_load_status = schedules_query.filter(status='Change Load').count()
+        backlog_status = schedules_query.filter(status='Backlog').count()
+        
+        pie_chart_data = {
+            'scheduleSummary': {
+                'completed': completed_schedules,
+                'ongoing': ongoing_schedules,
+                'total': total_schedules
+            },
+            'outputRate': {
+                'planned': total_planned,
+                'actual': actual_output,
+                'remaining': total_balance,
+                'progress': output_progress
+            },
+            'shiftDistribution': {
+                'am': am_schedules,
+                'pm': pm_schedules,
+                'total': am_schedules + pm_schedules
+            },
+            'scheduleStatus': {
+                'planned': planned_status,
+                'changeLoad': change_load_status,
+                'backlog': backlog_status,
+                'total': total_schedules
+            },
+            'lastUpdated': timezone.now().isoformat()
+        }
+        
+        return JsonResponse(pie_chart_data)
+        
+    except Exception as e:
+        return JsonResponse({
+            'error': 'Failed to load pie chart data',
             'message': str(e),
             'success': False
         }, status=500)
@@ -2034,50 +2386,218 @@ def _get_chart_data(base_filters):
     start_date, end_date = base_filters['date_range']
     shift_filter = base_filters['shift_filter']
     
+    # Check if it's a single day (today or custom date) - use hourly aggregation
+    is_single_day = start_date == end_date
+    
+    # Check if date range is more than 60 days (use monthly aggregation)
+    date_diff = (end_date - start_date).days
+    use_monthly = date_diff > 60
+    
     output_per_day = []
     efficiency_data = []
+    target_per_day = []
+    actual_per_day = []
     
-    current_date = start_date
-    while current_date <= end_date:
+    if is_single_day:
+        # Hourly aggregation for single day view
+        # Determine hour range based on shift filter
+        if shift_filter == 'AM':
+            hours_range = range(7, 19)  # 7 AM to 6 PM
+        elif shift_filter == 'PM':
+            hours_range = list(range(19, 24)) + list(range(0, 7))  # 7 PM to 6 AM
+        else:  # all shifts
+            hours_range = list(range(7, 24)) + list(range(0, 7))  # 7 AM to 6 AM next day
+        
+        # Get current time to determine if we should show data
+        now = timezone.now()
+        is_today = start_date == timezone.localdate()
+        
+        # Get all schedules for the day
         daily_schedules = ProductionSchedulePlan.objects.filter(
             monitoring=monitoring,
-            date_planned=current_date
-        )
-        
-        daily_outputs = ProductionOutput.objects.filter(
-            monitoring=monitoring,
-            recorded_at__date=current_date
+            date_planned=start_date
         )
         
         if shift_filter != 'all':
             daily_schedules = daily_schedules.filter(shift=shift_filter.upper())
-            daily_outputs = daily_outputs.filter(shift=shift_filter.upper())
         
-        daily_metrics = daily_schedules.aggregate(
-            planned=Sum('planned_qty')
-        )
+        # Calculate target per hour from schedules
+        total_planned = daily_schedules.aggregate(total=Sum('planned_qty'))['total'] or 0
         
-        daily_output_metrics = daily_outputs.aggregate(
-            produced=Sum('quantity_produced')
-        )
+        # Get qty_per_hour from products (use first schedule's product as reference)
+        target_per_hour = 0
+        if daily_schedules.exists():
+            first_schedule = daily_schedules.first()
+            target_per_hour = first_schedule.product_number.qty_per_hour
         
-        daily_planned = daily_metrics['planned'] or 0
-        daily_produced = daily_output_metrics['produced'] or 0
-        
-        output_per_day.append({
-            'date': current_date.strftime('%Y-%m-%d'),
-            'quantity': daily_produced,
-            'label': current_date.strftime('%b %d')
-        })
-        
-        efficiency = round((daily_produced / daily_planned) * 100) if daily_planned > 0 else 0
-        efficiency_data.append({
-            'date': current_date.strftime('%Y-%m-%d'),
-            'efficiency': efficiency,
-            'label': current_date.strftime('%b %d')
-        })
-        
-        current_date += timedelta(days=1)
+        for hour in hours_range:
+            # Create datetime range for this hour
+            if hour >= 7:
+                hour_start = timezone.make_aware(datetime.combine(start_date, time(hour=hour)))
+            else:
+                # Next day for hours 0-6
+                next_day = start_date + timedelta(days=1)
+                hour_start = timezone.make_aware(datetime.combine(next_day, time(hour=hour)))
+            
+            hour_end = hour_start + timedelta(hours=1)
+            
+            # Check if this hour has started (only show data for hours that have started if viewing today)
+            hour_has_passed = True
+            if is_today:
+                hour_has_passed = hour_start <= now
+            
+            # Get outputs for this hour (only if hour has passed)
+            if hour_has_passed:
+                hour_outputs = ProductionOutput.objects.filter(
+                    monitoring=monitoring,
+                    recorded_at__range=[hour_start, hour_end]
+                )
+                
+                if shift_filter != 'all':
+                    hour_outputs = hour_outputs.filter(shift=shift_filter.upper())
+                
+                hour_produced = hour_outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+            else:
+                # Future hour - set to 0
+                hour_produced = 0
+            
+            hour_label = f"{hour:02d}:00"
+            
+            # For Daily Production Output chart - only add if hour has passed
+            if hour_has_passed:
+                target_per_day.append(target_per_hour)
+                actual_per_day.append(hour_produced)
+                
+                output_per_day.append({
+                    'date': hour_label,
+                    'quantity': hour_produced,
+                    'target': target_per_hour,
+                    'label': hour_label,
+                    'isPast': True
+                })
+                
+                # For Efficiency Trend chart
+                efficiency = round((hour_produced / target_per_hour) * 100) if target_per_hour > 0 else 0
+                efficiency_data.append({
+                    'date': hour_label,
+                    'efficiency': efficiency,
+                    'label': hour_label,
+                    'isPast': True
+                })
+    
+    elif use_monthly:
+        # Monthly aggregation for year view
+        current_date = start_date.replace(day=1)
+        while current_date <= end_date:
+            # Get last day of the month
+            if current_date.month == 12:
+                next_month = current_date.replace(year=current_date.year + 1, month=1, day=1)
+            else:
+                next_month = current_date.replace(month=current_date.month + 1, day=1)
+            month_end = next_month - timedelta(days=1)
+            
+            # Ensure we don't go past end_date
+            month_end = min(month_end, end_date)
+            
+            monthly_schedules = ProductionSchedulePlan.objects.filter(
+                monitoring=monitoring,
+                date_planned__range=[current_date, month_end]
+            )
+            
+            monthly_outputs = ProductionOutput.objects.filter(
+                monitoring=monitoring,
+                recorded_at__date__range=[current_date, month_end]
+            )
+            
+            if shift_filter != 'all':
+                monthly_schedules = monthly_schedules.filter(shift=shift_filter.upper())
+                monthly_outputs = monthly_outputs.filter(shift=shift_filter.upper())
+            
+            monthly_metrics = monthly_schedules.aggregate(
+                planned=Sum('planned_qty')
+            )
+            
+            monthly_output_metrics = monthly_outputs.aggregate(
+                produced=Sum('quantity_produced')
+            )
+            
+            monthly_planned = monthly_metrics['planned'] or 0
+            monthly_produced = monthly_output_metrics['produced'] or 0
+            
+            month_label = current_date.strftime('%b %Y')
+            
+            # For Daily Production Output chart
+            target_per_day.append(monthly_planned)
+            actual_per_day.append(monthly_produced)
+            
+            output_per_day.append({
+                'date': current_date.strftime('%Y-%m'),
+                'quantity': monthly_produced,
+                'target': monthly_planned,
+                'label': month_label
+            })
+            
+            # For Efficiency Trend chart
+            efficiency = round((monthly_produced / monthly_planned) * 100) if monthly_planned > 0 else 0
+            efficiency_data.append({
+                'date': current_date.strftime('%Y-%m'),
+                'efficiency': efficiency,
+                'label': month_label
+            })
+            
+            # Move to next month
+            current_date = next_month
+    else:
+        # Daily aggregation
+        current_date = start_date
+        while current_date <= end_date:
+            daily_schedules = ProductionSchedulePlan.objects.filter(
+                monitoring=monitoring,
+                date_planned=current_date
+            )
+            
+            daily_outputs = ProductionOutput.objects.filter(
+                monitoring=monitoring,
+                recorded_at__date=current_date
+            )
+            
+            if shift_filter != 'all':
+                daily_schedules = daily_schedules.filter(shift=shift_filter.upper())
+                daily_outputs = daily_outputs.filter(shift=shift_filter.upper())
+            
+            daily_metrics = daily_schedules.aggregate(
+                planned=Sum('planned_qty')
+            )
+            
+            daily_output_metrics = daily_outputs.aggregate(
+                produced=Sum('quantity_produced')
+            )
+            
+            daily_planned = daily_metrics['planned'] or 0
+            daily_produced = daily_output_metrics['produced'] or 0
+            
+            date_label = current_date.strftime('%b %d')
+            
+            # For Daily Production Output chart
+            target_per_day.append(daily_planned)
+            actual_per_day.append(daily_produced)
+            
+            output_per_day.append({
+                'date': current_date.strftime('%Y-%m-%d'),
+                'quantity': daily_produced,
+                'target': daily_planned,
+                'label': date_label
+            })
+            
+            # For Efficiency Trend chart
+            efficiency = round((daily_produced / daily_planned) * 100) if daily_planned > 0 else 0
+            efficiency_data.append({
+                'date': current_date.strftime('%Y-%m-%d'),
+                'efficiency': efficiency,
+                'label': date_label
+            })
+            
+            current_date += timedelta(days=1)
     
     output_by_line = _get_line_performance_data(monitoring, start_date, end_date, shift_filter)
     shift_output = _get_shift_distribution_data(monitoring, start_date, end_date)
@@ -2085,10 +2605,13 @@ def _get_chart_data(base_filters):
     
     return {
         'outputPerDay': output_per_day,
+        'targetPerDay': target_per_day,
+        'actualPerDay': actual_per_day,
         'efficiencyData': efficiency_data,
         'outputByLine': output_by_line,
         'shiftOutput': shift_output,
-        'statusDistribution': status_distribution
+        'statusDistribution': status_distribution,
+        'xLabels': [item['label'] for item in output_per_day]
     }
 
 def _get_line_performance_data(monitoring, start_date, end_date, shift_filter):
@@ -2100,6 +2623,7 @@ def _get_line_performance_data(monitoring, start_date, end_date, shift_filter):
     for line_monitor in lines:
         line = line_monitor.line
         
+        # Get actual output
         outputs = ProductionOutput.objects.filter(
             monitoring=monitoring,
             line=line,
@@ -2109,15 +2633,32 @@ def _get_line_performance_data(monitoring, start_date, end_date, shift_filter):
         if shift_filter != 'all':
             outputs = outputs.filter(shift=shift_filter.upper())
         
-        quantity = outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+        actual_quantity = outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+        
+        # Get target output from schedules
+        schedules = ProductionSchedulePlan.objects.filter(
+            monitoring=monitoring,
+            product_number__line=line,
+            date_planned__range=[start_date, end_date]
+        )
+        
+        if shift_filter != 'all':
+            schedules = schedules.filter(shift=shift_filter.upper())
+        
+        target_quantity = schedules.aggregate(total=Sum('planned_qty'))['total'] or 0
+        
+        # Calculate efficiency percentage
+        efficiency = round((actual_quantity / target_quantity) * 100) if target_quantity > 0 else 0
         
         output_by_line.append({
             'line': line.line_name,
-            'quantity': quantity,
+            'quantity': actual_quantity,
+            'target': target_quantity,
+            'efficiency': efficiency,
             'lineId': line.id
         })
     
-    return sorted(output_by_line, key=lambda x: x['quantity'], reverse=True)
+    return sorted(output_by_line, key=lambda x: x['efficiency'], reverse=True)
 
 def _get_shift_distribution_data(monitoring, start_date, end_date):
     """Get shift distribution data"""

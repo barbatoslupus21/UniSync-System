@@ -1404,6 +1404,27 @@ function initializeExportModal() {
         setupFilterCheckboxes('status');
         setupFilterCheckboxes('category');
 
+        // Handle period dropdown to show/hide custom date range
+        const periodDropdown = document.getElementById('export-period');
+        const customDateSection = document.getElementById('custom-date-section');
+        
+        if (periodDropdown && customDateSection) {
+            // Initial state - hide custom dates if not 'custom' period
+            function toggleDateSection() {
+                if (periodDropdown.value === 'custom') {
+                    customDateSection.style.display = 'block';
+                } else {
+                    customDateSection.style.display = 'none';
+                }
+            }
+            
+            // Set initial state
+            toggleDateSection();
+            
+            // Listen for changes
+            periodDropdown.addEventListener('change', toggleDateSection);
+        }
+
         // Add the event listener to the new form
         newForm.addEventListener('submit', function(e) {
             handleExportSubmit(e, this);

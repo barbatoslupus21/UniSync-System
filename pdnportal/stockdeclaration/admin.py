@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import StockDeclaration
+from .models import StockDeclaration, StockDeclarationView
 
 
 @admin.register(StockDeclaration)
@@ -110,3 +110,10 @@ class StockDeclarationAdmin(admin.ModelAdmin):
         if not obj.created_by:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(StockDeclarationView)
+class StockDeclarationViewAdmin(admin.ModelAdmin):
+    list_display = ['user', 'stock_declaration', 'viewed_at']
+    list_filter = ['viewed_at']
+    search_fields = ['user__name', 'stock_declaration__control_number']

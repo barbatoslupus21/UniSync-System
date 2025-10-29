@@ -11,43 +11,45 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static "css/style-ver2.css" %}">
     <link rel="stylesheet" href="{% static 'css/job-order.css' %}"> 
-    <link rel="stylesheet" href="{% static 'css/monitoring/monitoring-supervisor.css' %}"> 
+    <link rel="stylesheet" href="{% static 'css/jo-overall.css' %}">
+    <link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
     <link rel="stylesheet" href="{% static 'css/monitoring/group-dashboard.css' %}"> 
+    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <main class="gd-main-wrapper">
+    <main class="overall-content">
         <div class="gd-container">
             <header class="gd-header">
-                <div class="gd-header-content">
-                    <div class="gd-title-wrapper">
-                        <h1 class="gd-title">{{ monitoring.title }}</h1>
-                        <p class="gd-subtitle">Real-time production monitoring and analytics</p>
+                <div class="JO-header">
+                    <div class="JO-title-section">
+                        <h1 class="JO-page-title">{{ monitoring.title }}</h1>
+                        <p class="JO-subtitle">Real-time production monitoring and analytics</p>
                     </div>
                 </div>
                 
                 <div class="gd-controls">
                     <div class="gd-filter-wrapper">
-                        <div class="gd-filter-group">
-                            <select id="dateFilter" class="gd-select">
+                        <div class="JO-card-actions">
+                            <select id="dateFilter" class="JO-select">
                                 <option value="today">Today</option>
                                 <option value="week">This Week</option>
                                 <option value="month">This Month</option>
                                 <option value="year">This Year</option>
                                 <option value="customDate">Custom Date</option>
                             </select>
-                            <input type="date" id="specificDate" class="gd-date-input" value="{{ today_date }}">
+                            <input type="date" id="specificDate" class="JO-input" value="{{ today_date }}">
                         </div>
                         
-                        <div class="gd-filter-group">
-                            <select id="shiftFilter" class="gd-select">
+                        <div class="JO-card-actions">
+                            <select id="shiftFilter" class="JO-select">
                                 <option value="all">All Shifts</option>
                                 <option value="am">AM Shift</option>
                                 <option value="pm">PM Shift</option>
                             </select>
                         </div>
                         
-                        <button class="gd-refresh-btn" id="refreshDashboard">
+                        <button class="btn btn-outline" id="refreshDashboard">
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
@@ -55,80 +57,70 @@
             </header>
 
             <section class="gd-metrics">
-                <div class="gd-metric-card gd-metric-schedules">
-                    <div class="gd-metric-icon">
-                        <i class="fas fa-clipboard-list"></i>
+                <!-- Schedule Summary Pie Chart -->
+                <div class="gd-pie-chart-card">
+                    <div class="gd-pie-chart-header">
+                        <h3 class="gd-pie-chart-title">Schedule Summary</h3>
                     </div>
-                    <div class="gd-metric-content">
-                        <span class="gd-metric-label">Total Schedules</span>
-                        <div class="gd-metric-value">
-                            <span id="totalSchedules">0</span>
-                            <span class="gd-metric-target">/ <span id="totalSchedulesTarget">0</span></span>
-                        </div>
-                        <div class="gd-metric-progress">
-                            <div class="gd-progress-bar">
-                                <div class="gd-progress-fill" id="schedulesProgress"></div>
+                    <div class="gd-pie-chart-container">
+                        <div class="gd-pie-legend" id="scheduleSummaryLegend"></div>
+                        <div class="gd-pie-chart-wrapper">
+                            <canvas id="scheduleSummaryChart"></canvas>
+                            <div class="gd-pie-center-label">
+                                <span class="gd-pie-center-value" id="scheduleSummaryValue">0%</span>
+                                <span class="gd-pie-center-text">Completed</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="gd-metric-card gd-metric-production">
-                    <div class="gd-metric-icon">
-                        <i class="fas fa-industry"></i>
+                <!-- Output Rate Pie Chart -->
+                <div class="gd-pie-chart-card">
+                    <div class="gd-pie-chart-header">
+                        <h3 class="gd-pie-chart-title">Output Rate</h3>
                     </div>
-                    <div class="gd-metric-content">
-                        <span class="gd-metric-label">Production Progress</span>
-                        <div class="gd-metric-value">
-                            <span id="productionProgress">0</span>%
-                        </div>
-                        <div class="gd-metric-indicator" id="productionIndicator">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>On Track</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="gd-metric-card gd-metric-variance">
-                    <div class="gd-metric-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="gd-metric-content">
-                        <span class="gd-metric-label">Behind Target</span>
-                        <div class="gd-metric-value">
-                            <span id="notMetTarget">0</span>%
-                        </div>
-                        <div class="gd-metric-sparkline" id="varianceSparkline"></div>
-                    </div>
-                </div>
-
-                <div class="gd-metric-card gd-metric-output">
-                    <div class="gd-metric-icon">
-                        <i class="fas fa-boxes"></i>
-                    </div>
-                    <div class="gd-metric-content">
-                        <span class="gd-metric-label">Total Output</span>
-                        <div class="gd-metric-value">
-                            <span id="totalProduction">0</span>
-                        </div>
-                        <div class="gd-metric-subtext">
-                            <span id="totalPlanned">0</span> units planned
+                    <div class="gd-pie-chart-container">
+                        <div class="gd-pie-legend" id="outputRateLegend"></div>
+                        <div class="gd-pie-chart-wrapper">
+                            <canvas id="outputRateChart"></canvas>
+                            <div class="gd-pie-center-label">
+                                <span class="gd-pie-center-value" id="outputRateValue">0%</span>
+                                <span class="gd-pie-center-text">Progress</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="gd-metric-card gd-metric-lines">
-                    <div class="gd-metric-icon">
-                        <i class="fas fa-network-wired"></i>
+                <!-- Shift Distribution Pie Chart -->
+                <div class="gd-pie-chart-card">
+                    <div class="gd-pie-chart-header">
+                        <h3 class="gd-pie-chart-title">Shift Distribution</h3>
                     </div>
-                    <div class="gd-metric-content">
-                        <span class="gd-metric-label">Active Lines</span>
-                        <div class="gd-metric-value">
-                            <span id="activeLines">0</span>
-                            <span class="gd-metric-target">/ <span id="totalLines">0</span></span>
+                    <div class="gd-pie-chart-container">
+                        <div class="gd-pie-legend" id="shiftDistributionLegend"></div>
+                        <div class="gd-pie-chart-wrapper">
+                            <canvas id="shiftDistributionChart"></canvas>
+                            <div class="gd-pie-center-label">
+                                <span class="gd-pie-center-value" id="shiftDistributionValue">0%</span>
+                                <span class="gd-pie-center-text">AM Shift</span>
+                            </div>
                         </div>
-                        <div class="gd-metric-badge" id="linesBadge">
-                            <span>100% Active</span>
+                    </div>
+                </div>
+
+                <!-- Schedule Status Pie Chart -->
+                <div class="gd-pie-chart-card">
+                    <div class="gd-pie-chart-header">
+                        <h3 class="gd-pie-chart-title">Schedule Status</h3>
+                    </div>
+                    <div class="gd-pie-chart-container">
+                        <div class="gd-pie-legend" id="scheduleStatusLegend"></div>
+                        <div class="gd-pie-chart-wrapper">
+                            <canvas id="scheduleStatusChart"></canvas>
+                            <div class="gd-pie-center-label">
+                                <span class="gd-pie-center-value" id="scheduleStatusValue">0%</span>
+                                <span class="gd-pie-center-text">Planned</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -138,26 +130,21 @@
                 <div class="gd-chart-row">
                     <div class="gd-chart-container gd-chart-large">
                         <div class="gd-chart-header">
-                            <h3 class="gd-chart-title">Daily Production Output</h3>
+                            <h3 class="gd-pie-chart-title">Daily Production Output</h3>
                             <div class="gd-chart-legend" id="outputLegend"></div>
                         </div>
                         <div class="gd-chart-wrapper">
                             <canvas id="outputPerDayChart"></canvas>
-                            <div class="gd-chart-3d-base"></div>
+                            
                         </div>
                     </div>
 
                     <div class="gd-chart-container gd-chart-medium">
                         <div class="gd-chart-header">
-                            <h3 class="gd-chart-title">Efficiency Trend</h3>
-                            <div class="gd-chart-info">
-                                <span class="gd-chart-value" id="avgEfficiency">0%</span>
-                                <span class="gd-chart-label">Average</span>
-                            </div>
+                            <h3 class="gd-pie-chart-title">Efficiency Trend</h3>
                         </div>
                         <div class="gd-chart-wrapper">
                             <canvas id="efficiencyChart"></canvas>
-                            <div class="gd-chart-3d-base"></div>
                         </div>
                     </div>
                 </div>
@@ -165,71 +152,67 @@
                 <div class="gd-chart-row">
                     <div class="gd-chart-container gd-chart-full">
                         <div class="gd-chart-header">
-                            <h3 class="gd-chart-title">Output by Production Line</h3>
+                            <h3 class="gd-pie-chart-title">Output by Production Line</h3>
                         </div>
                         <div class="gd-chart-wrapper">
                             <canvas id="outputByLineChart"></canvas>
-                            <div class="gd-chart-3d-base"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="gd-chart-row gd-chart-grid">
-                    <div class="gd-chart-container gd-chart-small">
-                        <div class="gd-chart-header">
-                            <h3 class="gd-chart-title">Shift Distribution</h3>
-                        </div>
-                        <div class="gd-chart-wrapper">
-                            <canvas id="shiftOutputChart"></canvas>
-                            <div class="gd-chart-center-label">
-                                <span class="gd-center-value" id="shiftTotal">0</span>
-                                <span class="gd-center-text">Total</span>
-                            </div>
-                            <div class="gd-chart-3d-base"></div>
-                        </div>
-                    </div>
-
-                    <div class="gd-chart-container gd-chart-small">
-                        <div class="gd-chart-header">
-                            <h3 class="gd-chart-title">Schedule Status</h3>
-                        </div>
-                        <div class="gd-chart-wrapper">
-                            <canvas id="statusDistributionChart"></canvas>
-                            <div class="gd-chart-3d-base"></div>
+                            
                         </div>
                     </div>
                 </div>
             </section>
 
             <section class="gd-schedules">
-                <div class="gd-schedules-header">
-                    <h3 class="gd-schedules-title">Production Schedules</h3>
-                    <div class="gd-schedules-controls">
-                        <div class="gd-search-wrapper">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="searchSchedules" class="gd-search-input" placeholder="Search schedules...">
+                <div class="card-header">
+                    <h2>Production Schedules</h2>
+                    <div class="card-header-action">
+                        <div class="JO-search-container">
+                            <input type="text" id="searchSchedules" class="JO-search-input" placeholder="Search schedules...">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
                         </div>
-                        <button class="gd-export-btn" id="exportSchedules">
+                        <button class="btn btn-primary" id="exportSchedules">
                             <i class="fas fa-download"></i>
                             <span>Export</span>
                         </button>
                     </div>
                 </div>
 
-                <div class="gd-schedules-table">
-                    <div class="gd-table-header">
-                        <div class="gd-table-row">
-                            <div class="gd-table-cell">Date</div>
-                            <div class="gd-table-cell">Product</div>
-                            <div class="gd-table-cell">Line</div>
-                            <div class="gd-table-cell">Shift</div>
-                            <div class="gd-table-cell">Planned</div>
-                            <div class="gd-table-cell">Produced</div>
-                            <div class="gd-table-cell">Progress</div>
-                            <div class="gd-table-cell">Status</div>
-                        </div>
-                    </div>
-                    <div class="gd-table-body" id="scheduleListBody"></div>
+                <div class="common-table-container">
+                    <table class="Unisync-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th>Line</th>
+                                <th>Shift</th>
+                                <th>Planned</th>
+                                <th>Produced</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scheduleListBody">
+                            {% for request in monitoring_schedules %}
+                            <tr></tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="10" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Schedule Found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No schedule has been filed yet</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </div>
@@ -240,6 +223,9 @@
                 <p class="gd-loading-text">Loading dashboard data...</p>
             </div>
         </div>
+
+        <!-- Toast Container -->
+        <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000;"></div>
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>

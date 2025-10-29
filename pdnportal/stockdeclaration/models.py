@@ -94,3 +94,33 @@ class StockDeclaration(models.Model):
     @property
     def is_received(self):
         return self.status == 'arrived'
+
+
+class StockDeclarationView(models.Model):
+    
+    user = models.ForeignKey(
+        Users,
+        on_delete=models.CASCADE,
+        related_name='stock_declaration_views',
+        verbose_name="User"
+    )
+    stock_declaration = models.ForeignKey(
+        StockDeclaration,
+        on_delete=models.CASCADE,
+        related_name='user_views',
+        verbose_name="Stock Declaration"
+    )
+    viewed_at = models.DateTimeField(auto_now_add=True, verbose_name="Viewed At")
+    
+    class Meta:
+        unique_together = ['user', 'stock_declaration']
+        ordering = ['-viewed_at']
+        verbose_name = "Stock Declaration View"
+        verbose_name_plural = "Stock Declaration Views"
+        indexes = [
+            models.Index(fields=['user', 'stock_declaration']),
+            models.Index(fields=['-viewed_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.name} viewed {self.stock_declaration.control_number} at {self.viewed_at}"

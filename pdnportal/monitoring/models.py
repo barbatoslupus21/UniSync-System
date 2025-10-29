@@ -26,25 +26,35 @@ class Monitoring(models.Model):
     
     @property
     def efficiency_percentage(self):
+        """
+        Calculate output percentage as the ratio of fulfilled quantity to total planned quantity.
+        Output % = ((total_planned - total_balance) / total_planned) * 100
+        """
         today = timezone.now().date()
         today_schedules = self.monitoring_schedule.filter(date_planned=today)
         
         if not today_schedules.exists():
-            return 0
+            return None  # Return None to indicate no schedule plan
         
         total_planned = today_schedules.aggregate(total=Sum('planned_qty'))['total'] or 0
-        
-        today_outputs = ProductionOutput.objects.filter(
-            schedule_plan__in=today_schedules,
-            recorded_at__date=today
-        )
-        
-        total_produced = today_outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+        total_balance = today_schedules.aggregate(total=Sum('balance'))['total'] or 0
         
         if total_planned == 0:
-            return 0
-            
-        return round((total_produced / total_planned) * 100)
+            return None  # Return None if no planned quantity
+        
+        # Calculate fulfilled quantity (total_planned - total_balance)
+        fulfilled_qty = total_planned - total_balance
+        
+        # Calculate output percentage
+        output_percentage = round((fulfilled_qty / total_planned) * 100)
+        
+        return output_percentage
+    
+    @property
+    def has_schedule_plan(self):
+        """Check if monitoring group has a schedule plan for today"""
+        today = timezone.now().date()
+        return self.monitoring_schedule.filter(date_planned=today).exists()
 
     @property
     def total_products(self):

@@ -131,6 +131,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Export Cut-Away Report Modal functionality
+    const exportCutAwayModal = document.getElementById('export-cut-away-modal');
+    const reportCutAwayBtn = document.getElementById('report-cut-away-btn');
+    const exportCutAwayModalClose = document.getElementById('export-cut-away-modal-close');
+    const exportCutAwayCancel = document.getElementById('export-cut-away-cancel');
+
+    if (reportCutAwayBtn) {
+        reportCutAwayBtn.addEventListener('click', function() {
+            exportCutAwayModal.classList.add('active');
+        });
+    }
+
+    if (exportCutAwayModalClose) {
+        exportCutAwayModalClose.addEventListener('click', function() {
+            exportCutAwayModal.classList.remove('active');
+        });
+    }
+
+    if (exportCutAwayCancel) {
+        exportCutAwayCancel.addEventListener('click', function() {
+            exportCutAwayModal.classList.remove('active');
+        });
+    }
+
     // Lot Out Modal functionality
     const lotOutModal = document.getElementById('lot-out-modal');
     const addLotOutBtn = document.getElementById('add-lot-out-btn');
@@ -176,6 +200,36 @@ document.addEventListener('DOMContentLoaded', function() {
     if (cutAwayCancel) {
         cutAwayCancel.addEventListener('click', function() {
             cutAwayModal.classList.remove('active');
+        });
+    }
+
+    // Purpose dropdown conditional logic for Cut-Away Request Modal
+    const cutAwayPurpose = document.getElementById('cut-away-purpose');
+    const cutAwayPurposeReasonGroup = document.getElementById('cut-away-purpose-reason-group');
+    
+    if (cutAwayPurpose && cutAwayPurposeReasonGroup) {
+        cutAwayPurpose.addEventListener('change', function() {
+            if (this.value === 'change_wire_anvil') {
+                cutAwayPurposeReasonGroup.style.display = 'block';
+            } else {
+                cutAwayPurposeReasonGroup.style.display = 'none';
+                document.getElementById('cut-away-purpose-reason').value = '';
+            }
+        });
+    }
+
+    // Purpose dropdown conditional logic for Edit Cut-Away Modal
+    const editCutAwayPurpose = document.getElementById('edit-cut-away-purpose');
+    const editCutAwayPurposeReasonGroup = document.getElementById('edit-cut-away-purpose-reason-group');
+    
+    if (editCutAwayPurpose && editCutAwayPurposeReasonGroup) {
+        editCutAwayPurpose.addEventListener('change', function() {
+            if (this.value === 'change_wire_anvil') {
+                editCutAwayPurposeReasonGroup.style.display = 'block';
+            } else {
+                editCutAwayPurposeReasonGroup.style.display = 'none';
+                document.getElementById('edit-cut-away-purpose-reason').value = '';
+            }
         });
     }
 
@@ -518,6 +572,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (event.target === exportLotOutModal) {
             exportLotOutModal.classList.remove('active');
         }
+        if (event.target === exportCutAwayModal) {
+            exportCutAwayModal.classList.remove('active');
+        }
         if (event.target === cancelLotOutModal) {
             cancelLotOutModal.classList.remove('active');
         }
@@ -766,12 +823,40 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('view-cut-away-assy-line').textContent = row.cells[2].textContent;
         document.getElementById('view-cut-away-product-number').textContent = row.cells[3].textContent;
         document.getElementById('view-cut-away-schedule').textContent = row.getAttribute('data-schedule-date') || 'Not Set';
-        document.getElementById('view-cut-away-requested-by').textContent = row.cells[5].textContent;
+        document.getElementById('view-cut-away-requested-by').textContent = row.getAttribute('data-requested-by') || 'N/A';
         document.getElementById('view-cut-away-machine-number').textContent = row.getAttribute('data-machine-number') || 'N/A';
         document.getElementById('view-cut-away-applicator-number').textContent = row.getAttribute('data-applicator-code') || 'N/A';
         document.getElementById('view-cut-away-crimped-quantity').textContent = row.getAttribute('data-crimped-qty') || 'N/A';
         document.getElementById('view-cut-away-terminal-part-number').textContent = row.getAttribute('data-terminal-part') || 'N/A';
         document.getElementById('view-cut-away-date-received').textContent = row.getAttribute('data-received-date') || 'Not Set';
+        
+        // Display new fields
+        const purpose = row.getAttribute('data-purpose') || '';
+        const purposeLabels = {
+            'new_product': 'New Product',
+            'reached_50000': 'Reached 50,000',
+            'reached_100000': 'Reached 100,000',
+            'new_applicator': 'New Applicator',
+            'change_wire_crimper': 'Change Wire Crimper',
+            'change_wire_anvil': 'Change Wire Anvil',
+            'new_combination': 'New Combination',
+            'big_burr': 'Big Burr',
+            'change_supplier': 'Change Supplier'
+        };
+        document.getElementById('view-cut-away-purpose').textContent = purposeLabels[purpose] || 'N/A';
+        
+        // Show/hide purpose reason based on whether it exists
+        const purposeReason = row.getAttribute('data-purpose-reason') || '';
+        const purposeReasonItem = document.getElementById('view-cut-away-purpose-reason-item');
+        if (purposeReason && purposeReason.trim() !== '' && purposeReason !== 'None' && purposeReason !== 'null') {
+            document.getElementById('view-cut-away-purpose-reason').textContent = purposeReason;
+            purposeReasonItem.style.display = 'block';
+        } else {
+            purposeReasonItem.style.display = 'none';
+        }
+        
+        document.getElementById('view-cut-away-leadwire-partnumber').textContent = row.getAttribute('data-leadwire-partnumber') || 'N/A';
+        document.getElementById('view-cut-away-rubber-seal-partnumber').textContent = row.getAttribute('data-rubber-seal-partnumber') || 'N/A';
         
         // Handle QA remarks - hide the entire div if no remarks
         const qaRemarks = row.getAttribute('data-qa-remarks') || '';
@@ -832,6 +917,24 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('edit-cut-away-crimped-quantity').value = row.getAttribute('data-crimped-qty') || '';
         document.getElementById('edit-cut-away-product-number').value = row.cells[3].textContent.trim();
         document.getElementById('edit-cut-away-terminal-part-number').value = row.getAttribute('data-terminal-part') || '';
+        
+        // Set new fields
+        const purpose = row.getAttribute('data-purpose') || '';
+        document.getElementById('edit-cut-away-purpose').value = purpose;
+        
+        const purposeReason = row.getAttribute('data-purpose-reason') || '';
+        document.getElementById('edit-cut-away-purpose-reason').value = purposeReason;
+        
+        // Show/hide purpose reason field based on purpose value
+        const editPurposeReasonGroup = document.getElementById('edit-cut-away-purpose-reason-group');
+        if (purpose === 'change_wire_anvil') {
+            editPurposeReasonGroup.style.display = 'block';
+        } else {
+            editPurposeReasonGroup.style.display = 'none';
+        }
+        
+        document.getElementById('edit-cut-away-leadwire-partnumber').value = row.getAttribute('data-leadwire-partnumber') || '';
+        document.getElementById('edit-cut-away-rubber-seal-partnumber').value = row.getAttribute('data-rubber-seal-partnumber') || '';
         
         editCutAwayModal.classList.add('active');
     }

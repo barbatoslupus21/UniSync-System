@@ -580,6 +580,12 @@
     font-size: 14px;
 }
 
+.text-info{
+    color: var(--jo-danger);
+    display: block; 
+    margin-top: 5px;
+    font-style: italic;
+}
 /* ==========================================================================
    Categories and Status Styles
    ========================================================================== */

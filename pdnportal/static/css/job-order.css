@@ -580,6 +580,12 @@
     font-size: 14px;
 }
 
+.text-info{
+    color: var(--jo-danger);
+    display: block; 
+    margin-top: 5px;
+    font-style: italic;
+}
 /* ==========================================================================
    Categories and Status Styles
    ========================================================================== */
@@ -651,7 +657,8 @@
 }
 
 .JO-status-pending,
-.JO-status-routing {
+.JO-status-routing,
+.JO-status-onhold {
     background-color: var(--jo-yellow-light);
     color: var(--jo-status-pending);
 }
@@ -661,6 +668,11 @@
 .JO-status-assigned {
     background-color: var(--jo-green-light);
     color: var(--jo-status-approved);
+}
+
+.text-danger{
+    color: var(--error-color);
+    font-style: italic;
 }
 
 .JO-status-rejected,
@@ -751,25 +763,6 @@
 .JO-view-details-btn {
     font-size: 0.8rem;
     padding: 5px 10px;
-}
-
-.JO-icon-button {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: var(--jo-text-light);
-    cursor: pointer;
-    transition: var(--jo-transition);
-}
-
-.JO-icon-button:hover {
-    background-color: var(--jo-primary-light);
-    color: var(--jo-primary);
 }
 
 .JO-search-container {

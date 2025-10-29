@@ -1118,6 +1118,42 @@ function processSetTargetDate() {
 
 // Function to open the Complete JO modal
 function openCompleteJOModal(joId, joNumber) {
+    // First, check if the preparer has a checker assigned
+    fetch(`/joborder/check-preparer-checker/${joId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            if (!data.has_checker) {
+                // Show error toast if no checker is assigned
+                createToast(
+                    `Cannot complete this request. Please inform the requestor (${data.preparer_name}) to assign a checker to Admin before proceeding with completion.`,
+                    'error',
+                    5000 // Show for 5 seconds
+                );
+                return; // Stop execution, don't open modal
+            }
+            
+            // If checker exists, proceed to open the modal
+            openCompleteJOModalAfterCheck(joId, joNumber);
+        } else {
+            // Error checking for checker
+            createToast(data.message || 'Error checking for assigned checker', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error checking for checker:', error);
+        createToast('Failed to verify checker assignment. Please try again.', 'error');
+    });
+}
+
+function openCompleteJOModalAfterCheck(joId, joNumber) {
     const modal = document.getElementById('complete-jo-modal');
     if (!modal) {
         console.error('Complete JO modal element not found!');

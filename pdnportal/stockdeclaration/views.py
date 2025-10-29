@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_http_methods
 from django.contrib.auth.decorators import login_required
 from .models import StockDeclaration
 from .forms import StockDeclarationForm
@@ -725,13 +725,26 @@ def stock_notifications_api(request):
     
     if hasattr(request.user, 'line') and request.user.line.exists():
         user_lines = request.user.line.all()
-        today = timezone.now().date()
         
+        # Get all stock declarations for user's lines (not just today's)
+        # Exclude cancelled and already received declarations
         stock_declarations = StockDeclaration.objects.filter(
-            lines__in=user_lines
-        ).filter(created_at__date=today, received_by_production=False).distinct().select_related('created_by').prefetch_related('lines').exclude(status='cancelled')
+            lines__in=user_lines,
+            received_by_production=False
+        ).exclude(
+            status='cancelled'
+        ).distinct().select_related('created_by').prefetch_related('lines')
+        
+        # Get IDs of stock declarations that the user has already viewed
+        from .models import StockDeclarationView
+        viewed_declaration_ids = StockDeclarationView.objects.filter(
+            user=request.user
+        ).values_list('stock_declaration_id', flat=True)
+        
+        # Filter out already viewed declarations
+        unviewed_declarations = stock_declarations.exclude(id__in=viewed_declaration_ids)
 
-        for declaration in stock_declarations:
+        for declaration in unviewed_declarations:
             notification_data = {
                 'id': declaration.id,
                 'control_number': declaration.control_number,
@@ -754,3 +767,63 @@ def stock_notifications_api(request):
         'notifications': notifications,
         'count': len(notifications)
     })
+
+
+@login_required
+@require_http_methods(["POST"])
+def mark_stock_declarations_viewed(request):
+
+    try:
+        import json
+        from .models import StockDeclarationView
+        
+        data = json.loads(request.body)
+        declaration_ids = data.get('declaration_ids', [])
+        
+        if not declaration_ids:
+            return JsonResponse({
+                'success': False,
+                'error': 'No declaration IDs provided'
+            }, status=400)
+        
+        # Get the user's lines
+        if not hasattr(request.user, 'line') or not request.user.line.exists():
+            return JsonResponse({
+                'success': False,
+                'error': 'User has no assigned lines'
+            }, status=403)
+        
+        user_lines = request.user.line.all()
+        
+        # Get stock declarations that belong to user's lines
+        stock_declarations = StockDeclaration.objects.filter(
+            id__in=declaration_ids,
+            lines__in=user_lines
+        ).distinct()
+        
+        # Create view records (using get_or_create to avoid duplicates)
+        created_count = 0
+        for declaration in stock_declarations:
+            _, created = StockDeclarationView.objects.get_or_create(
+                user=request.user,
+                stock_declaration=declaration
+            )
+            if created:
+                created_count += 1
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Marked {created_count} declaration(s) as viewed',
+            'marked_count': created_count
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

@@ -3,6 +3,12 @@ let currentProductToEdit = null;
 let currentScheduleToEdit = null;
 let currentItemToDelete = null;
 let currentDeleteType = null;
+let currentProductPage = 1;
+let currentSchedulePage = 1;
+let currentSearchQuery = '';
+let currentSchedulesSearchQuery = '';
+let chartRefreshInterval = null;
+let statsRefreshInterval = null;
 
 const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 
@@ -12,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initTabs();
     initFilters();
     loadChartData();
+    loadStatisticsCards();
+    startAutoRefresh();
 });
 
 function initOutputChart() {
@@ -19,42 +27,46 @@ function initOutputChart() {
     if (!ctx) return;
 
     outputChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: [],
             datasets: [
                 {
-                    label: 'Target',
+                    type: 'bar',
+                    label: 'Target Output',
                     data: [],
-                    borderColor: 'rgba(255, 193, 7, 1)',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    borderWidth: 3,
-                    borderDash: [5, 5],
-                    pointBackgroundColor: 'rgba(255, 193, 7, 1)',
-                    pointBorderColor: 'white',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    tension: 0.3,
-                    fill: false
+                    backgroundColor: '#0046FF',
+                    borderColor: '#0046FF',
+                    borderWidth: 1,
+                    barThickness: 40,
+                    borderRadius: 4,
+                    order: 2
                 },
                 {
-                    label: 'Actual',
+                    type: 'line',
+                    label: 'Current Output',
                     data: [],
-                    borderColor: 'rgba(51, 102, 255, 1)',
-                    backgroundColor: 'rgba(51, 102, 255, 0.1)',
+                    borderColor: '#78C841',
+                    backgroundColor: 'rgba(120, 200, 65, 0.2)',
                     borderWidth: 3,
-                    pointBackgroundColor: 'rgba(51, 102, 255, 1)',
+                    pointBackgroundColor: '#78C841',
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
                     pointRadius: 5,
-                    tension: 0.3,
-                    fill: true
+                    pointHoverRadius: 7,
+                    tension: 0.4,
+                    fill: true,
+                    order: 1
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: {
                     position: 'top',
@@ -63,7 +75,8 @@ function initOutputChart() {
                         padding: 20,
                         font: {
                             family: 'Poppins',
-                            size: 12
+                            size: 12,
+                            weight: '500'
                         }
                     }
                 },
@@ -76,7 +89,8 @@ function initOutputChart() {
                     borderColor: '#ddd',
                     borderWidth: 1,
                     cornerRadius: 6,
-                    padding: 10,
+                    padding: 12,
+                    bodySpacing: 8,
                     callbacks: {
                         label: function(context) {
                             return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' units';
@@ -87,25 +101,26 @@ function initOutputChart() {
             scales: {
                 x: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        display: false
                     },
                     ticks: {
                         color: '#666',
                         font: {
                             family: 'Poppins',
-                            size: 10
+                            size: 11
                         }
                     }
                 },
                 y: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
                     },
                     ticks: {
                         color: '#666',
                         font: {
                             family: 'Poppins',
-                            size: 10
+                            size: 11
                         },
                         callback: function(value) {
                             return value.toLocaleString();
@@ -256,12 +271,22 @@ function initEventListeners() {
         });
     }
 
+    const importProductsForm = document.getElementById('import-products-form');
+    if (importProductsForm) {
+        importProductsForm.addEventListener('submit', handleImportProducts);
+    }
+
     const importSchedulesBtn = document.getElementById('import-schedules-btn');
     const importSchedulesModal = document.getElementById('import-schedules-modal');
     if (importSchedulesBtn && importSchedulesModal) {
         importSchedulesBtn.addEventListener('click', () => {
             importSchedulesModal.classList.add('active');
         });
+    }
+
+    const importSchedulesForm = document.getElementById('import-schedules-form');
+    if (importSchedulesForm) {
+        importSchedulesForm.addEventListener('submit', handleImportSchedules);
     }
 
     const exportProductsBtn = document.getElementById('export-products-btn');
@@ -302,18 +327,25 @@ function initEventListeners() {
 }
 
 function initTabs() {
-    const tabBtns = document.querySelectorAll('.FGD-tab-btn');
-    const tabContents = document.querySelectorAll('.FGD-tab-content');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
 
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetTab = btn.dataset.tab;
+            const targetElement = document.getElementById(targetTab);
+
+            // Check if target element exists
+            if (!targetElement) {
+                console.warn(`Tab content with id "${targetTab}" not found`);
+                return;
+            }
 
             tabBtns.forEach(b => b.classList.remove('active'));
             tabContents.forEach(c => c.classList.remove('active'));
 
             btn.classList.add('active');
-            document.getElementById(`${targetTab}-tab`).classList.add('active');
+            targetElement.classList.add('active');
         });
     });
 }
@@ -323,7 +355,16 @@ function initFilters() {
     const productsLineFilter = document.getElementById('products-line-filter');
     
     if (productsSearch) {
-        productsSearch.addEventListener('input', filterProducts);
+        // Use input event with debounce for search
+        let searchTimeout;
+        productsSearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                currentSearchQuery = productsSearch.value.trim();
+                currentProductPage = 1;
+                refreshProductsTable();
+            }, 500); // 500ms debounce
+        });
     }
     
     if (productsLineFilter) {
@@ -335,58 +376,135 @@ function initFilters() {
     const schedulesShiftFilter = document.getElementById('schedules-shift-filter');
     const schedulesStatusFilter = document.getElementById('schedules-status-filter');
 
-    [schedulesSearch, schedulesDateFilter, schedulesShiftFilter, schedulesStatusFilter].forEach(filter => {
+    if (schedulesSearch) {
+        // Use input event with debounce for search
+        let schedulesSearchTimeout;
+        schedulesSearch.addEventListener('input', function() {
+            clearTimeout(schedulesSearchTimeout);
+            schedulesSearchTimeout = setTimeout(() => {
+                currentSchedulesSearchQuery = schedulesSearch.value.trim();
+                currentSchedulePage = 1;
+                refreshSchedulesTable();
+            }, 500); // 500ms debounce
+        });
+    }
+    
+    if (schedulesDateFilter) {
+        schedulesDateFilter.addEventListener('change', () => {
+            currentSchedulePage = 1;
+            refreshSchedulesTable();
+        });
+    }
+
+    [schedulesShiftFilter, schedulesStatusFilter].forEach(filter => {
         if (filter) {
-            filter.addEventListener(filter.type === 'text' ? 'input' : 'change', filterSchedules);
+            filter.addEventListener(filter.type === 'text' ? 'input' : 'change', () => {
+                currentSchedulePage = 1;
+                refreshSchedulesTable();
+            });
         }
     });
 }
 
-function filterProducts() {
-    const searchTerm = document.getElementById('products-search')?.value.toLowerCase() || '';
-    const lineFilter = document.getElementById('products-line-filter')?.value.toLowerCase() || '';
-    
-    const rows = document.querySelectorAll('#products-tbody tr');
-    
-    rows.forEach(row => {
-        const productName = row.dataset.productName || '';
-        const line = row.dataset.line || '';
-        
-        const matchesSearch = productName.includes(searchTerm);
-        const matchesLine = !lineFilter || line.includes(lineFilter);
-        
-        if (matchesSearch && matchesLine) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+function refreshProductsTable() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('ajax', 'products');
+    url.searchParams.set('page', currentProductPage);
+    if (currentSearchQuery) {
+        url.searchParams.set('search', currentSearchQuery);
+    } else {
+        url.searchParams.delete('search');
+    }
+
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
         }
+    })
+    .then(response => response.text())
+    .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newTableContainer = doc.querySelector('.common-table-container');
+        const newPagination = doc.querySelector('.JO-pagination');
+        
+        if (newTableContainer) {
+            document.querySelector('#products-tab .common-table-container').innerHTML = newTableContainer.innerHTML;
+        }
+        if (newPagination) {
+            document.querySelector('#products-tab .JO-pagination').innerHTML = newPagination.innerHTML;
+        }
+        
+        // Reattach pagination click handlers
+        attachProductsPaginationHandlers();
+    })
+    .catch(error => {
+        console.error('Error refreshing products table:', error);
+        showToast('Error refreshing products table', 'error');
     });
 }
 
-function filterSchedules() {
-    const searchTerm = document.getElementById('schedules-search')?.value.toLowerCase() || '';
+function refreshSchedulesTable() {
     const dateFilter = document.getElementById('schedules-date-filter')?.value || '';
-    const shiftFilter = document.getElementById('schedules-shift-filter')?.value.toLowerCase() || '';
-    const statusFilter = document.getElementById('schedules-status-filter')?.value.toLowerCase() || '';
-    
-    const rows = document.querySelectorAll('#schedules-tbody tr');
-    
-    rows.forEach(row => {
-        const date = row.dataset.date || '';
-        const shift = row.dataset.shift || '';
-        const status = row.dataset.status || '';
-        const text = row.textContent.toLowerCase();
-        
-        const matchesSearch = text.includes(searchTerm);
-        const matchesDate = !dateFilter || date === dateFilter;
-        const matchesShift = !shiftFilter || shift === shiftFilter;
-        const matchesStatus = !statusFilter || status === statusFilter;
-        
-        if (matchesSearch && matchesDate && matchesShift && matchesStatus) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+    const url = new URL(window.location.href);
+    url.searchParams.set('ajax', 'schedules');
+    url.searchParams.set('schedules_page', currentSchedulePage);
+    if (dateFilter) {
+        url.searchParams.set('date_filter', dateFilter);
+    }
+    if (currentSchedulesSearchQuery) {
+        url.searchParams.set('schedules_search', currentSchedulesSearchQuery);
+    } else {
+        url.searchParams.delete('schedules_search');
+    }
+
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
         }
+    })
+    .then(response => response.text())
+    .then(html => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const newTableContainer = doc.querySelector('.common-table-container');
+        const newPagination = doc.querySelector('.JO-pagination');
+        
+        if (newTableContainer) {
+            document.querySelector('#schedules-tab .common-table-container').innerHTML = newTableContainer.innerHTML;
+        }
+        if (newPagination) {
+            document.querySelector('#schedules-tab .JO-pagination').innerHTML = newPagination.innerHTML;
+        }
+        
+        // Reattach pagination click handlers
+        attachSchedulesPaginationHandlers();
+    })
+    .catch(error => {
+        console.error('Error refreshing schedules table:', error);
+        showToast('Error refreshing schedules table', 'error');
+    });
+}
+
+function attachProductsPaginationHandlers() {
+    document.querySelectorAll('#products-tab .JO-pagination a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const url = new URL(link.href);
+            currentProductPage = url.searchParams.get('page') || 1;
+            refreshProductsTable();
+        });
+    });
+}
+
+function attachSchedulesPaginationHandlers() {
+    document.querySelectorAll('#schedules-tab .JO-pagination a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const url = new URL(link.href);
+            currentSchedulePage = url.searchParams.get('schedules_page') || 1;
+            refreshSchedulesTable();
+        });
     });
 }
 
@@ -420,22 +538,24 @@ function handleAddProduct(e) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (response.ok) {
-            showToast('Product added successfully!', 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast(data.message || 'Product added successfully!', 'success');
+            document.getElementById('add-product-modal').classList.remove('active');
+            e.target.reset();
+            refreshProductsTable();
         } else {
-            throw new Error('Failed to add product');
+            throw new Error(data.message || 'Failed to add product');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error adding product', 'error');
+        showToast(error.message || 'Error adding product', 'error');
     });
 }
 
@@ -448,9 +568,8 @@ function handleEditProductClick(e) {
         return;
     }
     currentProductToEdit = productId;
-    // Use the correct get product URL from Django urls.py
-    // Should be /monitoring/product/<id>/
-    const url = `/monitoring/product/${productId}/`;
+    // Use the correct get product URL: /monitoring/product/<id>/
+    const url = `${getProductUrl}${productId}/`;
     fetch(url)
         .then(response => {
             if (!response.ok) throw new Error('Failed to fetch product details');
@@ -478,27 +597,29 @@ function handleEditProduct(e) {
         return;
     }
     // Always use the correct edit product URL: /monitoring/product/<id>/edit/
-    const url = `/monitoring/product/${currentProductToEdit}/edit/`;
+    const url = `${editProductUrl}${currentProductToEdit}/edit/`;
     fetch(url, {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (response.ok) {
-            showToast('Product updated successfully!', 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast(data.message || 'Product updated successfully!', 'success');
+            document.getElementById('edit-product-modal').classList.remove('active');
+            currentProductToEdit = null;
+            refreshProductsTable();
         } else {
-            throw new Error('Failed to update product');
+            throw new Error(data.message || 'Failed to update product');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error updating product', 'error');
+        showToast(error.message || 'Error updating product', 'error');
     });
 }
 
@@ -523,22 +644,24 @@ function handleAddSchedule(e) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (response.ok) {
-            showToast('Schedule added successfully!', 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast(data.message || 'Schedule added successfully!', 'success');
+            document.getElementById('add-schedule-modal').classList.remove('active');
+            e.target.reset();
+            refreshSchedulesTable();
         } else {
-            throw new Error('Failed to add schedule');
+            throw new Error(data.message || 'Failed to add schedule');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error adding schedule', 'error');
+        showToast(error.message || 'Error adding schedule', 'error');
     });
 }
 
@@ -571,22 +694,24 @@ function handleEditSchedule(e) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (response.ok) {
-            showToast('Schedule updated successfully!', 'success');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
+            showToast(data.message || 'Schedule updated successfully!', 'success');
+            document.getElementById('edit-schedule-modal').classList.remove('active');
+            currentScheduleToEdit = null;
+            refreshSchedulesTable();
         } else {
-            throw new Error('Failed to update schedule');
+            throw new Error(data.message || 'Failed to update schedule');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error updating schedule', 'error');
+        showToast(error.message || 'Error updating schedule', 'error');
     });
 }
 
@@ -608,9 +733,9 @@ function handleConfirmDelete() {
     if (!currentItemToDelete || !currentDeleteType) return;
     let url;
     if (currentDeleteType === 'product') {
-        url = `/monitoring/product/${currentItemToDelete}/delete/`;
+        url = `${deleteProductUrl}${currentItemToDelete}/delete/`;
     } else if (currentDeleteType === 'schedule') {
-        url = `/monitoring/schedule/${currentItemToDelete}/delete/`;
+        url = `${deleteScheduleUrl}${currentItemToDelete}/delete/`;
     } else {
         showToast('Invalid delete type', 'error');
         return;
@@ -622,24 +747,22 @@ function handleConfirmDelete() {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (response.ok) {
-            // Only show one toast after successful deletion
-            if (currentDeleteType === 'schedule') {
-                const row = document.querySelector(`.delete-schedule-btn[data-schedule-id="${currentItemToDelete}"]`)?.closest('tr');
-                if (row) row.remove();
-            } else if (currentDeleteType === 'product') {
-                const row = document.querySelector(`.delete-product-btn[data-product-id="${currentItemToDelete}"]`)?.closest('tr');
-                if (row) row.remove();
-            }
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
             document.getElementById('delete-confirmation-modal').classList.remove('active');
-            filterSchedules();
-            filterProducts();
-            showToast(`${currentDeleteType === 'product' ? 'Product' : 'Schedule'} deleted successfully!`, 'success');
+            showToast(data.message || `${currentDeleteType === 'product' ? 'Product' : 'Schedule'} deleted successfully!`, 'success');
+            
+            if (currentDeleteType === 'product') {
+                refreshProductsTable();
+            } else {
+                refreshSchedulesTable();
+            }
+            
+            currentItemToDelete = null;
+            currentDeleteType = null;
         } else {
-            return response.json().then(data => {
-                throw new Error(data.message || 'Failed to delete item');
-            });
+            throw new Error(data.message || 'Failed to delete item');
         }
     })
     .catch(error => {
@@ -693,6 +816,68 @@ function removeToast(toast) {
             toast.parentNode.removeChild(toast);
         }
     }, 300);
+}
+
+function handleImportProducts(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch(e.target.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success' || data.status === 'warning') {
+            showToast(data.message, data.status === 'warning' ? 'warning' : 'success', 5000);
+            document.getElementById('import-products-modal').classList.remove('active');
+            e.target.reset();
+            // Clear file name display
+            const fileNameLabel = document.querySelector('#product-file-drop-area .JO-file-input-filename');
+            if (fileNameLabel) fileNameLabel.textContent = '';
+            refreshProductsTable();
+        } else {
+            throw new Error(data.message || 'Failed to import products');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast(error.message || 'Error importing products', 'error');
+    });
+}
+
+function handleImportSchedules(e) {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    fetch(e.target.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success' || data.status === 'warning') {
+            showToast(data.message, data.status === 'warning' ? 'warning' : 'success', 5000);
+            document.getElementById('import-schedules-modal').classList.remove('active');
+            e.target.reset();
+            // Clear file name display
+            const fileNameLabel = document.querySelector('#schedule-file-drop-area .JO-file-input-filename');
+            if (fileNameLabel) fileNameLabel.textContent = '';
+            refreshSchedulesTable();
+        } else {
+            throw new Error(data.message || 'Failed to import schedules');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast(error.message || 'Error importing schedules', 'error');
+    });
 }
 
 // Drag & drop for import products file input
@@ -787,3 +972,83 @@ function removeToast(toast) {
     fileInput.addEventListener('change', updateFileName);
     dropArea.addEventListener('drop', updateFileName);
 })();
+
+// Auto-refresh functionality
+function startAutoRefresh() {
+    // Refresh every 5 minutes (300000 milliseconds)
+    const refreshInterval = 5 * 60 * 1000;
+    
+    // Set up chart refresh
+    chartRefreshInterval = setInterval(() => {
+        loadChartData();
+    }, refreshInterval);
+    
+    // Set up statistics cards refresh
+    statsRefreshInterval = setInterval(() => {
+        loadStatisticsCards();
+    }, refreshInterval);
+}
+
+function stopAutoRefresh() {
+    if (chartRefreshInterval) {
+        clearInterval(chartRefreshInterval);
+        chartRefreshInterval = null;
+    }
+    if (statsRefreshInterval) {
+        clearInterval(statsRefreshInterval);
+        statsRefreshInterval = null;
+    }
+}
+
+function loadStatisticsCards() {
+    // Fetch updated statistics from the server
+    const url = new URL(window.location.href);
+    url.searchParams.set('ajax', 'stats');
+    
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Update the statistics cards with smooth transition
+        updateStatCard('total_planned', data.total_planned);
+        updateStatCard('total_produced', data.total_produced);
+        updateStatCard('efficiency_percentage', data.efficiency_percentage, '%');
+        updateStatCard('distinct_products_count', data.distinct_products_count);
+    })
+    .catch(error => {
+        console.error('Error loading statistics:', error);
+    });
+}
+
+function updateStatCard(statName, value, suffix = '') {
+    const statElements = {
+        'total_planned': document.querySelector('.FGD-stat-card:nth-child(1) .FGD-stat-number'),
+        'total_produced': document.querySelector('.FGD-stat-card:nth-child(2) .FGD-stat-number'),
+        'efficiency_percentage': document.querySelector('.FGD-stat-card:nth-child(3) .FGD-stat-number'),
+        'distinct_products_count': document.querySelector('.FGD-stat-card:nth-child(4) .FGD-stat-number')
+    };
+    
+    const element = statElements[statName];
+    if (element) {
+        // Add a subtle animation
+        element.style.transition = 'opacity 0.3s ease';
+        element.style.opacity = '0.5';
+        
+        setTimeout(() => {
+            if (statName === 'total_planned' || statName === 'total_produced') {
+                element.textContent = parseFloat(value).toFixed(0);
+            } else {
+                element.textContent = value + suffix;
+            }
+            element.style.opacity = '1';
+        }, 300);
+    }
+}
+
+// Clean up intervals when page is unloaded
+window.addEventListener('beforeunload', () => {
+    stopAutoRefresh();
+});

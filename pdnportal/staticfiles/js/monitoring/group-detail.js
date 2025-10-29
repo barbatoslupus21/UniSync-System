@@ -19,42 +19,46 @@ function initOutputChart() {
     if (!ctx) return;
 
     outputChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: [],
             datasets: [
                 {
-                    label: 'Target',
+                    type: 'bar',
+                    label: 'Target Output',
                     data: [],
-                    borderColor: 'rgba(255, 193, 7, 1)',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    borderWidth: 3,
-                    borderDash: [5, 5],
-                    pointBackgroundColor: 'rgba(255, 193, 7, 1)',
-                    pointBorderColor: 'white',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    tension: 0.3,
-                    fill: false
+                    backgroundColor: '#0046FF',
+                    borderColor: '#0046FF',
+                    borderWidth: 1,
+                    barThickness: 40,
+                    borderRadius: 4,
+                    order: 2
                 },
                 {
-                    label: 'Actual',
+                    type: 'line',
+                    label: 'Current Output',
                     data: [],
-                    borderColor: 'rgba(51, 102, 255, 1)',
-                    backgroundColor: 'rgba(51, 102, 255, 0.1)',
+                    borderColor: '#78C841',
+                    backgroundColor: 'rgba(120, 200, 65, 0.2)',
                     borderWidth: 3,
-                    pointBackgroundColor: 'rgba(51, 102, 255, 1)',
+                    pointBackgroundColor: '#78C841',
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
                     pointRadius: 5,
-                    tension: 0.3,
-                    fill: true
+                    pointHoverRadius: 7,
+                    tension: 0.4,
+                    fill: true,
+                    order: 1
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: {
                     position: 'top',
@@ -63,7 +67,8 @@ function initOutputChart() {
                         padding: 20,
                         font: {
                             family: 'Poppins',
-                            size: 12
+                            size: 12,
+                            weight: '500'
                         }
                     }
                 },
@@ -76,7 +81,8 @@ function initOutputChart() {
                     borderColor: '#ddd',
                     borderWidth: 1,
                     cornerRadius: 6,
-                    padding: 10,
+                    padding: 12,
+                    bodySpacing: 8,
                     callbacks: {
                         label: function(context) {
                             return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' units';
@@ -87,25 +93,26 @@ function initOutputChart() {
             scales: {
                 x: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        display: false
                     },
                     ticks: {
                         color: '#666',
                         font: {
                             family: 'Poppins',
-                            size: 10
+                            size: 11
                         }
                     }
                 },
                 y: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false
                     },
                     ticks: {
                         color: '#666',
                         font: {
                             family: 'Poppins',
-                            size: 10
+                            size: 11
                         },
                         callback: function(value) {
                             return value.toLocaleString();
@@ -302,8 +309,8 @@ function initEventListeners() {
 }
 
 function initTabs() {
-    const tabBtns = document.querySelectorAll('.FGD-tab-btn');
-    const tabContents = document.querySelectorAll('.FGD-tab-content');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
 
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -323,7 +330,12 @@ function initFilters() {
     const productsLineFilter = document.getElementById('products-line-filter');
     
     if (productsSearch) {
-        productsSearch.addEventListener('input', filterProducts);
+        // Use input event with debounce for search
+        let searchTimeout;
+        productsSearch.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(filterProducts, 500); // 500ms debounce
+        });
     }
     
     if (productsLineFilter) {
@@ -343,24 +355,20 @@ function initFilters() {
 }
 
 function filterProducts() {
-    const searchTerm = document.getElementById('products-search')?.value.toLowerCase() || '';
-    const lineFilter = document.getElementById('products-line-filter')?.value.toLowerCase() || '';
+    const searchTerm = document.getElementById('products-search')?.value.trim() || '';
     
-    const rows = document.querySelectorAll('#products-tbody tr');
+    // Build URL with search parameter
+    const url = new URL(window.location);
+    if (searchTerm) {
+        url.searchParams.set('search', searchTerm);
+    } else {
+        url.searchParams.delete('search');
+    }
+    // Reset to page 1 when searching
+    url.searchParams.set('page', '1');
     
-    rows.forEach(row => {
-        const productName = row.dataset.productName || '';
-        const line = row.dataset.line || '';
-        
-        const matchesSearch = productName.includes(searchTerm);
-        const matchesLine = !lineFilter || line.includes(lineFilter);
-        
-        if (matchesSearch && matchesLine) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    });
+    // Reload the page with the search parameter
+    window.location.href = url.toString();
 }
 
 function filterSchedules() {

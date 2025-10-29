@@ -46,8 +46,8 @@
                 <i class="fa fa-wrench" aria-hidden="true"></i>
             </div>
             <div class="JO-stats-content">
-                <h3>In Progress Requests</h3>
-                <h2 class="JO-stats-number">{{ pendingJOCount }}</h2>
+                <h3>Completed Requests</h3>
+                <h2 class="JO-stats-number">{{ overdueCount }}</h2>
                 <p>overall total</p>
             </div>
         </div>
@@ -57,8 +57,8 @@
                 <i class="fas fa-check-circle"></i>
             </div>
             <div class="JO-stats-content">
-                <h3>Completed Requests</h3>
-                <h2 class="JO-stats-number">{{ overdueCount }}</h2>
+                <h3>Closed Transaction</h3>
+                <h2 class="JO-stats-number">{{ pendingJOCount }}</h2>
                 <p>overall total</p>
             </div>
         </div>
@@ -306,6 +306,17 @@
             <form method="POST" action="{% url 'export-job-orders' %}" id="export-form">
                 {% csrf_token %}
                 <div class="JO-export-section">
+                    <h5>Time Period</h5>
+                    <div class="JO-export-period">
+                        <select id="export-period" name="period" class="JO-select">
+                            <option value="custom">Custom Date Range</option>
+                            <option value="current_month">Current Month (24th to 24th)</option>
+                            <option value="last_month">Last Month (24th to 24th)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="JO-export-section" id="custom-date-section">
                     <h5>Date Range</h5>
                     <div class="JO-export-date-range">
                         <div class="JO-export-date-field">

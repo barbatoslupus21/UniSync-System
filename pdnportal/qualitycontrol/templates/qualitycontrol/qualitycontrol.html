@@ -326,6 +326,7 @@
                                 <th>Assy Line</th>
                                 <th class="hide-column">Product Number</th>
                                 <th class="hide-column">Schedule Date</th>
+                                <th class="hide-column">Date Received</th>
                                 <th class="hide-column">Requested By</th>
                                 <th style="text-align: center;">Status</th>
                                 <th style="text-align: center;">Actions</th>
@@ -349,12 +350,18 @@
                                 data-schedule-date="{{ cut_away.schedule_of_cut_away|date:'M d, Y' }}"
                                 data-received-date="{% if cut_away.received_date_by_qa %}{{ cut_away.received_date_by_qa|date:'M d, Y' }}{% endif %}"
                                 data-remarks="{{ cut_away.remarks }}"
-                                data-qa-remarks="{{ cut_away.qa_remarks }}">
+                                data-qa-remarks="{{ cut_away.qa_remarks }}"
+                                data-purpose="{{ cut_away.purpose }}"
+                                data-purpose-reason="{{ cut_away.purpose_reason }}"
+                                data-leadwire-partnumber="{{ cut_away.leadwire_partnumber }}"
+                                data-rubber-seal-partnumber="{{ cut_away.rubber_seal_partnumber }}"
+                                data-requested-by="{{ cut_away.requested_by.name }}">
                                 <td data-label="Control Number">{{ cut_away.control_number }}</td>
                                 <td class="hide-column" data-label="Date Prepared">{{ cut_away.date_prepared|date:"M d, Y" }}</td>
                                 <td data-label="Assy Line">{{ cut_away.assy_line.line_name }}</td>
                                 <td class="hide-column" data-label="Product Number">{{ cut_away.product_number }}</td>
                                 <td class="hide-column" data-label="Schedule Date">{{ cut_away.schedule_of_cut_away|date:"M d, Y" }}</td>
+                                <td class="hide-column" data-label="Received Date">{% if cut_away.received_date_by_qa %}{{ cut_away.received_date_by_qa|date:"M d, Y" }}{% endif %}</td>
                                 <td class="hide-column" data-label="Requested By">{{ cut_away.requested_by.name }}</td>
                                 <td data-label="Status" class="text-center">
                                     {% if cut_away.status_of_cut_away == 'cancelled' %}
@@ -857,6 +864,56 @@
     </div>
 </div>
 
+<!-- Export Cut-Away Report Modal -->
+<div id="export-cut-away-modal" class="JO-modal modal-sm">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Export Cut-Away Report</h3>
+            <button class="JO-modal-close" id="export-cut-away-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="GET" action="{% url 'export_cut_away_report' %}" id="export-cut-away-form">
+            <div class="JO-modal-body">
+                <div class="JO-form-grid">
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-cut-away-date-from">Date From <span class="input-required">*</span></label>
+                            <input type="date" id="export-cut-away-date-from" name="date_from" class="JO-input" required>
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="export-cut-away-date-to">Date To <span class="input-required">*</span></label>
+                            <input type="date" id="export-cut-away-date-to" name="date_to" class="JO-input" required>
+                        </div>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="export-cut-away-status">Status <span class="input-required">*</span></label>
+                        <select id="export-cut-away-status" name="status" class="JO-select" required>
+                            <option value="">Select Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="all">All Status</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="JO-modal-footer">
+                <button type="button" class="btn btn-outline" id="export-cut-away-cancel">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-file-excel-o" aria-hidden="true"></i>
+                    Export
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Lot Out Inspection Modal -->
 <div id="lot-out-modal" class="JO-modal">
     <div class="JO-modal-content">
@@ -1067,9 +1124,37 @@
                             <input type="text" id="cut-away-product-number" name="product_number" class="JO-input" placeholder="Enter product number" required>
                         </div>
                     </div>
+                    
+                    <div class="JO-form-group">
+                        <label for="cut-away-purpose">Purpose <span class="input-required">*</span></label>
+                        <select id="cut-away-purpose" name="purpose" class="JO-select" required>
+                            <option value="">Select Purpose</option>
+                            <option value="new_product">New Product</option>
+                            <option value="reached_50000">Reached 50,000</option>
+                            <option value="reached_100000">Reached 100,000</option>
+                            <option value="new_applicator">New Applicator</option>
+                            <option value="change_wire_crimper">Change Wire Crimper</option>
+                            <option value="change_wire_anvil">Change Wire Anvil</option>
+                            <option value="new_combination">New Combination</option>
+                            <option value="big_burr">Big Burr</option>
+                            <option value="change_supplier">Change Supplier</option>
+                        </select>
+                    </div>
+                    <div class="JO-form-group" id="cut-away-purpose-reason-group" style="display: none;">
+                        <label for="cut-away-purpose-reason">Reason for Changing Parts <span class="input-required">*</span></label>
+                        <textarea id="cut-away-purpose-reason" name="purpose_reason" class="JO-textarea" rows="3" placeholder="Enter reason for changing parts"></textarea>
+                    </div>
                     <div class="JO-form-group">
                         <label for="cut-away-terminal-part-number">Terminal Part Number <span class="input-required">*</span></label>
                         <input type="text" id="cut-away-terminal-part-number" name="terminal_part_number" class="JO-input" placeholder="Enter terminal part number" required>
+                    </div>
+                    <div class="JO-form-group two-column-half">
+                        <label for="cut-away-leadwire-partnumber">Leadwire Partnumber/Combination <span class="input-required">*</span></label>
+                        <input type="text" id="cut-away-leadwire-partnumber" name="leadwire_partnumber" class="JO-input" placeholder="Enter leadwire partnumber/combination" required>
+                    </div>
+                    <div class="JO-form-group two-column-half">
+                        <label for="cut-away-rubber-seal-partnumber">Rubber Seal Partnumber/Combination <span class="input-required">*</span></label>
+                        <input type="text" id="cut-away-rubber-seal-partnumber" name="rubber_seal_partnumber" class="JO-input" placeholder="Enter rubber seal partnumber/combination" required>
                     </div>
                 </div>
             </div>
@@ -1132,8 +1217,24 @@
                         <span id="view-cut-away-product-number" class="JO-view-value"></span>
                     </div>
                     <div class="JO-details-item">
+                        <span class="JO-details-label">Purpose</span>
+                        <span id="view-cut-away-purpose" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item" id="view-cut-away-purpose-reason-item" style="display: none;">
+                        <span class="JO-details-label">Reason for Changing Parts</span>
+                        <span id="view-cut-away-purpose-reason" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
                         <span class="JO-details-label">Terminal Part Number</span>
                         <span id="view-cut-away-terminal-part-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Leadwire Partnumber/Combination</span>
+                        <span id="view-cut-away-leadwire-partnumber" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">Rubber Seal Partnumber/Combination</span>
+                        <span id="view-cut-away-rubber-seal-partnumber" class="JO-view-value"></span>
                     </div>
                     <div class="JO-details-item">
                         <span class="JO-details-label">Requested By</span>
@@ -1216,6 +1317,35 @@
                     <div class="JO-form-group">
                         <label for="edit-cut-away-terminal-part-number">Terminal Part Number <span class="input-required">*</span></label>
                         <input type="text" id="edit-cut-away-terminal-part-number" name="terminal_part_number" class="JO-input" required>
+                    </div>
+                    <div class="JO-form-group">
+                        <label for="edit-cut-away-purpose">Purpose</label>
+                        <select id="edit-cut-away-purpose" name="purpose" class="JO-select">
+                            <option value="">Select Purpose</option>
+                            <option value="new_product">New Product</option>
+                            <option value="reached_50000">Reached 50,000</option>
+                            <option value="reached_100000">Reached 100,000</option>
+                            <option value="new_applicator">New Applicator</option>
+                            <option value="change_wire_crimper">Change Wire Crimper</option>
+                            <option value="change_wire_anvil">Change Wire Anvil</option>
+                            <option value="new_combination">New Combination</option>
+                            <option value="big_burr">Big Burr</option>
+                            <option value="change_supplier">Change Supplier</option>
+                        </select>
+                    </div>
+                    <div class="JO-form-group" id="edit-cut-away-purpose-reason-group" style="display: none;">
+                        <label for="edit-cut-away-purpose-reason">Reason for Changing Parts</label>
+                        <textarea id="edit-cut-away-purpose-reason" name="purpose_reason" class="JO-textarea" rows="3" placeholder="Enter reason for changing parts"></textarea>
+                    </div>
+                    <div class="two-column-row">
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-cut-away-leadwire-partnumber">Leadwire Partnumber/Combination</label>
+                            <input type="text" id="edit-cut-away-leadwire-partnumber" name="leadwire_partnumber" class="JO-input" placeholder="Enter leadwire partnumber/combination">
+                        </div>
+                        <div class="JO-form-group two-column-half">
+                            <label for="edit-cut-away-rubber-seal-partnumber">Rubber Seal Partnumber/Combination</label>
+                            <input type="text" id="edit-cut-away-rubber-seal-partnumber" name="rubber_seal_partnumber" class="JO-input" placeholder="Enter rubber seal partnumber/combination">
+                        </div>
                     </div>
                 </div>
             </div>

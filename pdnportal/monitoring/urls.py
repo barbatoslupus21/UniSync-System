@@ -7,6 +7,7 @@ urlpatterns = [
     path('create-group/', views.create_monitoring_group, name='create_group'),
     path('edit-group/<int:group_id>/', views.edit_monitoring_group, name='edit_monitoring_group'),
     path('get-group/<int:group_id>/', views.get_monitoring_group, name='get_monitoring_group'),
+    path('get-available-options/<int:group_id>/', views.get_available_options, name='get_available_options'),
     path('delete-group/<int:group_id>/', views.delete_monitoring_group, name='delete_monitoring_group'),
     
     path('group-detail/<int:group_id>/', views.group_detail, name='group_detail'),
@@ -33,6 +34,7 @@ urlpatterns = [
      # GROUP DASHBOARD - Enhanced
     path('group-dashboard/<int:group_id>/', views.group_dashboard, name='group_dashboard'),
     path('group-dashboard/<int:group_id>/data/', views.group_dashboard_data, name='group_dashboard_data'),
+    path('group-dashboard/<int:group_id>/pie-charts/', views.group_dashboard_pie_charts, name='group_dashboard_pie_charts'),
     path('group-dashboard/<int:group_id>/metrics/', views.get_real_time_metrics, name='group_real_time_metrics'),
     
     # Additional dashboard endpoints for enhanced functionality

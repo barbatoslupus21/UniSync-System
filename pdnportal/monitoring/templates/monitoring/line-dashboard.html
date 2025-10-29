@@ -4,8 +4,9 @@
 {% block title %}UniSync - Product Output Monitoring{% endblock %}
 
 {% block extra_css %}
-
 <link rel="stylesheet" href="{% static 'css/monitoring/line-dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+
 {% endblock %}
 
 {% block content %}
@@ -17,7 +18,7 @@
             <p class="PM-subtitle">{{ subtitle }}</p>
         </div>
         {% if schedule_exists %}
-        <button id="add-output-btn" class="JO-button JO-primary-button">
+        <button id="add-output-btn" class="btn btn-primary">
             <i class="fas fa-plus"></i> Add Output
         </button>
         {% endif %}
@@ -97,27 +98,14 @@
     </div>
 
     <!-- Output Log -->
-    <div class="JO-card PM-output-log">
-        <div class="JO-card-header">
-            <h2>Output Log</h2>
-            <div class="JO-card-actions">
-                <div class="JO-search-container">
-                    <input type="text" class="JO-search-input" placeholder="Search by hour, operator...">
-                    <button class="JO-search-button">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <div class="JO-table-container">
-            <table class="JO-table">
+    <div class="PM-output-log">        
+        <div class="common-table-container">
+            <table class="Unisync-table">
                 <thead>
                     <tr>
                         <th>Time</th>
                         <th>Operator</th>
                         <th>Output</th>
-                        <th>Target</th>
                         <th>Variance</th>
                         <th>Status</th>
                     </tr>
@@ -128,7 +116,6 @@
                         <td data-label="Time">{{ log.time|date:"h:i A" }}</td>
                         <td data-label="Operator">{{ log.operator }}</td>
                         <td data-label="Output">{{ log.output }}</td>
-                        <td data-label="Target">{{ log.target }}</td>
                         <td data-label="Variance">
                             <span class="{% if log.variance >= 0 %}PM-positive{% else %}PM-negative{% endif %}">
                                 {% if log.variance >= 0 %}+{% endif %}{{ log.variance }}
@@ -141,9 +128,19 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr>
-                        <td colspan="7" class="JO-empty-table">No output logs found for today.</td>
-                    </tr>
+                        <tr>
+                            <td colspan="5" class="JO-empty-table">
+                                <div class="empty-state">
+                                    <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                    <h4>No Output Logs Found.</h4>
+                                    {% if search_query %}
+                                        <p>No results found for "{{ search_query }}"</p>
+                                    {% else %}
+                                        <p>No output logs have been filed yet</p>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>

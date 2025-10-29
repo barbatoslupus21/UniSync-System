@@ -28,3 +28,9 @@ INFO 2025-10-09 14:00:33,664 forms 924 3496 Initial notification sent for docume
 INFO 2025-10-21 12:30:22,977 scheduler 8404 2800 Starting document notification scheduler loop
 INFO 2025-10-21 12:30:22,977 scheduler 8404 6516 Document notification scheduler started - will run daily at 08:00:00
 INFO 2025-10-21 12:30:22,977 apps 8404 6516 Document notification scheduler initialized successfully
+INFO 2025-10-23 13:37:40,288 scheduler 11224 27388 Starting document notification scheduler loop
+INFO 2025-10-23 13:37:40,288 scheduler 11224 8124 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-10-23 13:37:40,288 apps 11224 8124 Document notification scheduler initialized successfully
+INFO 2025-10-23 13:52:57,740 scheduler 27112 2928 Starting document notification scheduler loop
+INFO 2025-10-23 13:52:57,740 scheduler 27112 15552 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-10-23 13:52:57,752 apps 27112 15552 Document notification scheduler initialized successfully

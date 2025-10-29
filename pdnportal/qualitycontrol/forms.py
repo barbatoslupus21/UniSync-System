@@ -46,7 +46,8 @@ class CutAwayForm(forms.ModelForm):
     class Meta:
         model = CutAway
         fields = ['assy_line', 'machine_number', 'applicator_number_code', 
-                  'crimped_quantity', 'product_number', 'terminal_part_number']
+                  'crimped_quantity', 'product_number', 'terminal_part_number',
+                  'purpose', 'purpose_reason', 'leadwire_partnumber', 'rubber_seal_partnumber']
         widgets = {
             'assy_line': forms.Select(attrs={'class': 'JO-select'}),
             'machine_number': forms.TextInput(attrs={'class': 'JO-input', 'placeholder': 'Enter machine number'}),
@@ -54,10 +55,22 @@ class CutAwayForm(forms.ModelForm):
             'crimped_quantity': forms.NumberInput(attrs={'class': 'JO-input', 'placeholder': 'Enter quantity', 'min': 1}),
             'product_number': forms.TextInput(attrs={'class': 'JO-input', 'placeholder': 'Enter product number'}),
             'terminal_part_number': forms.TextInput(attrs={'class': 'JO-input', 'placeholder': 'Enter terminal part number'}),
+            'purpose': forms.Select(attrs={'class': 'JO-select'}),
+            'purpose_reason': forms.Textarea(attrs={'class': 'JO-textarea', 'placeholder': 'Enter reason for changing parts', 'rows': 3}),
+            'leadwire_partnumber': forms.TextInput(attrs={'class': 'JO-input', 'placeholder': 'Enter leadwire partnumber/combination'}),
+            'rubber_seal_partnumber': forms.TextInput(attrs={'class': 'JO-input', 'placeholder': 'Enter rubber seal partnumber/combination'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Make all fields required
-        for field in self.fields:
+        # Make required fields
+        required_fields = ['assy_line', 'machine_number', 'applicator_number_code', 
+                          'crimped_quantity', 'product_number', 'terminal_part_number']
+        for field in required_fields:
             self.fields[field].required = True
+        
+        # Make optional fields
+        self.fields['purpose'].required = False
+        self.fields['purpose_reason'].required = False
+        self.fields['leadwire_partnumber'].required = False
+        self.fields['rubber_seal_partnumber'].required = False

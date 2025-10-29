@@ -31,12 +31,12 @@ class MonitoringGroupForm(forms.ModelForm):
         fields = ['title', 'description']  # Removed 'status'
         widgets = {
             'title': forms.TextInput(attrs={
-                'class': 'form-control',
+                'class': 'form-input',
                 'placeholder': 'Enter monitoring group title',
                 'maxlength': 100
             }),
             'description': forms.Textarea(attrs={
-                'class': 'form-control',
+                'class': 'form-input',
                 'rows': 3,
                 'placeholder': 'Enter description (optional)'
             })
@@ -59,14 +59,16 @@ class MonitoringGroupForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        assigned_line_ids = LineToMonitor.objects.values_list('line_id', flat=True)
-        self.fields['lines'].queryset = Line.objects.exclude(id__in=assigned_line_ids)
         if self.instance and self.instance.pk:
-            # For edit, allow current group's lines to remain selectable
-            current_group_line_ids = LineToMonitor.objects.filter(monitoring=self.instance).values_list('line_id', flat=True)
-            self.fields['lines'].queryset = Line.objects.exclude(id__in=assigned_line_ids).union(Line.objects.filter(id__in=current_group_line_ids))
-            self.fields['lines'].initial = current_group_line_ids
+            # For edit, exclude lines assigned to other groups (not this one)
+            assigned_line_ids = LineToMonitor.objects.exclude(monitoring=self.instance).values_list('line_id', flat=True)
+            self.fields['lines'].queryset = Line.objects.exclude(id__in=assigned_line_ids)
+            self.fields['lines'].initial = LineToMonitor.objects.filter(monitoring=self.instance).values_list('line_id', flat=True)
             self.fields['supervisors'].initial = SupervisorToMonitor.objects.filter(monitoring=self.instance).values_list('supervisor_id', flat=True)
+        else:
+            # For create, exclude all assigned lines
+            assigned_line_ids = LineToMonitor.objects.values_list('line_id', flat=True)
+            self.fields['lines'].queryset = Line.objects.exclude(id__in=assigned_line_ids)
 
     def save(self, commit=True, created_by=None):
         monitoring = super().save(commit=False)

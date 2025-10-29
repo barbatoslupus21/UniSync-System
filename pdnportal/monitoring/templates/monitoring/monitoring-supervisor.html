@@ -6,161 +6,205 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/job-order.css' %}">
 <link rel="stylesheet" href="{% static 'css/monitoring/monitoring-supervisor.css' %}">
-<link rel="stylesheet" href="{% static 'css/monitoring/import-modals.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+<link rel="stylesheet" href="{% static 'css/stockdeclaration/stockdeclaration.css' %}">
 {% endblock %}
 
 {% block content %}
 <main class="main-content">
     <div class="FD-header">
         <div class="FD-title-section">
-            <h1 class="FD-page-title">Facilitator Dashboard</h1>
+            <h1 class="FD-page-title">Line Output Monitoring</h1>
             <p class="FD-subtitle">Monitor and manage production groups</p>
         </div>
-        <button id="create-group-btn" class="JO-button JO-primary-button">
-            <i class="fas fa-plus"></i> Create Group
-        </button>
     </div>
 
-    <div class="FD-stats-grid">
-        <div class="FD-stat-card">
-            <div class="FD-stat-icon groups">
-                <i class="fas fa-layer-group"></i>
-            </div>
-            <div class="FD-stat-content">
-                <h3>Total Groups</h3>
-                <h2 class="FD-stat-number">{{ total_groups }}</h2>
-                <p>Active monitoring groups</p>
-            </div>
-        </div>
-        
-        <div class="FD-stat-card">
-            <div class="FD-stat-icon lines">
-                <i class="fas fa-industry"></i>
-            </div>
-            <div class="FD-stat-content">
-                <h3>Production Lines</h3>
-                <h2 class="FD-stat-number">{{ total_lines }}</h2>
-                <p>Lines under monitoring</p>
-            </div>
-        </div>
-        
-        <div class="FD-stat-card">
-            <div class="FD-stat-icon output">
-                <i class="fas fa-box"></i>
-            </div>
-            <div class="FD-stat-content">
-                <h3>Today's Output</h3>
-                <h2 class="FD-stat-number">{{ todays_output|floatformat:0 }}</h2>
-                <p>Units produced today</p>
-            </div>
-        </div>
-        
-        <div class="FD-stat-card">
-            <div class="FD-stat-icon backlog">
-                <i class="fas fa-exclamation-triangle"></i>
-            </div>
-            <div class="FD-stat-content">
-                <h3>Backlog Issues</h3>
-                <h2 class="FD-stat-number">{{ backlog_issues }}</h2>
-                <p>Items requiring attention</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="FD-chart-section">
-        <div class="JO-card">
-            <div class="JO-card-header">
-                <h2>Performance Overview</h2>
-                <div class="FD-chart-filters">
-                    <select id="time-range-filter" class="JO-select">
-                        <option value="today">Today</option>
+    <div class="chart-main-container">
+        <div class="JO-card-header">
+            <h2>Line Performance Overview</h2>
+            <div class="main-chart-filters">
+                <select id="time-range-filter" class="JO-select">
                         <option value="week" selected>This Week</option>
                         <option value="month">This Month</option>
                         <option value="year">This Year</option>
-                    </select>
-                    <select id="group-filter" class="JO-select">
+                </select>
+                <select id="group-filter" class="JO-select">
                         <option value="all">All Groups</option>
                         {% for group in monitoring_groups %}
                         <option value="{{ group.id }}">{{ group.title }}</option>
                         {% endfor %}
-                    </select>
-                </div>
+                </select>
             </div>
-            <div class="FD-chart-container">
-                <canvas id="performance-chart"></canvas>
-            </div>
+        </div>
+        <div class="JO-chart-wrapper">
+            <canvas id="performance-chart"></canvas>
         </div>
     </div>
 
-    <div class="FD-groups-section">
-        <div class="JO-card">
-            <div class="JO-card-header">
-                <h2>Monitoring Groups</h2>
-                <div class="JO-card-actions">
-                    <div class="JO-search-container">
-                        <input type="text" id="groups-search" class="JO-search-input" placeholder="Search groups...">
-                        <button class="JO-search-button">
-                            <i class="fas fa-search"></i>
+    <!-- New Table -->
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <form method="GET" class="JO-search-form" style="display: contents;">
+                            <div class="JO-search-container">
+                                <input type="text" name="search" class="JO-search-input" placeholder="Search by JO Number, line, type..." value="{{ search_query }}">
+                            </div>
+                            <div class="JO-filter-container">
+                                <select name="status" class="JO-select JO-filter-select" onchange="this.form.submit()">
+                                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Status</option>
+                                    <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>Closed</option>
+                                    <option value="routing" {% if status_filter == 'routing' %}selected{% endif %}>Routing</option>
+                                    <option value="assigned" {% if status_filter == 'assigned' %}selected{% endif %}>Assigned</option>
+                                    <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                    <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                                </select>
+                            </div>
+                        </form>
+                        <button id="create-group-btn" class="JO-button JO-primary-button">
+                            <i class="fas fa-plus"></i> Create Group
                         </button>
                     </div>
                 </div>
-            </div>
-            
-            <div class="FD-groups-grid" id="groups-grid">
-                {% for group in monitoring_groups %}
-                <div class="FD-group-card" data-group-title="{{ group.title|lower }}">
-                    <div class="FD-group-header">
-                        <div class="FD-group-status {{ group.status|lower|slugify }}">
-                            <span class="FD-status-dot"></span>
-                            {{ group.status }}
-                        </div>
-                        {% if group.created_by == request.user %}
-                        <div class="FD-group-actions">
-                            <button class="FD-action-btn edit-group-btn" data-group-id="{{ group.id }}" title="Edit">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button class="FD-action-btn delete-group-btn" data-group-id="{{ group.id }}" title="Delete">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                        {% endif %}
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="jo-table">
+                        <thead>
+                            <tr>
+                                <th>Monitoring Group</th>
+                                <th>Status</th>
+                                <th class="hide-column">Lines</th>
+                                <th>Schedule Plan</th>
+                                <th>Output Percentage</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jo-table-body">
+                            {% for monitoring in monitoring_groups %}
+                            <tr class="jo-table-row">
+                                <td data-label="Monitoring Group">{{ monitoring.title }}</td>
+                                <td data-label="Status">
+                                    {% if monitoring.status == "Running" %}
+                                        <span class="JO-status JO-status-approved">
+                                            Running
+                                        </span>
+                                    {% elif monitoring.status == "On Hold" %}
+                                        <span class="JO-status JO-status-onhold">
+                                            On Hold
+                                        </span>
+                                    {% else %}
+                                        <span class="JO-status JO-status-rejected">
+                                            Stopped
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="lines-cell"  class="hide-column" data-label="Lines">
+                                    {% with lines=monitoring.monitoring_lines.all %}
+                                        {% for line_monitor in lines %}
+                                            {% if forloop.counter <= 3 %}
+                                                <span class="line-container">{{ line_monitor.line.line_name }}</span>
+                                                {% if not forloop.last and forloop.counter < 3 %} {% endif %}
+                                            {% endif %}
+                                        {% empty %}
+                                            <span class="text-muted">No lines assigned</span>
+                                        {% endfor %}
+                                        {% if lines|length > 3 %}
+                                            <span class="line-container text-muted">+{{ lines|length|add:-3 }}</span>
+                                        {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td data-label="Schedule Plan">
+                                    {% if monitoring.total_schedules > 0 %}
+                                        <span class="text-primary">{{ monitoring.total_schedules }} schedules</span>
+                                    {% else %}
+                                        <span class="text-danger">No schedules</span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Output Rate">
+                                    {% if monitoring.efficiency_percentage is None %}
+                                        <span class="text-danger">No Output</span>
+                                    {% else %}
+                                        <span class="{% if monitoring.efficiency_percentage >= 80 %}text-success{% elif monitoring.efficiency_percentage >= 50 %}text-warning{% else %}text-danger{% endif %}">
+                                            {{ monitoring.efficiency_percentage }}%
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td data-label="Actions" class="text-center">
+                                    <button class="btn btn-icon JO-icon-button view-dashboard-btn" title="View Dashboard" data-id="{{ monitoring.id }}">
+                                        <i class="fa fa-eye" aria-hidden="true"></i>
+                                    </button>
+                                    {% if user.monitoring_manager or monitoring.created_by == user %}
+                                    <button class="btn btn-icon JO-icon-button edit-group-btn" title="Edit Group" data-id="{{ monitoring.id }}">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-icon btn-error JO-icon-button text-danger delete-group-btn" title="Delete Group" data-id="{{ monitoring.id }}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="JO-empty-table">
+                                    <div class="empty-state">
+                                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                                        <h4>No Monitoring Group Found</h4>
+                                        {% if search_query %}
+                                            <p>No results found for "{{ search_query }}"</p>
+                                        {% else %}
+                                            <p>No monitoring group has been created yet</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                {% if monitoring_groups.paginator.num_pages > 1 %}
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {{ monitoring_groups.start_index }} to {{ monitoring_groups.end_index }} of {{ monitoring_groups.paginator.count }} entries
                     </div>
-                    <div class="FD-group-content">
-                        <h3 class="FD-group-title">{{ group.title }}</h3>
-                        <p class="FD-group-description">{{ group.description|truncatechars:80 }}</p>
-                        
-                        <div class="FD-group-metrics">
-                            <div class="FD-metric">
-                                <span class="FD-metric-label">Efficiency</span>
-                                <span class="FD-metric-value">{{ group.efficiency_percentage }}%</span>
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if monitoring_groups.has_previous %}
+                            <a href="?page={{ monitoring_groups.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in monitoring_groups.paginator.page_range %}
+                                {% if monitoring_groups.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > monitoring_groups.number|add:'-3' and num < monitoring_groups.number|add:'3' %}
+                                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
                             </div>
-                            <div class="FD-metric">
-                                <span class="FD-metric-label">Lines</span>
-                                <span class="FD-metric-value">{{ group.monitoring_lines.count }}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="FD-group-footer">
-                            <button class="JO-button JO-secondary-button view-detail-btn" data-group-id="{{ group.id }}">
-                                View Details
-                            </button>
+                            
+                            {% if monitoring_groups.has_next %}
+                            <a href="?page={{ monitoring_groups.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter and status_filter != 'all' %}&status={{ status_filter }}{% endif %}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
-                {% empty %}
-                <div class="FD-empty-state">
-                    <div class="FD-empty-icon">
-                        <i class="fas fa-layer-group"></i>
-                    </div>
-                    <h3>No Monitoring Groups</h3>
-                    <p>Create your first monitoring group to get started.</p>
-                    <button id="create-first-group-btn" class="JO-button JO-primary-button">
-                        <i class="fas fa-plus"></i> Create Group
-                    </button>
-                </div>
-                {% endfor %}
+                {% endif %}
             </div>
-        </div>
     </div>
 </main>
 
@@ -187,6 +231,7 @@
                 
                 <div class="JO-form-group">
                     <label for="{{ form.lines.id_for_label }}">{{ form.lines.label }}</label>
+                    {% if form.lines.field.choices|length > 0 %}
                     <div class="FD-checkbox-grid">
                         {% for choice in form.lines %}
                         <div class="FD-checkbox-item">
@@ -195,6 +240,15 @@
                         </div>
                         {% endfor %}
                     </div>
+                    {% else %}
+                    <div class="empty-lines">
+                        <div class="empty-state" style="width:100%; height:150px; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+                            <i class="fa fa-exclamation-triangle" aria-hidden="true" style="font-size:22px; margin-bottom:8px;"></i>
+                            <h4 style="margin:0;">No Available Lines</h4>
+                            <p style="margin:6px 0 0; color:var(--muted-color, #6c757d);">No available lines to monitor. This may be because another monitoring group is already monitoring all lines.</p>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 <div class="JO-form-group">
@@ -251,24 +305,14 @@
                 <div class="JO-form-group">
                     <label>Production Lines</label>
                     <div class="FD-checkbox-grid" id="edit-lines-container">
-                        {% for line in available_lines %}
-                        <div class="FD-checkbox-item">
-                            <input type="checkbox" id="edit-line-{{ line.id }}" name="lines" value="{{ line.id }}" {% if line in group.monitoring_lines.all %}checked{% endif %}>
-                            <label for="edit-line-{{ line.id }}">{{ line.line_name }}</label>
-                        </div>
-                        {% endfor %}
+                        <!-- Lines will be populated dynamically by JavaScript -->
                     </div>
                 </div>
                 
                 <div class="JO-form-group">
                     <label>Supervisors</label>
                     <div class="FD-checkbox-grid" id="edit-supervisors-container">
-                        {% for supervisor in supervisors %}
-                        <div class="FD-checkbox-item">
-                            <input type="checkbox" id="edit-supervisor-{{ supervisor.id }}" name="supervisors" value="{{ supervisor.id }}">
-                            <label for="edit-supervisor-{{ supervisor.id }}">{{ supervisor.get_full_name|default:supervisor.username }}</label>
-                        </div>
-                        {% endfor %}
+                        <!-- Supervisors will be populated dynamically by JavaScript -->
                     </div>
                 </div>
             </div>

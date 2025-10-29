@@ -32,10 +32,6 @@
                 <a href="
                 {% if request.user.job_order_user and request.user.job_order_facilitator %}
                     {% url "facilitator" %}
-                {% elif request.user.job_order_user and request.user.job_order_maintenance %}
-                    {% url "maintenance" %}
-                {% elif request.user.job_order_user and request.user.job_order_spectator %}
-                    {% url "spectator-homepage" %}
                 {% else %}  
                     {% url "requestor-homepage" %}
                 {% endif %}

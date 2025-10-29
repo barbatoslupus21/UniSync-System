@@ -99,10 +99,17 @@
                 </div>
             </div>
             <div class="JO-modal-footer">
+                {% if on_stock_declaration_page %}
+                <button type="button" class="btn btn-primary" onclick="closeStockNotificationModal()">
+                    <i class="fas fa-times-circle" style="margin-right: 6px;"></i>
+                    Close
+                </button>
+                {% else %}
                 <button type="button" class="btn btn-primary" onclick="goToStockDeclaration()">
                     <i class="fas fa-external-link-alt" style="margin-right: 6px;"></i>
                     Go to Stock Declaration
                 </button>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -222,17 +229,51 @@
     <!-- Stock Notification Modal Script -->
     <script>
         let stockNotificationShownOnce = false;  // Track if modal was shown in this session
+        let currentStockNotifications = [];  // Store current notifications
+        
+        // Function to mark stock declarations as viewed
+        async function markStockDeclarationsViewed() {
+            if (currentStockNotifications.length === 0) return;
+            
+            const declarationIds = currentStockNotifications.map(n => n.id);
+            
+            try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const response = await fetch("{% url 'mark_stock_declarations_viewed' %}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        declaration_ids: declarationIds
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    console.log('Stock declarations marked as viewed');
+                    currentStockNotifications = [];  // Clear the list
+                }
+            } catch (error) {
+                console.error('Error marking stock declarations as viewed:', error);
+            }
+        }
         
         // Function to close the modal
         function closeStockNotificationModal() {
             const modal = document.getElementById('stock-notification-modal');
             if (modal) {
                 modal.classList.remove('active');
+                // Mark declarations as viewed when modal is closed
+                markStockDeclarationsViewed();
             }
         }
 
         // Function to redirect to Stock Declaration page
         function goToStockDeclaration() {
+            // Mark declarations as viewed before navigating
+            markStockDeclarationsViewed();
             window.location.href = "{% url 'stock_declaration_home' %}";
         }
 
@@ -280,8 +321,12 @@
 
             const infoCard = modal.querySelector('.stock-notif-info-card p');
             const listContainer = modal.querySelector('.stock-notif-list-container');
+            const footer = modal.querySelector('.JO-modal-footer');
 
-            if (!infoCard || !listContainer) return;
+            if (!infoCard || !listContainer || !footer) return;
+
+            // Store current notifications
+            currentStockNotifications = notifications;
 
             // Update info card count
             infoCard.innerHTML = `
@@ -292,12 +337,33 @@
             // Update notification list
             listContainer.innerHTML = notifications.map(n => renderNotificationCard(n)).join('');
 
+            // Update footer button based on current page
+            const onStockDeclarationPage = {{ on_stock_declaration_page|yesno:"true,false" }};
+            if (onStockDeclarationPage) {
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-primary" onclick="closeStockNotificationModal()">
+                        <i class="fas fa-times-circle" style="margin-right: 6px;"></i>
+                        Close
+                    </button>
+                `;
+            } else {
+                footer.innerHTML = `
+                    <button type="button" class="btn btn-primary" onclick="goToStockDeclaration()">
+                        <i class="fas fa-external-link-alt" style="margin-right: 6px;"></i>
+                        Go to Stock Declaration
+                    </button>
+                `;
+            }
+
             // Show modal if not already shown in this session and there are notifications
             if (notifications.length > 0 && !stockNotificationShownOnce && !modal.classList.contains('active')) {
                 setTimeout(() => {
                     modal.classList.add('active');
                     stockNotificationShownOnce = true;
                 }, 300);
+            } else if (notifications.length === 0 && modal.classList.contains('active')) {
+                // Close modal if there are no more notifications
+                modal.classList.remove('active');
             }
         }
 

@@ -16,6 +16,7 @@ class Users(AbstractUser):
     name = models.CharField(max_length=100, null=True)
     position = models.CharField(max_length=100, choices=POSITION, null=True)
     line = models.ManyToManyField(Line, related_name='user_line')
+    default_line = models.ForeignKey(Line, on_delete=models.SET_NULL, null=True, blank=True, related_name='default_line_users')
     username = models.CharField(max_length=50, null=True, unique=True)
     is_admin = models.BooleanField(default=False)
 

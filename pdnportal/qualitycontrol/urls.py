@@ -11,4 +11,5 @@ urlpatterns = [
     path('search-lot-out/', views.search_lot_out, name='search_lot_out'),
     path('export-trial-run-report/', views.export_trial_run_report, name='export_trial_run_report'),
     path('export-lot-out-report/', views.export_lot_out_report, name='export_lot_out_report'),
+    path('export-cut-away-report/', views.export_cut_away_report, name='export_cut_away_report'),
 ]

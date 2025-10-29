@@ -70,7 +70,7 @@
         <!-- Chart section -->
         <div class="chart-main-container">
             <div class="JO-card-header">
-                <h2>Job Orders by Category per Month</h2>
+                <h2>Job Orders by Category</h2>
                 <div class="main-chart-filters">
                     <select id="chart-period-selector" class="JO-select">
                         <option value="3month">Last 3 Months</option>
@@ -105,6 +105,9 @@
                     <div class="JO-pending-details">
                         <p><strong>Tool:</strong> {{ request.jo_tools }}</p>
                         <p><strong>Nature:</strong> {{ request.jo_type }}</p>
+                        {% if not user.job_order_requestor %}
+                            <p><strong>Requested By:</strong> {{ request.requestor }} ({{ request.line.line_name }})</p>
+                        {% endif %}
                     </div>
                 </div>
                 {% empty %}
@@ -142,13 +145,13 @@
                                 </select>
                             </div>
                         </form>
-                        {% if request.user.job_order_requestor %}
+                        {% if request.user.job_order_requestor or request.user.job_order_checker %}
                             <button id="new-request-btn" class="btn btn-primary">
                                 <i class="fas fa-plus"></i> New Request
                             </button>
                         {% endif %}
                         {% if request.user.job_order_spectator or request.user.job_order_pmd %}
-                            <button id="jo-overview" class="btn btn-primary" onclick="window.open('{% url 'maintenance' %}', '_blank')">
+                            <button id="jo-overview" class="btn btn-primary" onclick="window.open('{% url 'queue' %}', '_blank')">
                                 <i class="fa fa-area-chart" aria-hidden="true"></i> JO Overview
                             </button>
                         {% endif %}
@@ -161,6 +164,7 @@
                             <tr>
                                 <th>JO Number</th>
                                 <th>Category</th>
+                                <th>Priority</th>
                                 <th>Tool</th>
                                 <th>Nature</th>
                                 <th>Requestor</th>
@@ -175,23 +179,30 @@
                             <tr class="jo-table-row">
                                 <td data-label="JO Number">{{ request.jo_number }}</td>
                                 <td data-label="Category"><span class="JO-category-pill JO-category-{{ request.jo_color|lower }}">{{ request.jo_color }}</span></td>
+                                <td data-label="Priority"><span class="JO-priority JO-priority-{{ request.priority_level|lower }}">{{ request.priority_level }}</span></td>
                                 <td data-label="Tool">{{ request.jo_tools|capfirst }}</td>
                                 <td data-label="Nature">{{ request.jo_type|capfirst }}</td>
                                 <td data-label="Requestor">{{ request.requestor }}</td>
                                 <td data-label="Line">{{ request.line }}</td>
-                                <td data-label="Status"><span class="JO-status JO-status-{{ request.status|lower }}">{{ request.status }}</span></td>
+                                <td data-label="Status"><span class="JO-status JO-status-{{ request.status|lower|cut:" " }}">{{ request.status }}</span></td>
                                 <td data-label="Date">{{ request.date_created|date:"M d, Y" }}</td>
                                 <td data-label="Actions" class="text-center">
-                                    {% if user.job_order_requestor or user.job_order_spectator  %}
+                                    {% if user.job_order_spectator  %}
                                         <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                     {% endif %}
 
-                                    {% if request.status == 'Completed' %}
-                                        <button class="btn btn-icon JO-check-btn JO-icon-button" title="Close Transaction" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
-                                            <i class="fas fa-check-circle"></i>
+                                    {% if user.job_order_requestor %}
+                                        {% if request.has_closing_entry %}
+                                        <button class="btn btn-sm btn-success JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-check-circle"></i> Close
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% endif %}
                                     {% endif %}
 
                                     {% if user.job_order_approver or user.job_order_pmd or user.job_order_checker%}
@@ -200,6 +211,26 @@
                                             <i class="fa fa-bars" aria-hidden="true"></i>
                                             Review
                                         </button>
+                                        {% else %}
+                                        <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% endif %}
+                                    {% endif %}
+
+                                    {% if user.job_order_maintenance %}
+                                        {% if request.has_date_entry %}
+                                        <button class="btn btn-primary btn-sm btn-success jo-set-date-btn" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fa fa-calendar" aria-hidden="true"></i>
+                                            Set Date
+                                        </button>
+
+                                        {% elif request.for_completion %}
+                                        <button class="btn btn-primary btn-sm jo-review-btn" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
+                                            <i class="fa fa-bars" aria-hidden="true"></i>
+                                            Review
+                                        </button>
+                                        
                                         {% else %}
                                         <button class="btn btn-icon JO-icon-button" title="View Details" data-id="{{ request.id }}" data-number="{{ request.jo_number }}">
                                             <i class="fas fa-eye"></i>
@@ -495,6 +526,37 @@
     </div>
 </div>
 
+<!-- Hold Request Confirmation Modal -->
+<div class="JO-modal JO-confirmation-modal" id="confirm-hold-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Hold Request</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" style="overflow-y: auto !important; overflow-x: hidden !important;">
+            <div style="text-align: center;">
+                <i class="fas fa-pause-circle JO-confirmation-icon" style="color: #ff9800;"></i>
+                <p class="JO-confirmation-message">Are you sure you want to put job order <strong id="hold-jo-number"></strong> on hold?</p>
+                <p class="JO-confirmation-submessage">This will temporarily suspend the job order until further action is taken.</p>
+
+                <div class="JO-form-group" style="text-align: left;">
+                    <label for="hold-remarks">Remarks <span style="color: red;">*</span></label>
+                    <textarea id="hold-remarks" rows="3" placeholder="Please provide a reason for putting this job order on hold..." required></textarea>
+                    <small class="text-danger" id="hold-remarks-error" style="display: none;">Remarks are required</small>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="hold-confirmation-cancel">Cancel</button>
+            <button class="JO-button" id="confirm-hold-btn" style="background-color: #ff9800; color: white;">
+                <i class="fas fa-pause"></i> Yes, Hold Request
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Job Order Review Modal -->
 <div class="JO-modal" id="jo-review-modal">
     <div class="JO-modal-content">
@@ -541,17 +603,30 @@
             </div>
             {% endif %}
             
+            {% if user.job_order_maintenance %}
+            <div class="JO-form-group" style="margin-bottom: 0;">
+                <label for="review-action-taken">Action Taken <span style="color: red;">*</span></label>
+                <textarea id="review-action-taken" rows="3" placeholder="Describe the action taken to complete this job order..." style="width: 100%; resize: vertical;" required></textarea>
+                <small class="text-danger" id="review-action-taken-error" style="display: none;">Action taken is required</small>
+            </div>
+            {% endif %}
+            
             <div class="JO-form-group" style="margin-bottom: 0;">
                 <label for="review-remarks">Remarks</label>
                 <textarea id="review-remarks" rows="2" placeholder="Add your remarks here..." style="width: 100%; resize: vertical;"></textarea>
                 <small class="text-danger" id="review-remarks-error" style="display: none;">Remarks are required when disapproving</small>
             </div>
             <div style="display: flex; gap: 10px; justify-content: end;">
+                {% if not user.job_order_checker %}
                 <button class="JO-button JO-danger-button" id="disapprove-jo-btn">
                     <i class="fas fa-times-circle"></i> Disapprove
                 </button>
+                {% endif %}
                 <button class="JO-button JO-success-button" id="approve-jo-btn">
                     <i class="fas fa-check-circle"></i> Approve
+                </button>
+                <button class="JO-button JO-success-button" id="complete-jo-btn" style="display: none;">
+                    <i class="fas fa-check-double"></i> Complete Request
                 </button>
             </div>
         </div>
@@ -560,6 +635,100 @@
 
 <!-- Hidden user name for JS fallback -->
 <span class="user-name" style="display:none;">{{ request.user.name }}</span>
+<span class="user-maintenance-role" style="display:none;">{{ request.user.job_order_maintenance|yesno:"true,false" }}</span>
+
+<!-- Set Target Date Modal -->
+<div class="JO-modal" id="set-target-date-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h2>Set Target Date</h2>
+            <button class="JO-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" style="overflow-y: auto !important; overflow-x: hidden !important;">
+            <div class="JO-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 15px; color: #3366ff;"></i>
+                <p style="font-size: 16px; color: #666;">Loading job order details...</p>
+            </div>
+            
+            <div id="set-date-form-container" style="display: none;">
+                <div class="JO-details-section">
+                    <h4>Job Order Information</h4>
+                    <div class="JO-details-grid">
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">JO Number:</span>
+                            <span class="JO-details-value" id="set-date-jo-number">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Category:</span>
+                            <span class="JO-details-value" id="set-date-jo-category">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Tool:</span>
+                            <span class="JO-details-value" id="set-date-jo-tool">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Nature:</span>
+                            <span class="JO-details-value" id="set-date-jo-nature">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Line:</span>
+                            <span class="JO-details-value" id="set-date-jo-line">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Requestor:</span>
+                            <span class="JO-details-value" id="set-date-jo-requestor">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Status:</span>
+                            <span class="JO-details-value" id="set-date-jo-status">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Priority Level:</span>
+                            <span class="JO-details-value" id="set-date-priority-level">-</span>
+                        </div>
+                        <div class="JO-details-item" id="set-date-completion-date-container" style="display: none;">
+                            <span class="JO-details-label">Date of Completion:</span></br>
+                            <span class="JO-details-value" id="set-date-completion-date">-</span>
+                        </div>
+                        <div class="JO-details-item">
+                            <span class="JO-details-label">Quality Matter:</span>
+                            <span class="JO-details-value" id="set-date-quality-matter">-</span>
+                        </div>
+                    </div>
+                    
+                        
+                </div>
+                <div class="JO-details-section">
+                    <span class="JO-details-label">Details:</span>
+                    <p class="JO-details-text" id="set-date-jo-details">-</p>
+                </div>
+
+                <div class="JO-form-section">
+                    <div class="JO-form-group">
+                        <label for="target-date-input">Target Date <span style="color: red;">*</span></label>
+                        <input type="date" id="target-date-input" name="target_date" class="JO-input" required>
+                        <small class="text-danger" id="target-date-error" style="display: none;">Please select a target date</small>
+                    </div>
+
+                    <div class="JO-form-group" id="target-date-reason-group" style="display: none;">
+                        <label for="target-date-reason-input">Reason for Extended Date <span style="color: red;">*</span></label>
+                        <textarea id="target-date-reason-input" name="target_date_reason" rows="3" placeholder="Please provide a reason for setting a date beyond the recommended timeframe..."></textarea>
+                        <small class="text-danger" id="target-date-reason-error" style="display: none;">Reason is required when setting an extended target date</small>
+                        <small class="text-info" id="target-date-reason-hint"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button class="JO-button JO-secondary-button" id="cancel-set-date">Cancel</button>
+            <button class="JO-button JO-primary-button" id="confirm-set-date" style="display: none;">
+                <i class="fas fa-calendar-check"></i> Set Target Date
+            </button>
+        </div>
+    </div>
+</div>
 
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>

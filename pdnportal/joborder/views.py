@@ -50,6 +50,10 @@ def requestor_page(request):
         ).distinct().order_by('-joRouting__request_at')
     elif request.user.job_order_spectator:
         pendingJO = JOLogsheet.objects.all().order_by('-date_created')[:10]
+    elif request.user.job_order_maintenance:
+        pendingJO = JOLogsheet.objects.filter(in_charge=request.user).filter(Q(target_date__isnull=True) | Q(action_taken__isnull=True)).order_by("-date_created")
+    elif request.user.job_order_checker:
+        pendingJO = JOLogsheet.objects.filter(Q(joRouting__approver=request.user, joRouting__status='pending') | Q(prepared_by=request.user, status='Completed') | Q(prepared_by=request.user, status='Checked')).order_by('-date_created')
     else:
         pendingJO = JOLogsheet.objects.filter(prepared_by=request.user
         ).annotate(
@@ -60,6 +64,7 @@ def requestor_page(request):
             )
         ).order_by("status_order", "-date_created")
 
+    #Table Data
     if request.user.job_order_approver:
         pending_routing_qs = JORouting.objects.filter(
             jo_request=OuterRef('pk'),
@@ -73,6 +78,43 @@ def requestor_page(request):
             is_pending=Case(When(Exists(pending_routing_qs), then=Value(1)), default=Value(0), output_field=IntegerField()),
             latest_request_at=Subquery(latest_request_at)
         ).order_by('-is_pending', '-latest_request_at').distinct()
+
+    elif request.user.job_order_maintenance:
+        joRequests = JOLogsheet.objects.filter(in_charge=request.user).annotate(
+            priority_order=Case(
+                When(priority_level='Urgent', then=Value(1)),
+                When(priority_level='High', then=Value(2)),
+                When(priority_level='Medium', then=Value(3)),
+                When(priority_level='Low', then=Value(4)),
+                default=Value(5),
+                output_field=IntegerField(),
+            ),
+            step_order=Case(
+                When(Q(target_date__isnull=True) & Q(status='Assigned'), then=Value(1)),
+                When(Q(target_date__isnull=False) & Q(action_taken__isnull=True) & Q(status='Assigned'), then=Value(2)),
+                When(
+                    Q(target_date__isnull=False) & 
+                    Q(action_taken__isnull=False) & 
+                    Q(status__in=['Completed', 'Closed', 'Checked']),
+                    then=Value(3)
+                ),
+                default=Value(4),
+                output_field=IntegerField(),
+            )
+        ).order_by('step_order', 'priority_order', 'date_of_completion', '-date_created')
+        
+    elif request.user.job_order_checker:
+        joRequests = JOLogsheet.objects.filter(
+            Q(joRouting__approver=request.user, joRouting__status='pending') |
+            Q(prepared_by=request.user) | Q(joRouting__approver=request.user, joRouting__status='approved')
+        ).annotate(
+            is_pending_approval=Case(
+                When(joRouting__approver=request.user, joRouting__status='pending', then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
+        ).distinct().order_by('-is_pending_approval', '-date_created')
+
     elif request.user.job_order_pmd:
         pending_routing_qs = JORouting.objects.filter(
             jo_request=OuterRef('pk'),
@@ -86,10 +128,19 @@ def requestor_page(request):
             is_pending=Case(When(Exists(pending_routing_qs), then=Value(1)), default=Value(0), output_field=IntegerField()),
             latest_request_at=Subquery(latest_request_at)
         ).order_by('-is_pending', '-latest_request_at').distinct()
+
     elif request.user.job_order_spectator:
         joRequests = JOLogsheet.objects.all().order_by("-date_created")
+        
     else:
-        joRequests = JOLogsheet.objects.filter(prepared_by=request.user).order_by("-date_created")
+       joRequests = (
+            JOLogsheet.objects.filter(prepared_by=request.user).annotate(
+                is_pending_approval=Max(Case(
+                    When(joRouting__approver=request.user, joRouting__status='pending', then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                ))
+            )).order_by('-is_pending_approval', '-date_created')
     
     # Apply search filter
     if search_query:
@@ -122,15 +173,29 @@ def requestor_page(request):
     page_number = request.GET.get('page')
     all_requests = paginator.get_page(page_number)
     
-    # Add routing status for each request if user is approver
-    if request.user.job_order_approver or request.user.job_order_pmd:
+    if request.user.job_order_approver or request.user.job_order_pmd or request.user.job_order_maintenance or request.user.job_order_checker or request.user.job_order_requestor:
         for req in all_requests:
             routing_entry = req.joRouting.filter(approver=request.user).first()
             req.has_pending_routing = routing_entry and routing_entry.status.lower() == 'pending'
+
+            date_entry = req.joRouting.filter(approver=request.user).first()
+            req.has_date_entry = date_entry and date_entry.status.lower() == 'pending' and date_entry.jo_request.target_date is None
+            req.for_completion = date_entry and date_entry.status.lower() == 'pending' and date_entry.jo_request.target_date is not None and date_entry.jo_request.date_complete is None
+
+            closing_entry = req.joRouting.filter(approver=request.user).last()
+            req.has_closing_entry = (
+                closing_entry
+                and closing_entry.status.lower() == 'pending'
+                and req.status in ["Completed", "Checked", "On Hold"]
+            )
+
     else:
         for req in all_requests:
             req.has_pending_routing = False
-    
+            req.has_date_entry = False
+            req.for_completion = False
+            req.has_closing_entry = False
+
     joRequestsCount = JOLogsheet.objects.filter(prepared_by=request.user, date_created__year=current_year, date_created__month=current_month).count()
     pendingJOCount = JOLogsheet.objects.filter(status = "Routing", prepared_by=request.user, date_created__year=current_year, date_created__month=current_month).count()
     approvedJOCount = JOLogsheet.objects.filter(status = "Closed", prepared_by=request.user, date_created__year=current_year, date_created__month=current_month).count()
@@ -198,6 +263,12 @@ def job_order_chart_data(request, period):
     if request.user.job_order_approver:
         job_orders = JOLogsheet.objects.filter(
             joRouting__approver=request.user,
+            date_created__gte=timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time())),
+            date_created__lte=timezone.now()
+        )
+    elif request.user.job_order_maintenance:
+        job_orders = JOLogsheet.objects.filter(
+            in_charge=request.user,
             date_created__gte=timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time())),
             date_created__lte=timezone.now()
         )
@@ -443,18 +514,20 @@ def check_user_approver(request):
             approver_role="Approver"
         ).first()
 
-        if user_approver and user_approver.approver:
-            return JsonResponse({
-                'status': 'success',
-                'has_approver': True,
-                'approver_name': user_approver.approver.name
-            })
-        else:
+        # Check if user has approver
+        if not user_approver or not user_approver.approver:
             return JsonResponse({
                 'status': 'error',
                 'has_approver': False,
                 'message': 'No approver assigned. Please contact administrator to assign an approver first.'
             })
+        
+        # Approver is assigned
+        return JsonResponse({
+            'status': 'success',
+            'has_approver': True,
+            'approver_name': user_approver.approver.name
+        })
 
     except Exception as e:
         return JsonResponse({
@@ -478,9 +551,21 @@ def get_job_order_details(request, jo_id):
 
         routing_data = []
         for entry in routing_entries:
+            # Determine approver role
+            approver_role = "Unknown"
+            if hasattr(entry.approver, 'job_order_section_head') and entry.approver.job_order_section_head:
+                approver_role = "Section Head"
+            elif hasattr(entry.approver, 'job_order_department_head') and entry.approver.job_order_department_head:
+                approver_role = "Department Head"
+            elif hasattr(entry.approver, 'job_order_checker') and entry.approver.job_order_checker:
+                approver_role = "Quality Control"
+            elif hasattr(entry.approver, 'job_order_maintenance') and entry.approver.job_order_maintenance:
+                approver_role = "Maintenance"
+            
             routing_data.append({
                 'approver': str(entry.approver),
                 'approver_name': entry.approver.name if hasattr(entry.approver, 'name') else str(entry.approver),
+                'approver_role': approver_role,
                 'status': entry.status.capitalize(),
                 'request_at': timezone.localtime(entry.request_at).strftime('%b %d, %Y, %I:%M %p') if entry.request_at else None,
                 'approved_at': timezone.localtime(entry.approved_at).strftime('%b %d, %Y, %I:%M %p') if entry.approved_at else None,
@@ -507,6 +592,7 @@ def get_job_order_details(request, jo_id):
             'action_taken': job_order.action_taken if job_order.action_taken else None,
             'target_date_reason': job_order.target_date_reason if job_order.target_date_reason else None,
             'priority_level': job_order.priority_level,
+            'quality_matter': job_order.quality_matter,
             'date_of_completion': job_order.date_of_completion.strftime('%b %d, %Y') if job_order.date_of_completion else None,
             'is_creator': request.user == job_order.prepared_by,
             'routing': routing_data
@@ -535,6 +621,12 @@ def search_job_orders(request):
         job_orders = JOLogsheet.objects.filter(joRouting__status="pending", joRouting__approver=request.user).order_by("-joRouting__request_at")
     elif request.user.job_order_spectator:
         job_orders = JOLogsheet.objects.all().order_by("-date_created")
+    elif request.user.job_order_maintenance:
+        job_orders = JOLogsheet.objects.filter(in_charge=request.user).order_by("-date_created")
+    elif request.user.job_order_checker:
+        joRequests = JOLogsheet.objects.filter(
+            Q(joRouting__approver=request.user, joRouting__status='pending') |
+            Q(prepared_by=request.user) | Q(joRouting__approver=request.user, joRouting__status='approved')).order_by('-date_created')
     else:
         job_orders = JOLogsheet.objects.filter(prepared_by=request.user).order_by("-date_created")
     
@@ -623,20 +715,17 @@ def review_job_order(request, jo_id):
                 'message': 'You are not authorized to review this job order or it has already been processed'
             })
         
-        # Handle modified fields if user is job_order_approver
         if request.user.job_order_approver:
             modified_fields_json = request.POST.get('modified_fields', '{}')
             try:
                 modified_fields = json.loads(modified_fields_json)
                 
-                # Only allow updating the details field
                 if 'details' in modified_fields:
                     job_order.details = modified_fields['details']
-                    # Save the job order with modified details
                     job_order.save()
                 
             except json.JSONDecodeError:
-                pass  # Invalid JSON, skip field updates
+                pass 
         
         if action == 'approve':
 
@@ -645,7 +734,6 @@ def review_job_order(request, jo_id):
             current_routing.approved_at = timezone.now()
             current_routing.save()
             
-            # Update job order fields if user is a job_order_approver
             if request.user.job_order_approver:
                 quality_matter = request.POST.get('quality_matter', 'false').lower() == 'true'
                 priority_level = request.POST.get('priority_level', 'Low')
@@ -654,17 +742,41 @@ def review_job_order(request, jo_id):
                 job_order.quality_matter = quality_matter
                 job_order.priority_level = priority_level
                 
-                # Parse and save date_of_completion if provided
                 if date_of_completion_str:
                     try:
                         from datetime import datetime
-                        # Parse the date format: YYYY-MM-DD (from date input)
                         date_of_completion = datetime.strptime(date_of_completion_str, '%Y-%m-%d').date()
                         job_order.date_of_completion = date_of_completion
                     except (ValueError, TypeError) as e:
-                        pass  # Invalid date format, skip
+                        pass 
                 
                 job_order.save()
+            
+            elif request.user.job_order_checker:
+
+                job_order.status = 'Checked'
+                job_order.save()
+                
+                JORouting.objects.create(
+                    jo_request=job_order,
+                    approver=job_order.prepared_by,
+                    status='pending'
+                )
+                
+                try:
+                    Notification.objects.create(
+                        sender=request.user,
+                        recipient=job_order.prepared_by,
+                        title="Job Order Checked",
+                        message=f'Your job order {job_order.jo_number} has been checked and is ready for closure.'
+                    )
+                except Exception as e:
+                    pass
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Job Order {job_order.jo_number} has been checked successfully'
+                })
             
             if job_order.jo_color and job_order.jo_color.lower() == 'orange':
                 if request.user.job_order_pmd:
@@ -730,6 +842,194 @@ def review_job_order(request, jo_id):
                 'message': f'Job Order {job_order.jo_number} has been disapproved'
             })
             
+    except JOLogsheet.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Job order not found'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'An error occurred: {str(e)}'
+        })
+
+@login_required(login_url="user-login")
+@require_GET
+def check_preparer_has_checker(request, jo_id):
+    """
+    API endpoint to check if the preparer of a job order has an assigned checker.
+    Only checks if quality_matter is True.
+    Returns: JSON with status and has_checker boolean
+    """
+    try:
+        # Get the job order
+        job_order = JOLogsheet.objects.get(id=jo_id)
+        
+        # If quality_matter is False, no checker is required
+        if not job_order.quality_matter:
+            return JsonResponse({
+                'status': 'success',
+                'has_checker': True,  # Return True since checker is not required
+                'quality_matter': False,
+                'preparer_name': job_order.prepared_by.name if job_order.prepared_by else 'Unknown',
+                'jo_number': job_order.jo_number
+            })
+        
+        # If quality_matter is True, check if the preparer has a checker assigned
+        has_checker = UserApprovers.objects.filter(
+            user=job_order.prepared_by,
+            module="Job Order",
+            approver_role="Checker"
+        ).exists()
+        
+        return JsonResponse({
+            'status': 'success',
+            'has_checker': has_checker,
+            'quality_matter': True,
+            'preparer_name': job_order.prepared_by.name if job_order.prepared_by else 'Unknown',
+            'jo_number': job_order.jo_number
+        })
+    except JOLogsheet.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Job order not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'An error occurred: {str(e)}'
+        }, status=500)
+
+@login_required(login_url="user-login")
+@require_POST
+def complete_job_order(request, jo_id):
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    
+    # Check if user has maintenance role
+    if not request.user.job_order_maintenance:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'You do not have permission to complete job orders'
+        })
+    
+    try:
+        job_order = JOLogsheet.objects.get(id=jo_id)
+        
+        # CRITICAL: Only check if preparer has a checker assigned when quality_matter is True
+        if job_order.quality_matter:
+            has_checker = UserApprovers.objects.filter(
+                user=job_order.prepared_by,
+                module="Job Order",
+                approver_role="Checker"
+            ).exists()
+            
+            if not has_checker:
+                preparer_name = job_order.prepared_by.name if job_order.prepared_by else 'Unknown'
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Cannot complete this request. Please inform the requestor ({preparer_name}) to assign a checker to Admin before proceeding with completion.'
+                })
+        
+        action_taken = request.POST.get('action_taken', '').strip()
+        remarks = request.POST.get('remarks', '').strip()
+        
+        # Validate action_taken
+        if not action_taken:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Action taken is required'
+            })
+        
+        # Update the current user's routing to approved
+        current_routing = JORouting.objects.filter(
+            jo_request=job_order,
+            approver=request.user,
+            status='pending'
+        ).first()
+        
+        if not current_routing:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'No pending routing found for this job order'
+            })
+        
+        # Update routing status
+        current_routing.status = 'approved'
+        current_routing.remarks = remarks if remarks else f'Completed: {action_taken}'
+        current_routing.approved_at = timezone.now()
+        current_routing.save()
+        
+        # Update job order
+        job_order.action_taken = action_taken
+        job_order.date_complete = timezone.now().date()
+        job_order.status = 'Completed'
+        job_order.save()
+        
+        # Check if quality_matter is True and create routing accordingly
+        if job_order.quality_matter:
+            try:
+                # Get the checker for the job order's prepared_by user
+                checker_approver = UserApprovers.objects.filter(
+                    user=job_order.prepared_by,
+                    module="Job Order",
+                    approver_role="Checker"
+                ).first()
+                
+                if checker_approver and checker_approver.approver:
+                    # Create routing for checker
+                    JORouting.objects.create(
+                        jo_request=job_order,
+                        approver=checker_approver.approver,
+                        status='pending'
+                    )
+                    
+                    # Notify the checker
+                    try:
+                        Notification.objects.create(
+                            sender=request.user,
+                            recipient=checker_approver.approver,
+                            title="Quality Check Required",
+                            message=f'Job order {job_order.jo_number} requires quality checking.'
+                        )
+                    except Exception as e:
+                        pass
+                else:
+                    # If no checker found, log a warning but don't fail
+                    print(f"Warning: No checker found for user {job_order.prepared_by.name}")
+            except Exception as e:
+                print(f"Error creating checker routing: {str(e)}")
+                # Don't fail the completion if checker routing fails
+        else:
+            # If not quality matter, create routing for the prepared_by user (requestor)
+            try:
+                JORouting.objects.create(
+                    jo_request=job_order,
+                    approver=job_order.prepared_by,
+                    status='pending'
+                )
+                
+                # The notification to prepared_by is already sent below, so no duplicate needed
+            except Exception as e:
+                print(f"Error creating requestor routing: {str(e)}")
+                # Don't fail the completion if routing creation fails
+        
+        # Notify the requestor
+        try:
+            Notification.objects.create(
+                sender=request.user,
+                recipient=job_order.prepared_by,
+                title="Job Order Completed",
+                message=f'Your job order {job_order.jo_number} has been completed by {request.user.name}.'
+            )
+        except Exception as e:
+            pass  # Don't fail if notification fails
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Job Order {job_order.jo_number} has been completed successfully'
+        })
+        
     except JOLogsheet.DoesNotExist:
         return JsonResponse({
             'status': 'error',
@@ -820,27 +1120,34 @@ def close_transaction(request, jo_id):
             messages.error(request, "You can only close your own job order transactions")
             return redirect("requestor-homepage")
 
-        if job_order.status != 'Checked':
+        if job_order.status not in ['Checked', 'Completed', 'On Hold']:
             if is_ajax:
                 return JsonResponse({'status': 'error', 'message': 'This job order cannot be closed in its current state'})
             messages.error(request, "This job order cannot be closed in its current state")
             return redirect("requestor-homepage")
 
+        # Check if remarks are required for On Hold status
+        remarks = request.POST.get('remarks', '').strip()
+        if job_order.status == 'On Hold' and not remarks:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Feedback is required when closing a job order that is on hold'})
+            messages.error(request, "Feedback is required when closing a job order that is on hold")
+            return redirect("requestor-homepage")
+
         try:
             routing_entry = JORouting.objects.filter(
-                jo_number=job_order,
+                jo_request=job_order,
                 approver=request.user,
-                approver_sequence=8,
-            ).first()
+            ).last()
 
+            # Update routing entry fields
             routing_entry.status = "Approved"
-
-            if request.POST.get('remarks'):
-                routing_entry.remarks = request.POST.get('remarks')
-
+            if remarks:
+                routing_entry.remarks = remarks
             routing_entry.approved_at = timezone.now()
             routing_entry.save()
 
+            # Update job order status to Closed
             job_order.status = "Closed"
             job_order.save()
 
@@ -865,361 +1172,77 @@ def close_transaction(request, jo_id):
         messages.error(request, f"An error occurred: {str(e)}")
         return redirect("requestor-homepage")
 
-# APPROVER'S VIEW
 @login_required(login_url="user-login")
-def supervisor_view(request):
-    current_month = now().month
-    current_year = now().year
+def hold_request(request, jo_id):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
-    search_query = request.GET.get('search', '')
-    filter_value = request.GET.get('filter', 'all')
-
-    pending_approvals = JORouting.objects.filter(status="Processing", approver=request.user).order_by("-request_at")
-    approval_history = JORouting.objects.filter(approver=request.user).order_by("-request_at")
-
-    if search_query:
-        pending_approvals = pending_approvals.filter(
-            Q(jo_number__jo_number__icontains=search_query) |
-            Q(jo_request__first_name__icontains=search_query) |
-            Q(jo_request__last_name__icontains=search_query) |
-            Q(jo_number__jo_tools__icontains=search_query) |
-            Q(jo_number__jo_type__icontains=search_query)
-        )
-
-        approval_history = approval_history.filter(
-            Q(jo_number__jo_number__icontains=search_query) |
-            Q(jo_request__first_name__icontains=search_query) |
-            Q(jo_request__last_name__icontains=search_query) |
-            Q(jo_number__jo_tools__icontains=search_query) |
-            Q(jo_number__jo_type__icontains=search_query)
-        )
-
-    # Apply category filter if provided
-    if filter_value and filter_value != 'all':
-        pending_approvals = pending_approvals.filter(jo_number__jo_color__iexact=filter_value)
-        approval_history = approval_history.filter(jo_number__jo_color__iexact=filter_value)
-
-    # Get statistics
-    joRequestsCount = JOLogsheet.objects.filter(status__in=["Routing", "Completed", "Assigned"]).count()
-    pendingJOCount = JORouting.objects.filter(status="Processing", approver=request.user, request_at__year=current_year, request_at__month=current_month).count()
-    approvedJOCount = JORouting.objects.filter(status="Approved", approver=request.user, request_at__year=current_year, request_at__month=current_month).count()
-    rejectedJOCount = JORouting.objects.filter(status="Rejected", approver=request.user, request_at__year=current_year, request_at__month=current_month).count()
-
-    context = {
-        'pending_approvals': pending_approvals,
-        'three_days_ago': datetime.now() - timedelta(days=1),
-        'approval_history': approval_history,
-        'joRequestsCount': joRequestsCount,
-        'pendingJOCount': pendingJOCount,
-        'approvedJOCount': approvedJOCount,
-        'rejectedJOCount': rejectedJOCount,
-        'search_query': search_query,
-        'filter_value': filter_value,
-    }
-    return render(request, 'joborder/jo-approver.html', context)
-
-@login_required(login_url="user-login")
-@require_GET
-def approver_job_order_chart_data(request, period):
-    today = timezone.now().date()
-    current_user = request.user
-
-    if period == '3month':
-        months_back = 3
-    elif period == '1year':
-        months_back = 12
-    else:
-        months_back = 6
-
-    start_date = today.replace(day=1)
-    for _ in range(months_back - 1):
-        prev_month = start_date.month - 1
-        year = start_date.year
-        if prev_month == 0:
-            prev_month = 12
-            year -= 1
-        start_date = start_date.replace(year=year, month=prev_month, day=1)
-
-    months = []
-    month_year_map = {}
-
-    current = start_date
-    index = 0
-    while current <= today.replace(day=28):
-        month_name = calendar.month_name[current.month][:3]
-        year = current.year
-        month_year = f"{month_name} {year}"
-
-        months.append(month_year)
-        month_year_map[f"{current.year}-{current.month:02d}"] = index
-
-        if current.month == 12:
-            current = current.replace(year=current.year + 1, month=1)
-        else:
-            current = current.replace(month=current.month + 1)
-
-        index += 1
-
-    green_data = [0] * len(months)
-    yellow_data = [0] * len(months)
-    white_data = [0] * len(months)
-    orange_data = [0] * len(months)
-
-    routing_entries = JORouting.objects.filter(
-        approver=current_user,
-        request_at__gte=timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time())),
-        request_at__lte=timezone.now()
-    ).select_related('jo_number')
-
-    for entry in routing_entries:
-        if entry.jo_number:
-            date = entry.request_at.date()
-            month_year_key = f"{date.year}-{date.month:02d}"
-
-            if month_year_key in month_year_map:
-                idx = month_year_map[month_year_key]
-                category = entry.jo_number.jo_color.lower() if entry.jo_number.jo_color else "unknown"
-
-                if category == 'green':
-                    green_data[idx] += 1
-                elif category == 'yellow':
-                    yellow_data[idx] += 1
-                elif category == 'white':
-                    white_data[idx] += 1
-                elif category == 'orange':
-                    orange_data[idx] += 1
-
-    return JsonResponse({
-        'labels': months,
-        'green': green_data,
-        'yellow': yellow_data,
-        'white': white_data,
-        'orange': orange_data
-    })
-
-@login_required(login_url="user-login")
-def approve_job_order(request):
     if request.method != 'POST':
-        messages.error(request, "Invalid request method.")
-        return redirect('approval')
-
-    jo_id = request.POST.get('jo_id')
-    remarks = request.POST.get('remarks', '')
-
-    if not jo_id:
-        messages.error(request, "No job order specified.")
-        return redirect('approval')
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+        messages.error(request, "Invalid request method")
+        return redirect("requestor-homepage")
 
     try:
-        jo = JOLogsheet.objects.get(id=jo_id)
+        job_order = get_object_or_404(JOLogsheet, id=jo_id)
 
-        routing = JORouting.objects.get(
-            jo_number=jo,
-            approver=request.user,
-            status='Processing'
-        )
+        # Check if user is the creator
+        if job_order.prepared_by != request.user:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'You can only hold your own job order requests'})
+            messages.error(request, "You can only hold your own job order requests")
+            return redirect("requestor-homepage")
 
-        if routing.approver_sequence == 4:
-            next_approver_user = Users.objects.filter(job_order_facilitator=True).first()
-        else:
-            next_approver = UserApprovers.objects.filter(user=request.user, module="Job Order").first()
-            next_approver_user = next_approver.approver if next_approver else None
+        # Check if status is Completed or Checked (not already On Hold)
+        if job_order.status not in ['Checked', 'Completed']:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'This job order cannot be put on hold in its current state'})
+            messages.error(request, "This job order cannot be put on hold in its current state")
+            return redirect("requestor-homepage")
 
-        if next_approver_user:
-            routing.status = 'Approved'
-            routing.remarks = remarks
-            routing.approved_at = timezone.now()
-            routing.save()
-
-            JORouting.objects.create(
-                jo_number=jo,
-                jo_request=jo.prepared_by,
-                approver=next_approver_user,
-                approver_sequence=routing.approver_sequence + 1,
-                status='Processing'
-            )
-
-            messages.success(request, f"Job Order {jo.jo_number} has been approved successfully.")
-        else:
-            messages.error(request, "No next approver found. Cannot proceed with routing.")
-
-    except JOLogsheet.DoesNotExist:
-        messages.error(request, "Job order not found.")
-    except JORouting.DoesNotExist:
-        messages.error(request, "You are not authorized to approve this job order or it has already been processed.")
-    except Exception as e:
-        messages.error(request, f"Error approving job order: {str(e)}")
-
-    return redirect('approval')
-
-@login_required(login_url="user-login")
-def reject_job_order(request):
-    if request.method != 'POST':
-        messages.error(request, "Invalid request method.")
-        return redirect('approval')
-
-    jo_id = request.POST.get('jo_id')
-    remarks = request.POST.get('remarks', '')
-
-    if not jo_id:
-        messages.error(request, "No job order specified.")
-        return redirect('approval')
-
-    if not remarks:
-        messages.error(request, "Rejection reason is required.")
-        return redirect('approval')
-
-    try:
-        jo = JOLogsheet.objects.get(id=jo_id)
-        routing = JORouting.objects.get(
-            jo_number=jo,
-            approver=request.user,
-            status='Processing'
-        )
-
-        routing.status = 'Rejected'
-        routing.remarks = remarks
-        routing.approved_at = timezone.now()
-        routing.save()
-
-        jo.status = 'Rejected'
-        jo.save()
+        # Validate remarks
+        remarks = request.POST.get('remarks', '').strip()
+        if not remarks:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Remarks are required when putting a request on hold'})
+            messages.error(request, "Remarks are required when putting a request on hold")
+            return redirect("requestor-homepage")
 
         try:
-            Notification.objects.create(
-                sender=request.user,
-                recipient=jo.prepared_by,
-                title="Approval",
-                message=f'Your job order request with JO number {jo.jo_number} has been declined by {request.user.name}. Please review the remarks for more details.'
-            )
-        except Exception as e:
-            pass
+            # Get the latest routing entry for this user
+            routing_entry = JORouting.objects.filter(
+                jo_request=job_order,
+                approver=request.user,
+            ).last()
 
-        messages.warning(request, f"Job Order {jo.jo_number} has been rejected.")
+            if routing_entry:
+                # Update the routing entry with remarks
+                routing_entry.remarks = remarks
+                routing_entry.save()
 
-    except JOLogsheet.DoesNotExist:
-        messages.error(request, "Job order not found.")
-    except JORouting.DoesNotExist:
-        messages.error(request, "You are not authorized to reject this job order or it has already been processed.")
+            # Update job order status to On Hold
+            job_order.status = "On Hold"
+            job_order.save()
+
+            if is_ajax:
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Job order {job_order.jo_number} has been put on hold successfully'
+                })
+
+            messages.success(request, f'Job order {job_order.jo_number} has been put on hold successfully')
+            return redirect("requestor-homepage")
+
+        except JORouting.DoesNotExist:
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': 'Routing entry does not exist'})
+            messages.error(request, "Routing entry does not exist")
+            return redirect("requestor-homepage")
+
     except Exception as e:
-        messages.error(request, f"Error rejecting job order: {str(e)}")
-
-    return redirect('approval')
-
-@login_required(login_url="user-login")
-def approve_checking(request):
-    if request.method != 'POST':
-        messages.error(request, "Invalid request method.")
-        return redirect('approval')
-
-    jo_id = request.POST.get('jo_id')
-    remarks = request.POST.get('remarks', '')
-
-    if not jo_id:
-        messages.error(request, "No job order specified.")
-        return redirect('approval')
-
-    try:
-        jo = JOLogsheet.objects.get(id=jo_id)
-
-        routing = JORouting.objects.get(
-            jo_number=jo,
-            approver=request.user,
-            status='Processing'
-        )
-
-        routing.status = 'Approved'
-        routing.remarks = remarks
-        routing.approved_at = timezone.now()
-        routing.save()
-
-        jo.status = 'Checked'
-        jo.save()
-
-        JORouting.objects.create(
-            jo_number=jo,
-            jo_request=jo.prepared_by,
-            approver=jo.prepared_by,
-            approver_sequence=routing.approver_sequence + 1,
-            status='Processing'
-        )
-
-        messages.success(request, f"Job Order {jo.jo_number} has been checked and returned to the preparer.")
-
-    except JOLogsheet.DoesNotExist:
-        messages.error(request, "Job order not found.")
-    except JORouting.DoesNotExist:
-        messages.error(request, "You are not authorized to approve this job order or it has already been processed.")
-    except Exception as e:
-        messages.error(request, f"Error approving job order: {str(e)}")
-
-    return redirect('approval')
-
-@login_required(login_url="user-login")
-def reject_checking(request):
-    if request.method != 'POST':
-        messages.error(request, "Invalid request method.")
-        return redirect('approval')
-
-    jo_id = request.POST.get('jo_id')
-    remarks = request.POST.get('remarks', '')
-
-    if not jo_id:
-        messages.error(request, "No job order specified.")
-        return redirect('approval')
-
-    if not remarks:
-        messages.error(request, "Rejection reason is required.")
-        return redirect('approval')
-
-    try:
-        jo = JOLogsheet.objects.get(id=jo_id)
-        routing = JORouting.objects.get(
-            jo_number=jo,
-            approver=request.user,
-            approver_sequence=7,
-            status='Processing'
-        )
-
-        last_routing = JORouting.objects.filter(
-            jo_number=jo,
-            approver_sequence=6,
-            status='Approved'
-        ).first()
-
-        routing.status = 'Rejected'
-        routing.remarks = remarks
-        routing.approved_at = timezone.now()
-        routing.save()
-
-        last_routing.status = 'Processing'
-        last_routing.approved_at = None
-        last_routing.save()
-
-        jo.status = 'Routing'
-        jo.date_complete= None
-        jo.save()
-
-        try:
-            Notification.objects.create(
-                sender=request.user,
-                recipient=last_routing.approver,
-                title="Approval",
-                message = f'JO number {jo.jo_number} was rejected by {request.user.name} upon checking. Kindly review the remarks for further information.'
-            )
-        except Exception as e:
-            pass
-
-        messages.warning(request, f"Job Order {jo.jo_number} has been rejected.")
-
-    except JOLogsheet.DoesNotExist:
-        messages.error(request, "Job order not found.")
-    except JORouting.DoesNotExist:
-        messages.error(request, "You are not authorized to reject this job order or it has already been processed.")
-    except Exception as e:
-        messages.error(request, f"Error rejecting job order: {str(e)}")
-
-    return redirect('approval')
+        if is_ajax:
+            return JsonResponse({'status': 'error', 'message': f'An error occurred: {str(e)}'})
+        messages.error(request, f"An error occurred: {str(e)}")
+        return redirect("requestor-homepage")
 
 # FACILITATOR VIEW
 @login_required(login_url="user-login")
@@ -1298,7 +1321,7 @@ def job_order_facilitator(request):
         joRequestsCount = JOLogsheet.objects.filter(status__in=["Routing", "Completed", "Assigned"]).count()
         overdueCount = JOLogsheet.objects.filter(in_charge__isnull=False, status__in=["Closed", "Completed", "Checked"]).count()
         assignJOCount = JOLogsheet.objects.filter(status="Routing").count()
-        pendingJOCount = JOLogsheet.objects.filter(in_charge__isnull=False, status="Assigned").count()
+        pendingJOCount = JOLogsheet.objects.filter(in_charge__isnull=False, status="Closed").count()
     except Exception as e:
         joRequestsCount = 0
         overdueCount = 0
@@ -1606,34 +1629,79 @@ def export_job_orders(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
     try:
+        period = request.POST.get('period', 'custom')
         date_from = request.POST.get('date_from')
         date_to = request.POST.get('date_to')
         status_filters = request.POST.getlist('status')
         category_filters = request.POST.getlist('category')
+
+        # Helper function to get custom month range (24th to 24th)
+        def get_custom_month_range(target_date):
+            """
+            Calculate custom month range from 24th to 24th (ending on 24th).
+            For October: Sept 24 to Oct 24
+            """
+            target_day = target_date.day
+            
+            if target_day < 24:
+                # We're before the 24th, so the period started last month on the 24th
+                if target_date.month == 1:
+                    start_date = target_date.replace(year=target_date.year - 1, month=12, day=24, hour=0, minute=0, second=0, microsecond=0)
+                else:
+                    start_date = target_date.replace(month=target_date.month - 1, day=24, hour=0, minute=0, second=0, microsecond=0)
+                end_date = target_date.replace(day=24, hour=23, minute=59, second=59, microsecond=999999)
+            else:
+                # We're on or after the 24th, so the period starts this month on the 24th
+                start_date = target_date.replace(day=24, hour=0, minute=0, second=0, microsecond=0)
+                if target_date.month == 12:
+                    end_date = target_date.replace(year=target_date.year + 1, month=1, day=24, hour=23, minute=59, second=59, microsecond=999999)
+                else:
+                    end_date = target_date.replace(month=target_date.month + 1, day=24, hour=23, minute=59, second=59, microsecond=999999)
+            
+            return timezone.make_aware(start_date), timezone.make_aware(end_date)
+
+        # Determine date range based on period selection
+        if period == 'current_month':
+            # Use current month with 24th-to-24th logic
+            today = datetime.now()
+            start_date, end_date = get_custom_month_range(today)
+            # Cap end_date at current time if it extends into the future
+            now = timezone.now()
+            if end_date > now:
+                end_date = now
+        elif period == 'last_month':
+            # Use last month with 24th-to-24th logic
+            today = datetime.now()
+            if today.month == 1:
+                prev_month = today.replace(year=today.year - 1, month=12, day=15)
+            else:
+                prev_month = today.replace(month=today.month - 1, day=15)
+            start_date, end_date = get_custom_month_range(prev_month)
+        else:
+            # Custom date range
+            if date_from:
+                try:
+                    start_date = datetime.strptime(date_from, '%Y-%m-%d')
+                    start_date = timezone.make_aware(start_date.replace(hour=0, minute=0, second=0))
+                except ValueError:
+                    return JsonResponse({'error': 'Invalid start date format'}, status=400)
+            else:
+                start_date = timezone.now().replace(hour=0, minute=0, second=0) - timezone.timedelta(days=30)
+
+            if date_to:
+                try:
+                    end_date = datetime.strptime(date_to, '%Y-%m-%d')
+                    end_date = timezone.make_aware(end_date.replace(hour=23, minute=59, second=59))
+                except ValueError:
+                    return JsonResponse({'error': 'Invalid end date format'}, status=400)
+            else:
+                end_date = timezone.now().replace(hour=23, minute=59, second=59)
 
         if 'all' in status_filters:
             status_filters = [status[0] for status in JOLogsheet.STATUS_CHOICES]
 
         if 'all' in category_filters:
             category_filters = list(JOLogsheet.objects.values_list('jo_color', flat=True).distinct())
-
-        if date_from:
-            try:
-                start_date = datetime.strptime(date_from, '%Y-%m-%d')
-                start_date = timezone.make_aware(start_date.replace(hour=0, minute=0, second=0))
-            except ValueError:
-                return JsonResponse({'error': 'Invalid start date format'}, status=400)
-        else:
-            start_date = timezone.now().replace(hour=0, minute=0, second=0) - timezone.timedelta(days=30)
-
-        if date_to:
-            try:
-                end_date = datetime.strptime(date_to, '%Y-%m-%d')
-                end_date = timezone.make_aware(end_date.replace(hour=23, minute=59, second=59))
-            except ValueError:
-                return JsonResponse({'error': 'Invalid end date format'}, status=400)
-        else:
-            end_date = timezone.now().replace(hour=23, minute=59, second=59)
 
         query_filters = {
             'date_created__gte': start_date,
@@ -2192,15 +2260,49 @@ def job_order_stats_api(request):
         except Exception as e:
             completed_requests_count = 0
 
-        # Calculate active job orders for current month and last month
-        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        last_month_end = current_month_start - timedelta(days=1)
-        last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Helper function to get custom month range (24th to 23rd)
+        def get_custom_month_range(target_date):
+            """
+            Calculate custom month range from 24th to 23rd.
+            If target_date.day < 24: use prev_month 24th to current_month 23rd
+            If target_date.day >= 24: use current_month 24th to next_month 23rd
+            """
+            if target_date.day < 24:
+                # Period is prev month 24th to current month 23rd
+                if target_date.month == 1:
+                    start_date = target_date.replace(year=target_date.year - 1, month=12, day=24)
+                else:
+                    start_date = target_date.replace(month=target_date.month - 1, day=24)
+                end_date = target_date.replace(day=23)
+            else:
+                # Period is current month 24th to next month 23rd
+                start_date = target_date.replace(day=24)
+                if target_date.month == 12:
+                    end_date = target_date.replace(year=target_date.year + 1, month=1, day=23)
+                else:
+                    end_date = target_date.replace(month=target_date.month + 1, day=23)
+            
+            return start_date, end_date
+
+        # Calculate active job orders for current custom month and last custom month
+        current_month_start, current_month_end = get_custom_month_range(today)
+        # Cap current month end at today
+        if current_month_end > today:
+            current_month_end = today
+        
+        # Get last custom month range
+        if today.month == 1:
+            prev_month = today.replace(year=today.year - 1, month=12, day=15)
+        else:
+            prev_month = today.replace(month=today.month - 1, day=15)
+        last_month_start, last_month_end = get_custom_month_range(prev_month)
+        last_month_start, last_month_end = get_custom_month_range(prev_month)
 
         try:
             current_month_active = JOLogsheet.objects.filter(
                 status__in=["Routing", "Completed", "Assigned"],
-                date_created__gte=current_month_start
+                date_created__date__gte=current_month_start,
+                date_created__date__lte=current_month_end
             ).count()
         except Exception as e:
             current_month_active = 0
@@ -2208,8 +2310,8 @@ def job_order_stats_api(request):
         try:
             last_month_active = JOLogsheet.objects.filter(
                 status__in=["Routing", "Completed", "Assigned"],
-                date_created__gte=last_month_start,
-                date_created__lte=last_month_end
+                date_created__date__gte=last_month_start,
+                date_created__date__lte=last_month_end
             ).count()
         except Exception as e:
             last_month_active = 0
@@ -2224,7 +2326,8 @@ def job_order_stats_api(request):
         try:
             current_month_routing = JOLogsheet.objects.filter(
                 status="Routing",
-                date_created__gte=current_month_start
+                date_created__date__gte=current_month_start,
+                date_created__date__lte=current_month_end
             ).count()
         except Exception as e:
             current_month_routing = 0
@@ -2232,8 +2335,8 @@ def job_order_stats_api(request):
         try:
             last_month_routing = JOLogsheet.objects.filter(
                 status="Routing",
-                date_created__gte=last_month_start,
-                date_created__lte=last_month_end
+                date_created__date__gte=last_month_start,
+                date_created__date__lte=last_month_end
             ).count()
         except Exception as e:
             last_month_routing = 0
@@ -2249,7 +2352,8 @@ def job_order_stats_api(request):
             current_month_in_progress = JOLogsheet.objects.filter(
                 in_charge__isnull=False,
                 status="Assigned",
-                date_created__gte=current_month_start
+                date_created__date__gte=current_month_start,
+                date_created__date__lte=current_month_end
             ).count()
         except Exception as e:
             current_month_in_progress = 0
@@ -2258,8 +2362,8 @@ def job_order_stats_api(request):
             last_month_in_progress = JOLogsheet.objects.filter(
                 in_charge__isnull=False,
                 status="Assigned",
-                date_created__gte=last_month_start,
-                date_created__lte=last_month_end
+                date_created__date__gte=last_month_start,
+                date_created__date__lte=last_month_end
             ).count()
         except Exception as e:
             last_month_in_progress = 0
@@ -2277,7 +2381,8 @@ def job_order_stats_api(request):
             current_month_completed = JOLogsheet.objects.filter(
                 in_charge__isnull=False,
                 status__in=["Closed", "Completed", "Checked"],
-                date_created__gte=current_month_start
+                date_created__date__gte=current_month_start,
+                date_created__date__lte=current_month_end
             ).count()
         except Exception as e:
             current_month_completed = 0
@@ -2286,8 +2391,8 @@ def job_order_stats_api(request):
             last_month_completed = JOLogsheet.objects.filter(
                 in_charge__isnull=False,
                 status__in=["Closed", "Completed", "Checked"],
-                date_created__gte=last_month_start,
-                date_created__lte=last_month_end
+                date_created__date__gte=last_month_start,
+                date_created__date__lte=last_month_end
             ).count()
         except Exception as e:
             last_month_completed = 0
@@ -2327,18 +2432,19 @@ def job_order_queue_api(request):
         now = timezone.now()
         today = now.date()
         tomorrow = today + timedelta(days=1)
-        two_days_later = today + timedelta(days=2)
-        three_days_later = today + timedelta(days=3)
+        two_days_from_now = today + timedelta(days=2)
+        three_days_from_now = today + timedelta(days=3)
 
-        # Get all job orders in routing status (not cancelled or rejected)
-        all_jobs = JOLogsheet.objects.exclude(
-            status__in=['Cancelled', 'Rejected']
+        # Get all job orders with status "Assigned"
+        all_jobs = JOLogsheet.objects.filter(
+            status='Assigned'
         )
 
+        overdue_jobs = []
         urgent_jobs = []
         critical_jobs = []
-        upcoming_near_jobs = []
-        upcoming_far_jobs = []
+        upcoming_jobs = []
+        normal_jobs = []
 
         for job in all_jobs:
             # Get requestor information
@@ -2362,6 +2468,7 @@ def job_order_queue_api(request):
                 waiting_time = f"{days_waiting} days ago"
 
             job_data = {
+                'id': job.id,
                 'jo_number': job.jo_number,
                 'category': job.jo_color,
                 'description': f"{job.jo_tools} - {job.jo_type}",
@@ -2376,56 +2483,81 @@ def job_order_queue_api(request):
                 'date_of_completion': job.date_of_completion
             }
 
-            # Categorize jobs based on new logic
-            # 1. Urgent: priority_level = "Urgent" and status not cancelled or rejected
+            # Categorize jobs based on Assignment Reminders logic
+            # 1. OVERDUE: Jobs past their target date (highest priority)
+            is_overdue = False
+            if job.target_date:
+                target_date_local = timezone.localtime(job.target_date).date()
+                if target_date_local < today:
+                    is_overdue = True
+                    job_data['urgency_type'] = 'overdue'
+                    job_data['sort_date'] = target_date_local
+                    overdue_jobs.append(job_data)
+            
+            # Check date_of_completion for Urgent jobs
+            elif job.priority_level == 'Urgent' and job.date_of_completion and job.date_of_completion < today:
+                is_overdue = True
+                job_data['urgency_type'] = 'overdue'
+                job_data['sort_date'] = job.date_of_completion
+                overdue_jobs.append(job_data)
+
+            if is_overdue:
+                continue  # Skip other categorizations
+
+            # 2. URGENT: priority_level = "Urgent"
             if job.priority_level and job.priority_level == "Urgent":
                 job_data['urgency_type'] = 'urgent'
+                if job.date_of_completion:
+                    job_data['sort_date'] = job.date_of_completion
+                else:
+                    job_data['sort_date'] = today + timedelta(days=999)
                 urgent_jobs.append(job_data)
             
-            # 2. Critical: target_date is today or tomorrow
-            elif job.target_date and (job.target_date.date() == today or job.target_date.date() == tomorrow):
-                job_data['urgency_type'] = 'critical'
-                critical_jobs.append(job_data)
+            # 3. CRITICAL: target_date is today or tomorrow
+            elif job.target_date:
+                target_date_local = timezone.localtime(job.target_date).date()
+                if target_date_local in [today, tomorrow]:
+                    job_data['urgency_type'] = 'critical'
+                    job_data['sort_date'] = target_date_local
+                    critical_jobs.append(job_data)
+                
+                # 4. UPCOMING: target_date is 2-3 days from now
+                elif target_date_local in [two_days_from_now, three_days_from_now]:
+                    job_data['urgency_type'] = 'upcoming'
+                    job_data['sort_date'] = target_date_local
+                    upcoming_jobs.append(job_data)
+                
+                # 5. NORMAL: target_date is more than 3 days away
+                else:
+                    job_data['urgency_type'] = 'normal'
+                    job_data['sort_date'] = target_date_local
+                    normal_jobs.append(job_data)
             
-            # 3. Upcoming (2-3 days): target_date is 2 to 3 days from now
-            elif job.target_date and (job.target_date.date() == two_days_later or job.target_date.date() == three_days_later):
-                job_data['urgency_type'] = 'upcoming'
-                upcoming_near_jobs.append(job_data)
-            
-            # 4. Upcoming (more than 3 days): target_date is more than 3 days from now
-            elif job.target_date and job.target_date.date() > three_days_later:
-                job_data['urgency_type'] = 'upcoming_far'
-                upcoming_far_jobs.append(job_data)
-            
-            # Default: no target date or other cases
+            # Default: no target date
             else:
                 job_data['urgency_type'] = 'normal'
-                upcoming_far_jobs.append(job_data)
+                job_data['sort_date'] = today + timedelta(days=999)
+                normal_jobs.append(job_data)
 
-        # Sort each category
-        # Urgent: by date_of_completion (earliest first)
-        urgent_jobs.sort(key=lambda x: x['date_of_completion'] if x['date_of_completion'] else timezone.now().date())
-        
-        # Critical: by target_date (earliest first)
-        critical_jobs.sort(key=lambda x: x['target_date_raw'] if x['target_date_raw'] else timezone.now())
-        
-        # Upcoming near (2-3 days): by target_date (earliest first)
-        upcoming_near_jobs.sort(key=lambda x: x['target_date_raw'] if x['target_date_raw'] else timezone.now())
-        
-        # Upcoming far (more than 3 days): by target_date (earliest first)
-        upcoming_far_jobs.sort(key=lambda x: x['target_date_raw'] if x['target_date_raw'] else timezone.now())
+        # Sort each category by sort_date (earliest first)
+        overdue_jobs.sort(key=lambda x: x['sort_date'])
+        urgent_jobs.sort(key=lambda x: x['sort_date'])
+        critical_jobs.sort(key=lambda x: x['sort_date'])
+        upcoming_jobs.sort(key=lambda x: x['sort_date'])
+        normal_jobs.sort(key=lambda x: x['sort_date'])
 
-        # Combine all categories in order: urgent, critical, upcoming_near, upcoming_far
-        queue_data = urgent_jobs + critical_jobs + upcoming_near_jobs + upcoming_far_jobs
+        # Combine all categories in order: overdue, urgent, critical, upcoming, normal
+        queue_data = overdue_jobs + urgent_jobs + critical_jobs + upcoming_jobs + normal_jobs
 
         return JsonResponse({
             'status': 'success',
             'queue': queue_data,
             'total_count': len(queue_data),
+            'overdue_count': len(overdue_jobs),
             'urgent_count': len(urgent_jobs),
             'critical_count': len(critical_jobs),
-            'upcoming_near_count': len(upcoming_near_jobs),
-            'upcoming_far_count': len(upcoming_far_jobs),
+            'upcoming_count': len(upcoming_jobs),
+            'normal_count': len(normal_jobs),
             'last_updated': now.strftime("%Y-%m-%d %H:%M:%S")
         })
 
@@ -2474,7 +2606,19 @@ def job_order_timeline_api(request, view_type):
             is_approaching = False
 
             if has_target_date:
-                days_until_target = (target_date.date() - today).days
+                # Ensure we're comparing dates in the same timezone
+                # Convert timezone-aware datetime to date in local timezone
+                if hasattr(target_date, 'date'):
+                    # If target_date is timezone-aware, convert to local timezone first
+                    if hasattr(target_date, 'tzinfo') and target_date.tzinfo is not None:
+                        target_date_local = timezone.localtime(target_date)
+                        target_date_only = target_date_local.date()
+                    else:
+                        target_date_only = target_date.date()
+                else:
+                    target_date_only = target_date
+                
+                days_until_target = (target_date_only - today).days
                 is_overdue = days_until_target < 0
                 is_approaching = 0 <= days_until_target <= 3
 
@@ -2651,6 +2795,7 @@ def job_order_deadlines_api(request):
         urgent_jobs = []
         critical_jobs = []
         upcoming_jobs = []
+        overdue_assigned_jobs = []
 
         # Categorize job orders
         for job in active_jobs:
@@ -2678,6 +2823,35 @@ def job_order_deadlines_api(request):
                 'priority_level': job.priority_level if job.priority_level else "Low"
             }
 
+            # Check for OVERDUE ASSIGNED jobs first (highest priority)
+            is_overdue_assigned = False
+            if job.status == 'Assigned':
+                # Check if past target date
+                if job.target_date:
+                    # Convert timezone-aware datetime to local date
+                    target_date_local = timezone.localtime(job.target_date).date()
+                    if target_date_local < today:
+                        is_overdue_assigned = True
+                        days_overdue = (today - target_date_local).days
+                        job_data['day'] = target_date_local.day
+                        job_data['month'] = timezone.localtime(job.target_date).strftime('%b')
+                        job_data['countdown'] = f"{days_overdue} {'day' if days_overdue == 1 else 'days'} overdue"
+                        job_data['sort_date'] = target_date_local
+                # Check if past date of completion for Urgent jobs
+                elif job.priority_level == 'Urgent' and job.date_of_completion and job.date_of_completion < today:
+                    is_overdue_assigned = True
+                    days_overdue = (today - job.date_of_completion).days
+                    job_data['day'] = job.date_of_completion.day
+                    job_data['month'] = job.date_of_completion.strftime('%b')
+                    job_data['countdown'] = f"{days_overdue} {'day' if days_overdue == 1 else 'days'} overdue"
+                    job_data['sort_date'] = job.date_of_completion
+
+            if is_overdue_assigned:
+                job_data['urgency_type'] = 'overdue_assigned'
+                job_data['is_critical'] = True
+                overdue_assigned_jobs.append(job_data)
+                continue  # Skip other categorizations
+
             # Categorize as URGENT (priority level = "Urgent")
             if job.priority_level and job.priority_level == "Urgent":
                 if job.date_of_completion:
@@ -2689,9 +2863,9 @@ def job_order_deadlines_api(request):
                     elif days_until == 1:
                         job_data['countdown'] = "Tomorrow"
                     elif days_until < 0:
-                        job_data['countdown'] = f"{abs(days_until)} days overdue"
+                        job_data['countdown'] = f"{abs(days_until)} {'day' if abs(days_until) == 1 else 'days'} overdue"
                     else:
-                        job_data['countdown'] = f"{days_until} days"
+                        job_data['countdown'] = f"{days_until} {'day' if days_until == 1 else 'days'}"
                     job_data['sort_date'] = job.date_of_completion
                 else:
                     job_data['day'] = '-'
@@ -2704,37 +2878,40 @@ def job_order_deadlines_api(request):
                 urgent_jobs.append(job_data)
             
             # Categorize as CRITICAL (target_date is today or tomorrow)
-            elif job.target_date and job.target_date.date() in [today, tomorrow]:
-                job_data['day'] = job.target_date.day
-                job_data['month'] = job.target_date.strftime('%b')
-                days_until = (job.target_date.date() - today).days
-                if days_until == 0:
-                    job_data['countdown'] = "Today"
-                else:
-                    job_data['countdown'] = "Tomorrow"
-                job_data['urgency_type'] = 'critical'
-                job_data['is_critical'] = True
-                job_data['sort_date'] = job.target_date.date()
-                critical_jobs.append(job_data)
+            elif job.target_date:
+                target_date_local = timezone.localtime(job.target_date).date()
+                if target_date_local in [today, tomorrow]:
+                    job_data['day'] = target_date_local.day
+                    job_data['month'] = timezone.localtime(job.target_date).strftime('%b')
+                    days_until = (target_date_local - today).days
+                    if days_until == 0:
+                        job_data['countdown'] = "Today"
+                    else:
+                        job_data['countdown'] = "Tomorrow"
+                    job_data['urgency_type'] = 'critical'
+                    job_data['is_critical'] = True
+                    job_data['sort_date'] = target_date_local
+                    critical_jobs.append(job_data)
             
-            # Categorize as UPCOMING (target_date is 2-3 days from now)
-            elif job.target_date and job.target_date.date() in [two_days_from_now, three_days_from_now]:
-                job_data['day'] = job.target_date.day
-                job_data['month'] = job.target_date.strftime('%b')
-                days_until = (job.target_date.date() - today).days
-                job_data['countdown'] = f"{days_until} days"
-                job_data['urgency_type'] = 'upcoming'
-                job_data['is_critical'] = False
-                job_data['sort_date'] = job.target_date.date()
-                upcoming_jobs.append(job_data)
+                # Categorize as UPCOMING (target_date is 2-3 days from now)
+                elif target_date_local in [two_days_from_now, three_days_from_now]:
+                    job_data['day'] = target_date_local.day
+                    job_data['month'] = timezone.localtime(job.target_date).strftime('%b')
+                    days_until = (target_date_local - today).days
+                    job_data['countdown'] = f"{days_until} {'day' if days_until == 1 else 'days'}"
+                    job_data['urgency_type'] = 'upcoming'
+                    job_data['is_critical'] = False
+                    job_data['sort_date'] = target_date_local
+                    upcoming_jobs.append(job_data)
 
         # Sort each category
+        overdue_assigned_jobs.sort(key=lambda x: x['sort_date'])  # Earliest overdue first
         urgent_jobs.sort(key=lambda x: x['sort_date'])
         critical_jobs.sort(key=lambda x: x['sort_date'])
         upcoming_jobs.sort(key=lambda x: x['sort_date'])
 
-        # Combine in order: Urgent -> Critical -> Upcoming
-        deadlines_data = urgent_jobs + critical_jobs + upcoming_jobs
+        # Combine in order: Overdue Assigned -> Urgent -> Critical -> Upcoming
+        deadlines_data = overdue_assigned_jobs + urgent_jobs + critical_jobs + upcoming_jobs
 
         return JsonResponse({
             'status': 'success',
@@ -2742,6 +2919,7 @@ def job_order_deadlines_api(request):
             'urgent_count': len(urgent_jobs),
             'critical_count': len(critical_jobs),
             'upcoming_count': len(upcoming_jobs),
+            'overdue_assigned_count': len(overdue_assigned_jobs),
             'last_updated': now.strftime("%Y-%m-%d %H:%M:%S")
         })
 
@@ -2864,23 +3042,53 @@ def job_order_compliance_chart_api(request):
         period = request.GET.get('period', '6month')
         today = timezone.now().date()
         
+        # Helper function to get custom month range (24th to 24th)
+        def get_custom_month_range(target_date):
+            """
+            Returns the start and end date for a custom month period (24th to 24th).
+            For example, October 2025 covers Sep 24 to Oct 24.
+            """
+            # If today is before the 24th, we're still in the previous month's period
+            if target_date.day < 24:
+                # Use previous month's 24th to current month's 23rd
+                month_end = target_date.replace(day=23)
+                # Get previous month's 24th
+                if target_date.month == 1:
+                    month_start = target_date.replace(year=target_date.year - 1, month=12, day=24)
+                else:
+                    month_start = target_date.replace(month=target_date.month - 1, day=24)
+            else:
+                # From this month's 24th to next month's 23rd
+                month_start = target_date.replace(day=24)
+                # Get next month's 23rd
+                if target_date.month == 12:
+                    month_end = target_date.replace(year=target_date.year + 1, month=1, day=23)
+                else:
+                    month_end = target_date.replace(month=target_date.month + 1, day=23)
+            
+            return month_start, month_end
+        
         # Determine the start date based on the period
         if period == 'thismonth':
-            # First day of current month to today
-            start_date = today.replace(day=1)
-            end_date = today
+            # Current custom month period (24th to 24th)
+            start_date, end_date = get_custom_month_range(today)
+            # Don't go beyond today
+            if end_date > today:
+                end_date = today
         elif period == '1month':
-            # First day to last day of last month
-            first_day_this_month = today.replace(day=1)
-            last_day_last_month = first_day_this_month - timedelta(days=1)
-            start_date = last_day_last_month.replace(day=1)
-            end_date = last_day_last_month
+            # Previous custom month period
+            # Go back one month from today
+            if today.month == 1:
+                prev_month_date = today.replace(year=today.year - 1, month=12, day=15)
+            else:
+                prev_month_date = today.replace(month=today.month - 1, day=15)
+            start_date, end_date = get_custom_month_range(prev_month_date)
         elif period == '3month':
-            # Last 3 months
+            # Last 3 custom months
             start_date = today - timedelta(days=90)
             end_date = today
         elif period == '6month':
-            # Last 6 months (default)
+            # Last 6 custom months (default)
             start_date = today - timedelta(days=180)
             end_date = today
         else:
@@ -2932,42 +3140,60 @@ def job_order_compliance_chart_api(request):
                 
                 current_date += timedelta(days=1)
         else:
-            # Monthly data for 3month and 6month
+            # Monthly data for 3month and 6month using custom 24th-to-24th ranges
             labels = []
             filed_data = []
             completed_data = []
             routing_data = []
             inprogress_data = []
             
-            # Generate list of months in the range
+            # Generate list of custom months (24th to 24th) in the range
             months = []
-            current = start_date.replace(day=1)
-            end_month = end_date.replace(day=1)
+            current_date = start_date
             
-            while current <= end_month:
-                # Get last day of the month
-                if current.month == 12:
-                    next_month = current.replace(year=current.year + 1, month=1, day=1)
+            # Start from the 24th of the month containing start_date
+            if start_date.day < 24:
+                # Start from previous month's 24th
+                if start_date.month == 1:
+                    month_start = start_date.replace(year=start_date.year - 1, month=12, day=24)
                 else:
-                    next_month = current.replace(month=current.month + 1, day=1)
-                last_day = next_month - timedelta(days=1)
+                    month_start = start_date.replace(month=start_date.month - 1, day=24)
+            else:
+                month_start = start_date.replace(day=24)
+            
+            while month_start <= end_date:
+                # Calculate month_end as 23rd of next month
+                if month_start.month == 12:
+                    month_end = month_start.replace(year=month_start.year + 1, month=1, day=23)
+                else:
+                    month_end = month_start.replace(month=month_start.month + 1, day=23)
                 
-                months.append((current, last_day))
-                current = next_month
+                # Don't go beyond end_date
+                if month_end > end_date:
+                    month_end = end_date
+                
+                months.append((month_start, month_end))
+                
+                # Move to next custom month (next month's 24th)
+                if month_start.month == 12:
+                    month_start = month_start.replace(year=month_start.year + 1, month=1, day=24)
+                else:
+                    month_start = month_start.replace(month=month_start.month + 1, day=24)
             
             for month_start, month_end in months:
-                # Label as "Month Year" (e.g., "Jan 2025")
-                label = month_start.strftime('%b %Y')
+                # Label as "Month Year" based on the end date of the period
+                # (e.g., Sep 24 - Oct 23 is labeled "Oct 2025")
+                label = month_end.strftime('%b %Y')
                 labels.append(label)
                 
-                # Count filed JOs in this month
+                # Count filed JOs in this custom month
                 filed_count = JOLogsheet.objects.filter(
                     date_created__date__gte=month_start,
                     date_created__date__lte=month_end
                 ).count()
                 filed_data.append(filed_count)
                 
-                # Count completed JOs in this month
+                # Count completed JOs in this custom month
                 completed_count = JOLogsheet.objects.filter(
                     date_complete__date__gte=month_start,
                     date_complete__date__lte=month_end,
@@ -2975,7 +3201,7 @@ def job_order_compliance_chart_api(request):
                 ).count()
                 completed_data.append(completed_count)
                 
-                # Count routing JOs in this month
+                # Count routing JOs in this custom month
                 routing_count = JOLogsheet.objects.filter(
                     date_created__date__gte=month_start,
                     date_created__date__lte=month_end,
@@ -2983,7 +3209,7 @@ def job_order_compliance_chart_api(request):
                 ).count()
                 routing_data.append(routing_count)
                 
-                # Count in-progress JOs in this month
+                # Count in-progress JOs in this custom month
                 inprogress_count = JOLogsheet.objects.filter(
                     date_created__date__gte=month_start,
                     date_created__date__lte=month_end,
@@ -3014,36 +3240,73 @@ def compliance_rate_api(request):
         period = request.GET.get('period', '6month')
         today = timezone.now().date()
         
+        # Helper function to get custom month range (24th to 23rd)
+        def get_custom_month_range(target_date):
+            """
+            Calculate custom month range from 24th to 23rd.
+            If target_date.day < 24: use prev_month 24th to current_month 23rd
+            If target_date.day >= 24: use current_month 24th to next_month 23rd
+            """
+            if target_date.day < 24:
+                # Period is prev month 24th to current month 23rd
+                if target_date.month == 1:
+                    start_date = target_date.replace(year=target_date.year - 1, month=12, day=24)
+                else:
+                    start_date = target_date.replace(month=target_date.month - 1, day=24)
+                end_date = target_date.replace(day=23)
+            else:
+                # Period is current month 24th to next month 23rd
+                start_date = target_date.replace(day=24)
+                if target_date.month == 12:
+                    end_date = target_date.replace(year=target_date.year + 1, month=1, day=23)
+                else:
+                    end_date = target_date.replace(month=target_date.month + 1, day=23)
+            
+            return start_date, end_date
+        
         # Determine the start date based on the period
         if period == 'thismonth':
-            # First day of current month to today
-            start_date = today.replace(day=1)
-            end_date = today
+            # Custom month range (24th to 23rd) for current period, ending today
+            start_date, month_end = get_custom_month_range(today)
+            end_date = today  # Cap at today
         elif period == '1month':
-            # First day to last day of last month
-            first_day_this_month = today.replace(day=1)
-            last_day_last_month = first_day_this_month - timedelta(days=1)
-            start_date = last_day_last_month.replace(day=1)
-            end_date = last_day_last_month
+            # Previous custom month range (24th to 23rd)
+            # Go back to previous month first
+            if today.month == 1:
+                prev_month = today.replace(year=today.year - 1, month=12, day=15)
+            else:
+                prev_month = today.replace(month=today.month - 1, day=15)
+            start_date, end_date = get_custom_month_range(prev_month)
         elif period == '6month':
-            # Last 6 months
-            start_date = today - timedelta(days=180)
+            # Last 6 custom months (approximately 180 days from 24th to 23rd)
+            # Calculate 6 months back from current custom month start
+            current_start, _ = get_custom_month_range(today)
+            if current_start.month > 6:
+                start_date = current_start.replace(month=current_start.month - 6)
+            else:
+                start_date = current_start.replace(year=current_start.year - 1, month=current_start.month + 6)
             end_date = today
         elif period == 'fiscalyear':
-            # Fiscal year: May to April
+            # Fiscal year: May 24 to April 23
             current_year = today.year
-            if today.month >= 5:  # May to December
-                start_date = date(current_year, 5, 1)
-                end_date = date(current_year + 1, 4, 30)
-            else:  # January to April
-                start_date = date(current_year - 1, 5, 1)
-                end_date = date(current_year, 4, 30)
+            if today.month > 4 or (today.month == 4 and today.day >= 24):
+                # May 24 of current year to April 23 of next year
+                start_date = date(current_year, 5, 24)
+                end_date = date(current_year + 1, 4, 23)
+            else:
+                # May 24 of previous year to April 23 of current year
+                start_date = date(current_year - 1, 5, 24)
+                end_date = date(current_year, 4, 23)
             # If end_date is in the future, use today
             if end_date > today:
                 end_date = today
         else:
             # Default to 6 months
-            start_date = today - timedelta(days=180)
+            current_start, _ = get_custom_month_range(today)
+            if current_start.month > 6:
+                start_date = current_start.replace(month=current_start.month - 6)
+            else:
+                start_date = current_start.replace(year=current_start.year - 1, month=current_start.month + 6)
             end_date = today
         
         # Count total JOs filed in the period
@@ -3103,32 +3366,6 @@ def compliance_rate_api(request):
         })
 
 # Maintenance
-@login_required(login_url="user-login")
-def maintenance_personnel(request):
-    today = now().date()
-    current_month = now().month
-    current_year = now().year
-
-    pendingJO = JORouting.objects.filter(status = "Processing", approver=request.user).order_by("-request_at")
-    overallJO = JOLogsheet.objects.filter(joRouting__approver=request.user, joRouting__approver_sequence=6).order_by("-joRouting__request_at", "joRouting__status")
-    for job in overallJO:
-        job.has_pending_routing = job.joRouting.filter(approver_sequence=6, status='Processing').exists()
-
-    joRequestsCount = JOLogsheet.objects.filter(in_charge=request.user, date_created__year=current_year, date_created__month=current_month).count()
-    completedJO = JORouting.objects.filter(status = "Approved", approver=request.user, request_at__year=current_year, request_at__month=current_month).count()
-    pendingRequest = JORouting.objects.filter(status = "Pending", approver=request.user, request_at__year=current_year, request_at__month=current_month).count()
-    overdueRequests = JORouting.objects.filter(status = "Pending", approver=request.user, request_at__year=current_year, request_at__month=current_month).filter(jo_number__target_date__lt=today).count()
-
-    context={
-        'pendingRequest':pendingJO,
-        'overallJO':overallJO,
-        'totalAssigned':joRequestsCount,
-        'completedRequest':completedJO,
-        'pending':pendingRequest,
-        'overdueRequests':overdueRequests,
-    }
-    return render(request, 'joborder/jo-maintenance.html', context)
-
 @login_required
 def get_maintenance_personnel(request):
     """API endpoint to get list of maintenance personnel for assignment"""
@@ -3204,41 +3441,73 @@ def get_job_order_trends(request):
     current_user = request.user
     today = timezone.now()
 
+    # Helper function to get custom month range (24th to 24th)
+    def get_custom_month_range(target_date):
+        """
+        Calculate custom month range from 24th to 24th (ending on 24th).
+        For October: Sept 24 to Oct 24
+        """
+        target_day = target_date.day
+        
+        if target_day < 24:
+            # We're before the 24th, so the period started last month on the 24th
+            if target_date.month == 1:
+                start_date = target_date.replace(year=target_date.year - 1, month=12, day=24)
+            else:
+                start_date = target_date.replace(month=target_date.month - 1, day=24)
+            end_date = target_date.replace(day=24)
+        else:
+            # We're on or after the 24th, so the period starts this month on the 24th
+            start_date = target_date.replace(day=24)
+            if target_date.month == 12:
+                end_date = target_date.replace(year=target_date.year + 1, month=1, day=24)
+            else:
+                end_date = target_date.replace(month=target_date.month + 1, day=24)
+        
+        return start_date, end_date
+
     if (period == 'month'):
-        start_date = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        next_month = today.month + 1 if today.month < 12 else 1
-        next_month_year = today.year if today.month < 12 else today.year + 1
-        days_in_month = (datetime(next_month_year, next_month, 1) - timedelta(days=1)).day
+        # Use custom 24th-to-24th month range
+        start_date, end_date = get_custom_month_range(today)
+        
+        # If end_date is in the future, cap it at today
+        if end_date > today:
+            end_date = today
+        
+        # Calculate the number of days in this custom month period
+        days_in_period = (end_date.date() - start_date.date()).days + 1
+        
+        labels = [(start_date + timedelta(days=i)).strftime('%d') for i in range(days_in_period)]
+        new_orders_data = [0] * days_in_period
+        completed_data = [0] * days_in_period
 
-        labels = [(start_date + timedelta(days=i)).strftime('%d') for i in range(days_in_month)]
-        new_orders_data = [0] * days_in_month
-        completed_data = [0] * days_in_month
-
+        # Get new routings within the custom month range
         new_routings = JORouting.objects.filter(
             approver=current_user,
             approver_sequence=6,
-            request_at__year=today.year,
-            request_at__month=today.month
+            request_at__gte=start_date,
+            request_at__lte=end_date
         )
 
+        # Get completed routings within the custom month range
         completed_routings = JORouting.objects.filter(
             approver=current_user,
             approver_sequence=6,
-            approved_at__year=today.year,
-            approved_at__month=today.month,
+            approved_at__gte=start_date,
+            approved_at__lte=end_date,
             status='Approved'
         )
 
         for routing in new_routings:
-            day_index = routing.request_at.day - 1
-            if 0 <= day_index < len(new_orders_data):
-                new_orders_data[day_index] += 1
+            day_diff = (routing.request_at.date() - start_date.date()).days
+            if 0 <= day_diff < len(new_orders_data):
+                new_orders_data[day_diff] += 1
 
         for routing in completed_routings:
             if routing.approved_at:
-                day_index = routing.approved_at.day - 1
-                if 0 <= day_index < len(completed_data):
-                    completed_data[day_index] += 1
+                day_diff = (routing.approved_at.date() - start_date.date()).days
+                if 0 <= day_diff < len(completed_data):
+                    completed_data[day_diff] += 1
 
     elif period == 'quarter':
         current_month = today.month
@@ -3402,6 +3671,61 @@ def get_upcoming_deadlines(request):
     return JsonResponse(data)
 
 @login_required
+@require_GET
+def get_job_order_for_date_setting(request, jo_id):
+    try:
+        job_order = JOLogsheet.objects.get(id=jo_id)
+        
+        # Get the last approved routing record
+        last_approved_routing = JORouting.objects.filter(
+            jo_request=job_order,
+            status='approved'
+        ).order_by('-approved_at').first()
+        
+        last_approved_date = None
+        if last_approved_routing and last_approved_routing.approved_at:
+            last_approved_date = last_approved_routing.approved_at.strftime('%Y-%m-%d')
+        
+        # Get date of completion if priority is Urgent
+        date_of_completion = None
+        if job_order.date_of_completion:
+            date_of_completion = job_order.date_of_completion.strftime('%Y-%m-%d')
+        
+        return JsonResponse({
+            'status': 'success',
+            'job_order': {
+                'id': job_order.id,
+                'jo_number': job_order.jo_number,
+                'jo_color': job_order.jo_color,
+                'jo_tools': job_order.jo_tools,
+                'jo_type': job_order.jo_type,
+                'line': job_order.line.line_name if job_order.line else None,
+                'requestor': job_order.requestor,
+                'status': job_order.status,
+                'prepared_by': job_order.prepared_by.name if job_order.prepared_by else None,
+                'priority_level': job_order.priority_level,
+                'details': job_order.details,
+                'date_of_completion': date_of_completion,
+                'last_approved_date': last_approved_date,
+                'current_target_date': job_order.target_date.strftime('%Y-%m-%d') if job_order.target_date else None,
+                'current_target_date_reason': job_order.target_date_reason or ''
+            }
+        })
+        
+    except JOLogsheet.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Job order not found'
+        }, status=404)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@login_required
 def set_target_date(request):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
@@ -3427,6 +3751,48 @@ def set_target_date(request):
                 'status': 'error',
                 'message': 'You are not authorized to update this job order'
             }, status=403)
+        
+        # Validate if reason is required based on business rules
+        last_approved_routing = JORouting.objects.filter(
+            jo_request=job_order,
+            status='approved'
+        ).order_by('-approved_at').first()
+        
+        reason_required = False
+        reason_message = ''
+        
+        if last_approved_routing and last_approved_routing.approved_at:
+            last_approved_date = last_approved_routing.approved_at.date()
+            target_date_only = target_date.date()
+            
+            # Calculate the difference in days
+            days_difference = (target_date_only - last_approved_date).days
+            
+            # Check based on JO color
+            if job_order.jo_color in ['Green', 'Yellow', 'White']:
+                # More than 1 month (30 days) after last approved date
+                if days_difference > 30:
+                    reason_required = True
+                    reason_message = 'Target date is more than 1 month after the last approved routing date'
+            elif job_order.jo_color == 'Orange':
+                # More than 1 week (7 days) after last approved date
+                if days_difference > 7:
+                    reason_required = True
+                    reason_message = 'Target date is more than 1 week after the last approved routing date'
+        
+        # Check for Urgent priority and date_of_completion
+        if job_order.priority_level == 'Urgent' and job_order.date_of_completion:
+            if target_date.date() > job_order.date_of_completion:
+                reason_required = True
+                reason_message = 'Target date is later than the date of completion for an Urgent job order'
+        
+        # If reason is required but not provided, return error
+        if reason_required and not target_date_reason.strip():
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Reason is required: {reason_message}',
+                'reason_required': True
+            }, status=400)
 
         job_order.target_date = target_date
         job_order.target_date_reason = target_date_reason
@@ -3445,13 +3811,19 @@ def set_target_date(request):
         }, status=404)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({
             'status': 'error',
             'message': str(e)
         }, status=500)
 
 @login_required
-def complete_job_order(request):
+def complete_job_order_old(request):
+    """
+    OLD DEPRECATED VERSION - DO NOT USE
+    This function has been replaced by the new complete_job_order at line 755
+    """
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
@@ -3539,166 +3911,3 @@ def complete_job_order(request):
             'status': 'error',
             'message': str(e)
         }, status=500)
-
-# Spectator Page
-@login_required(login_url="user-login")
-def spectator_page(request):
-    current_month = now().month
-    current_year = now().year
-
-    all_requests = JOLogsheet.objects.all().order_by("-date_created")
-    
-    pendingJO = JOLogsheet.objects.filter(
-        Q(status="Routing") | Q(status="Completed") | Q(status="Checked"),
-    ).order_by("-date_created")
-
-    joRequestsCount = JOLogsheet.objects.filter(
-        date_created__year=current_year, 
-        date_created__month=current_month
-    ).count()
-    
-    pendingJOCount = JOLogsheet.objects.filter(
-        status="Routing",
-        date_created__year=current_year, 
-        date_created__month=current_month
-    ).count()
-    
-    approvedJOCount = JOLogsheet.objects.filter(
-        status="Closed",
-        date_created__year=current_year, 
-        date_created__month=current_month
-    ).count()
-
-    lines = Line.objects.all()
-
-    context = {
-        'pendingJO': pendingJO,
-        'all_requests': all_requests,
-        'joRequestsCount': joRequestsCount,
-        'pendingJOCount': pendingJOCount,
-        'approvedJOCount': approvedJOCount,
-        'lines': lines,
-    }
-    
-    return render(request, 'joborder/jo-spectator.html', context)
-
-@login_required
-@require_GET
-def spectator_chart_data(request, period):
-    """API endpoint for job order category chart data"""
-    try:
-        today = timezone.now().date()
-        
-        if period == '3month':
-            months_back = 3
-        elif period == '6month':
-            months_back = 6
-        elif period == '1year':
-            months_back = 12
-        else:
-            months_back = 6
-
-        start_date = today.replace(day=1)
-        for _ in range(months_back - 1):
-            prev_month = start_date.month - 1
-            year = start_date.year
-            if prev_month == 0:
-                prev_month = 12
-                year -= 1
-            start_date = start_date.replace(year=year, month=prev_month, day=1)
-
-        months = []
-        month_year_map = {}
-        current = start_date
-        index = 0
-        while current <= today.replace(day=28):
-            month_name = calendar.month_name[current.month][:3]
-            year = current.year
-            month_year = f"{month_name} {year}"
-            months.append(month_year)
-            month_year_map[f"{current.year}-{current.month:02d}"] = index
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
-            index += 1
-
-        green_data = [0] * len(months)
-        yellow_data = [0] * len(months)
-        white_data = [0] * len(months)
-        orange_data = [0] * len(months)
-
-        job_orders = JOLogsheet.objects.filter(
-            prepared_by=request.user,
-            date_created__gte=timezone.make_aware(timezone.datetime.combine(start_date, timezone.datetime.min.time())),
-            date_created__lte=timezone.now()
-        )
-
-        for order in job_orders:
-            order_date = order.date_created.date()
-            month_year_key = f"{order_date.year}-{order_date.month:02d}"
-            if month_year_key in month_year_map:
-                idx = month_year_map[month_year_key]
-                category = order.jo_color.lower() if order.jo_color else "unknown"
-                if category == 'green':
-                    green_data[idx] += 1
-                elif category == 'yellow':
-                    yellow_data[idx] += 1
-                elif category == 'white':
-                    white_data[idx] += 1
-                elif category == 'orange':
-                    orange_data[idx] += 1
-
-        total_data = [
-            green_data[i] + yellow_data[i] + white_data[i] + orange_data[i]
-            for i in range(len(green_data))
-        ]
-
-        return JsonResponse({
-            'labels': months,
-            'green': green_data,
-            'yellow': yellow_data,
-            'white': white_data,
-            'orange': orange_data,
-            'total': total_data
-        })
-
-    except Exception as e:
-        print(f"Error in spectator_chart_data: {str(e)}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-@login_required
-@require_GET
-def spectator_status_chart_data(request):
-    """API endpoint for job order status bar chart data with period filtering"""
-    try:
-        period = request.GET.get('period', 'month')
-        now_dt = timezone.now()
-        start_date = None
-        if period == 'week':
-            start_date = now_dt - timedelta(days=now_dt.weekday())  # Start of week (Monday)
-        elif period == 'quarter':
-            current_month = now_dt.month
-            quarter_start_month = 3 * ((current_month - 1) // 3) + 1
-            start_date = now_dt.replace(month=quarter_start_month, day=1)
-        else:  # Default to month
-            start_date = now_dt.replace(day=1)
-
-        all_job_orders = JOLogsheet.objects.filter(
-            prepared_by=request.user,
-            date_created__gte=start_date
-        )
-        total_requests = all_job_orders.count()
-        status_counts = {
-            'Routing': all_job_orders.filter(status='Routing').count(),
-            'Completed': all_job_orders.filter(status='Completed').count(),
-            'Checked': all_job_orders.filter(status='Checked').count(),
-            'Closed': all_job_orders.filter(status='Closed').count(),
-        }
-        return JsonResponse({
-            'labels': list(status_counts.keys()),
-            'data': list(status_counts.values()),
-            'total': total_requests
-        })
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)

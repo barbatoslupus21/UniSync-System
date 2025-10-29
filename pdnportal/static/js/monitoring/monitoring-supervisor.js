@@ -15,42 +15,58 @@ function initPerformanceChart() {
     if (!ctx) return;
 
     performanceChart = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: [],
             datasets: [
                 {
-                    label: 'Target',
+                    label: 'Target Output',
                     data: [],
-                    borderColor: 'rgba(255, 193, 7, 1)',
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    borderWidth: 3,
-                    borderDash: [5, 5],
-                    pointBackgroundColor: 'rgba(255, 193, 7, 1)',
-                    pointBorderColor: 'white',
-                    pointBorderWidth: 2,
-                    pointRadius: 5,
-                    tension: 0.3,
-                    fill: false
+                    type: 'bar',
+                    backgroundColor: 'rgba(0, 70, 255, 0.8)',
+                    borderColor: 'rgba(0, 70, 255, 1)',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    barThickness: 40,
+                    order: 2,
+                    shadowOffsetX: 3,
+                    shadowOffsetY: 3,
+                    shadowBlur: 10,
+                    shadowColor: 'rgba(0, 0, 0, 0.2)'
                 },
                 {
-                    label: 'Actual',
+                    label: 'Current Output',
                     data: [],
-                    borderColor: 'rgba(51, 102, 255, 1)',
-                    backgroundColor: 'rgba(51, 102, 255, 0.1)',
+                    type: 'line',
+                    borderColor: 'rgba(120, 200, 65, 1)',
+                    backgroundColor: 'rgba(120, 200, 65, 0.3)',
                     borderWidth: 3,
-                    pointBackgroundColor: 'rgba(51, 102, 255, 1)',
+                    pointBackgroundColor: 'rgba(120, 200, 65, 1)',
                     pointBorderColor: 'white',
                     pointBorderWidth: 2,
-                    pointRadius: 5,
-                    tension: 0.3,
-                    fill: true
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    tension: 0.4,
+                    fill: true,
+                    order: 1
                 }
             ]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 20,
+                    right: 20,
+                    bottom: 30,
+                    left: 0
+                }
+            },
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: {
                 legend: {
                     position: 'top',
@@ -59,7 +75,8 @@ function initPerformanceChart() {
                         padding: 20,
                         font: {
                             family: 'Poppins',
-                            size: 12
+                            size: 13,
+                            weight: '500'
                         }
                     }
                 },
@@ -71,8 +88,15 @@ function initPerformanceChart() {
                     bodyColor: '#333',
                     borderColor: '#ddd',
                     borderWidth: 1,
-                    cornerRadius: 6,
-                    padding: 10,
+                    cornerRadius: 8,
+                    padding: 12,
+                    titleFont: {
+                        size: 14,
+                        weight: 'bold'
+                    },
+                    bodyFont: {
+                        size: 13
+                    },
                     callbacks: {
                         label: function(context) {
                             return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' units';
@@ -82,39 +106,52 @@ function initPerformanceChart() {
             },
             scales: {
                 x: {
+                    offset: true,
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: false,
+                        offset: false
                     },
                     ticks: {
                         color: '#666',
                         font: {
                             family: 'Poppins',
-                            size: 10
-                        }
+                            size: 11
+                        },
+                        maxRotation: 0,
+                        minRotation: 0
                     }
                 },
                 y: {
+                    position: 'left',
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: 'rgba(0, 0, 0, 0.05)',
+                        drawBorder: true,
+                        borderColor: '#ddd',
+                        borderWidth: 1
                     },
                     ticks: {
                         color: '#666',
                         font: {
                             family: 'Poppins',
-                            size: 10
+                            size: 11
                         },
                         callback: function(value) {
-                            return value.toLocaleString();
-                        }
+                            // Show only whole numbers
+                            if (Math.floor(value) === value) {
+                                return value.toLocaleString();
+                            }
+                            return '';
+                        },
+                        stepSize: 1,
+                        padding: 5
                     },
                     beginAtZero: true
                 }
             },
             animation: {
-                duration: 800,
-                easing: 'easeInOutQuart',
-                animateRotate: true,
-                animateScale: true
+                duration: 1000,
+                easing: 'easeInOutQuart'
             }
         }
     });
@@ -123,7 +160,7 @@ function initPerformanceChart() {
 }
 
 function loadChartData() {
-    const timeRange = document.getElementById('time-range-filter')?.value || 'today';
+    const timeRange = document.getElementById('time-range-filter')?.value || 'week';
     const groupId = document.getElementById('group-filter')?.value || 'all';
 
     const url = new URL('/monitoring/facilitator/chart-data/', window.location.origin);
@@ -133,18 +170,12 @@ function loadChartData() {
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            // Animate out old data
+            // Animate chart update
             if (performanceChart) {
-                performanceChart.options.animation = {
-                    duration: 800,
-                    easing: 'easeInOutQuart',
-                    animateRotate: true,
-                    animateScale: true
-                };
                 performanceChart.data.labels = data.labels;
                 performanceChart.data.datasets[0].data = data.target;
                 performanceChart.data.datasets[1].data = data.actual;
-                performanceChart.update();
+                performanceChart.update('active');
             }
         })
         .catch(error => {
@@ -184,19 +215,18 @@ function initEventListeners() {
         editGroupForm.addEventListener('submit', handleEditGroup);
     }
 
-    document.querySelectorAll('.edit-group-btn').forEach(btn => {
-        btn.addEventListener('click', handleEditGroupClick);
-    });
-
-    document.querySelectorAll('.delete-group-btn').forEach(btn => {
-        btn.addEventListener('click', handleDeleteGroupClick);
-    });
-
-    document.querySelectorAll('.view-detail-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const groupId = e.target.dataset.groupId;
+    // Use event delegation for dynamically loaded buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.edit-group-btn')) {
+            handleEditGroupClick(e);
+        }
+        if (e.target.closest('.delete-group-btn')) {
+            handleDeleteGroupClick(e);
+        }
+        if (e.target.closest('.view-dashboard-btn')) {
+            const groupId = e.target.closest('.view-dashboard-btn').dataset.id;
             window.location.href = `/monitoring/facilitator/group/${groupId}/`;
-        });
+        }
     });
 
     const confirmDeleteBtn = document.getElementById('confirm-delete-group');
@@ -242,34 +272,66 @@ function handleCreateGroup(e) {
 }
 
 function handleEditGroupClick(e) {
-    const groupId = e.target.closest('.edit-group-btn').dataset.groupId;
+    const groupId = e.target.closest('.edit-group-btn').dataset.id;
     currentGroupToEdit = groupId;
     
-    fetch(`/monitoring/get-group/${groupId}/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'error') {
-                throw new Error(data.message);
-            }
-            
-            document.getElementById('edit-title').value = data.title;
-            document.getElementById('edit-description').value = data.description;
-            document.getElementById('edit-status').value = data.group_status;
-            
-            document.querySelectorAll('#edit-lines-container input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = data.line_ids.includes(parseInt(checkbox.value));
+    // Fetch group data and available lines/supervisors
+    Promise.all([
+        fetch(`/monitoring/get-group/${groupId}/`).then(r => r.json()),
+        fetch(`/monitoring/get-available-options/${groupId}/`).then(r => r.json())
+    ])
+    .then(([groupData, optionsData]) => {
+        if (groupData.status === 'error') {
+            throw new Error(groupData.message);
+        }
+        
+        // Populate form fields
+        document.getElementById('edit-title').value = groupData.title;
+        document.getElementById('edit-description').value = groupData.description || '';
+        document.getElementById('edit-status').value = groupData.group_status;
+        
+        // Populate lines checkboxes
+        const linesContainer = document.getElementById('edit-lines-container');
+        linesContainer.innerHTML = '';
+        
+        if (optionsData.available_lines && optionsData.available_lines.length > 0) {
+            optionsData.available_lines.forEach(line => {
+                const isChecked = groupData.line_ids.includes(line.id);
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'FD-checkbox-item';
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="edit-line-${line.id}" name="lines" value="${line.id}" ${isChecked ? 'checked' : ''}>
+                    <label for="edit-line-${line.id}">${line.line_name}</label>
+                `;
+                linesContainer.appendChild(checkboxItem);
             });
-            
-            document.querySelectorAll('#edit-supervisors-container input[type="checkbox"]').forEach(checkbox => {
-                checkbox.checked = data.supervisor_ids.includes(parseInt(checkbox.value));
+        } else {
+            linesContainer.innerHTML = '<div class="empty-state"><p>No available lines</p></div>';
+        }
+        
+        // Populate supervisors checkboxes
+        const supervisorsContainer = document.getElementById('edit-supervisors-container');
+        supervisorsContainer.innerHTML = '';
+        
+        if (optionsData.supervisors && optionsData.supervisors.length > 0) {
+            optionsData.supervisors.forEach(supervisor => {
+                const isChecked = groupData.supervisor_ids.includes(supervisor.id);
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'FD-checkbox-item';
+                checkboxItem.innerHTML = `
+                    <input type="checkbox" id="edit-supervisor-${supervisor.id}" name="supervisors" value="${supervisor.id}" ${isChecked ? 'checked' : ''}>
+                    <label for="edit-supervisor-${supervisor.id}">${supervisor.name}</label>
+                `;
+                supervisorsContainer.appendChild(checkboxItem);
             });
-            
-            document.getElementById('edit-group-modal').classList.add('active');
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showToast('Error loading group data', 'error');
-        });
+        }
+        
+        document.getElementById('edit-group-modal').classList.add('active');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error loading group data', 'error');
+    });
 }
 
 function handleEditGroup(e) {
@@ -280,28 +342,29 @@ function handleEditGroup(e) {
         method: 'POST',
         body: formData,
         headers: {
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => {
-        if (response.ok) {
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'success') {
             showToast('Monitoring group updated successfully!', 'success');
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
         } else {
-            throw new Error('Failed to update group');
+            throw new Error(data.message || 'Failed to update group');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        showToast('Error updating monitoring group', 'error');
+        showToast(error.message || 'Error updating monitoring group', 'error');
     });
 }
 
 function handleDeleteGroupClick(e) {
-    const groupId = e.target.closest('.delete-group-btn').dataset.groupId;
-    const groupCard = e.target.closest('.FD-group-card');
+    const groupId = e.target.closest('.delete-group-btn').dataset.id;
     
     currentGroupToDelete = groupId;
     

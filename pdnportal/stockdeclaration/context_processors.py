@@ -1,37 +1,36 @@
 from django.utils import timezone
 from datetime import datetime
 from django.db import models
-from .models import StockDeclaration
+from .models import StockDeclaration, StockDeclarationView
 
 
 def stock_notifications(request):
-    """
-    Context processor to check for stock declarations that need user attention.
-    Returns notifications for declarations that match the user's line and meet one of:
-    - Created today
-    - Not yet received by production
-    """
+
     notifications = []
     user_has_stock_declarations = False
     
     # Only check for authenticated users with a line assigned
     if request.user.is_authenticated and hasattr(request.user, 'line') and request.user.line.exists():
         user_lines = request.user.line.all()
-        today = timezone.now().date()
         
-        # Query for stock declarations that meet the conditions.
-        # To match the API behavior, only include declarations created today AND not yet received.
+        # Get stock declarations where at least one line matches user's lines
+        # Exclude cancelled and already received declarations
         stock_declarations = StockDeclaration.objects.filter(
             lines__in=user_lines,
-            created_at__date=today,
             received_by_production=False
+        ).exclude(
+            status='cancelled'
         ).distinct().select_related('created_by').prefetch_related('lines')
+        
+        viewed_declaration_ids = StockDeclarationView.objects.filter(
+            user=request.user
+        ).values_list('stock_declaration_id', flat=True)
+        
+        unviewed_declarations = stock_declarations.exclude(id__in=viewed_declaration_ids)
 
-        # Flag indicating whether there are any declarations to show (consistent with API)
-        user_has_stock_declarations = stock_declarations.exists()
+        user_has_stock_declarations = unviewed_declarations.exists()
 
-        # Convert to list of dictionaries for template use
-        for declaration in stock_declarations:
+        for declaration in unviewed_declarations:
             notification_data = {
                 'id': declaration.id,
                 'control_number': declaration.control_number,
@@ -45,12 +44,15 @@ def stock_notifications(request):
             }
             notifications.append(notification_data)
 
-        # Sort notifications so that 'out_of_stock' come first, then 'critical', then 'overstock'
         order_map = {'out_of_stock': 0, 'critical': 1, 'overstock': 2}
         notifications.sort(key=lambda n: (order_map.get(n['stock_type_value'], 99), n['created_at']))
+    
+    # Check if we're on the stock declaration home page
+    on_stock_declaration_page = request.path.startswith('/stock-declaration/')
     
     return {
         'stock_notifications': notifications,
         'has_stock_notifications': len(notifications) > 0,
         'user_has_stock_declarations': user_has_stock_declarations,
+        'on_stock_declaration_page': on_stock_declaration_page,
     }

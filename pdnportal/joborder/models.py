@@ -34,7 +34,8 @@ class JOLogsheet(models.Model):
         ('Assigned', 'Assigned'),
         ('Cancelled', 'Cancelled'),
         ('Closed', 'Closed'),
-        ('Rejected', 'Rejected')
+        ('Rejected', 'Rejected'),
+        ('OnHold', 'On Hold')
     ]
 
     PRIORITY_LEVELS = [

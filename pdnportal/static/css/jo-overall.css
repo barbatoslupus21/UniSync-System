@@ -221,14 +221,111 @@
     flex: 1;
 }
 
+.JO-event-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.JO-event-jo-number {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--jo-primary, #3366ff);
+    margin-bottom: 8px;
+    padding: 2px 0;
+    border-bottom: 1px dashed rgba(51, 102, 255, 0.3);
+    letter-spacing: 0.5px;
+    text-align: center;
+}
+
+.JO-event-body {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
 .JO-event-time {
-    font-size: 0.8rem;
-    color: var(--jo-text-light);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--jo-text-dark, #333);
 }
 
 .JO-event-title {
     font-size: 1rem;
     font-weight: 600;
+}
+
+.JO-event-description {
+    font-size: 0.85rem;
+    color: var(--jo-text-light, #666);
+    font-style: italic;
+}
+
+.JO-event-requestor {
+    font-size: 0.85rem;
+    color: var(--jo-text-dark, #333);
+    font-weight: 500;
+}
+
+.JO-event-department {
+    font-size: 0.85rem;
+    color: var(--jo-text-dark, #333);
+    font-style: italic;
+    margin-bottom: 4px;
+}
+
+.JO-target-date-missing {
+    font-size: 0.8rem;
+    color: #e65100;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.JO-target-date-overdue {
+    font-size: 0.8rem;
+    color: var(--jo-red, #f44336);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.JO-target-date-approaching {
+    font-size: 0.8rem;
+    color: var(--jo-status-pending, #ffc107);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.JO-target-date-ontrack {
+    font-size: 0.8rem;
+    color: var(--jo-green, #4caf50);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.JO-clear-filter-btn {
+    margin-top: 10px;
+    padding: 5px 10px;
+    background-color: var(--jo-primary-light, #e0e8ff);
+    color: var(--jo-primary, #3366ff);
+    border: 1px solid var(--jo-primary, #3366ff);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s ease;
+}
+
+.JO-clear-filter-btn:hover {
+    background-color: var(--jo-primary, #3366ff);
+    color: white;
 }
 
 /* Deadlines Section - Flexible height */
@@ -247,6 +344,51 @@
     flex: 1;
     min-height: 150px;
     max-height: 800px;
+}
+
+/* Hide overflow when 4 items or less (1 row) */
+.JO-queue-wrapper:has(.JO-queue-item:nth-child(-n+4):last-child) {
+    overflow-y: hidden;
+}
+
+/* Empty state for queue - spans 4 columns with 300px height */
+.JO-empty-queue {
+    grid-column: 1 / -1; /* Span all 4 columns */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    height: 300px;
+    justify-content: center;
+    min-height: 300px;
+    height: 300px;
+    background-color: #f8f9fa;
+    border-radius: 10px;
+    margin: 10px;
+}
+
+.JO-empty-queue .empty-state {
+    text-align: center;
+    color: #6c757d;
+}
+
+.JO-empty-queue .empty-state i {
+    font-size: 48px;
+    color: #dee2e6;
+    margin-bottom: 15px;
+}
+
+.JO-empty-queue .empty-state h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #495057;
+}
+
+.JO-empty-queue .empty-state p {
+    font-size: 14px;
+    color: #6c757d;
+    margin: 0;
 }
 
 .JO-deadline-item {
@@ -411,6 +553,12 @@
     border-left: 4px solid #1976d2;
 }
 
+.JO-deadline-section-header.overdue-assigned {
+    background-color: #f5f5f5;
+    color: #616161;
+    border-left: 4px solid #9e9e9e;
+}
+
 /* Urgency-specific deadline item styles */
 .JO-deadline-item.urgent {
     background-color: #ffe9e9 !important;
@@ -439,6 +587,17 @@
 .JO-deadline-item.upcoming .JO-deadline-countdown {
     background-color: #fbc02d;
     color: white;
+}
+
+/* Overdue Assigned: Gray background */
+.JO-deadline-item.overdue_assigned {
+    background-color: #ffe9e9 !important;
+}
+
+.JO-deadline-item.overdue_assigned .JO-deadline-countdown {
+    background-color: #FF6B6B;
+    color: white;
+    font-weight: 600;
 }
 
 /* Priority Badge */
@@ -715,15 +874,6 @@
     right: 0;
 }
 
-.JO-details-header {
-    padding: 20px;
-    background-color: var(--jo-primary-light);
-    border-bottom: 1px solid var(--jo-border);
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
 .JO-details-close {
     position: absolute;
     top: 20px;
@@ -765,41 +915,6 @@
 
 .JO-details-content {
     padding: 20px;
-}
-
-.JO-details-section {
-    margin-bottom: 25px;
-}
-
-.JO-details-section h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0 0 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--jo-border);
-    color: var(--jo-text);
-}
-
-.JO-details-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 15px;
-}
-
-.JO-details-item {
-    margin-bottom: 15px;
-}
-
-.JO-details-label {
-    font-size: 0.85rem;
-    color: var(--jo-text-light);
-    margin-bottom: 5px;
-}
-
-.JO-details-value {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--jo-text);
 }
 
 /* Job Order History */
@@ -896,16 +1011,6 @@
     }
 }
 
-.JO-details-section {
-    animation: slideIn 0.5s forwards;
-    opacity: 0;
-}
-
-.JO-details-section:nth-child(1) { animation-delay: 0.1s; }
-.JO-details-section:nth-child(2) { animation-delay: 0.2s; }
-.JO-details-section:nth-child(3) { animation-delay: 0.3s; }
-.JO-details-section:nth-child(4) { animation-delay: 0.4s; }
-
 /* Active button styles */
 .JO-button.active {
     background-color: var(--jo-primary);
@@ -916,9 +1021,11 @@
 @keyframes fadeIn {
     from {
         opacity: 0;
+        transform: translateY(10px);
     }
     to {
         opacity: 1;
+        transform: translateY(0);
     }
 }
 
@@ -1022,10 +1129,6 @@
         right: -100%;
     }
 
-    .JO-details-grid {
-        grid-template-columns: 1fr;
-    }
-
     .JO-timeline-view-indicator {
         display: block;
         margin: 5px 0 0 0;
@@ -1034,10 +1137,6 @@
     .JO-details-sidebar {
         width: 100%;
         right: -100%;
-    }
-
-    .JO-details-grid {
-        grid-template-columns: 1fr;
     }
 
     .JO-timeline-view-indicator {
@@ -1574,14 +1673,10 @@
 
 /* Job Order Queue Styles */
 .JO-queue-wrapper {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: 15px;
     padding: 20px;
-    background-color: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    margin-bottom: 20px;
 }
 
 .JO-queue-header {
@@ -1643,31 +1738,31 @@
 /* Urgent: Red background */
 .JO-queue-item.urgent {
     background-color: #ffebee !important;
-    border-left: 4px solid #f44336;
 }
 
 /* Critical: Orange background */
 .JO-queue-item.critical {
     background-color: #fff3e0 !important;
-    border-left: 4px solid #ff9800;
 }
 
 /* Upcoming (2-3 days): Yellow background */
 .JO-queue-item.upcoming {
     background-color: #fffde7 !important;
-    border-left: 4px solid #fdd835;
 }
 
 /* Upcoming (more than 3 days): Green background */
 .JO-queue-item.upcoming_far {
     background-color: #e8f5e9 !important;
-    border-left: 4px solid #4caf50;
 }
 
 /* Normal (no target date): Default background */
 .JO-queue-item.normal {
     background-color: #f5f5f5 !important;
-    border-left: 4px solid #9e9e9e;
+}
+
+/* Past due: Red background like urgent */
+.JO-queue-item.past-due {
+    background-color: #ffebee !important;
 }
 
 .JO-queue-info {
@@ -1676,8 +1771,8 @@
 
 .JO-queue-info-header {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 12px;
     margin-bottom: 8px;
 }
 
@@ -1711,19 +1806,25 @@
 .JO-queue-department {
     font-size: 0.85rem;
     color: var(--jo-text-dark, #333);
-    font-style: italic;
 }
 
 .JO-queue-waiting {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background-color: white;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 0.9rem;
     margin-top: 8px;
+    border-top: 1px dashed rgba(0, 0, 0, 0.1);
+    padding-top: 10px;
+}
+
+.JO-queue-waiting i {
+    font-size: 0.8rem;
+}
+
+.JO-queue-waiting span {
+    font-size: 0.8rem;
 }
 
 .JO-waiting-label {
@@ -1742,7 +1843,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 200px;
+    min-height: 300px;
+    height: 300px;
     color: var(--jo-text-light);
     font-style: italic;
     background-color: var(--jo-bg-color);
@@ -1785,8 +1887,15 @@
 }
 
 /* Responsive styles for queue */
+@media (max-width: 1200px) {
+    .JO-queue-wrapper {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
 @media (max-width: 768px) {
     .JO-queue-wrapper {
+        grid-template-columns: repeat(2, 1fr);
         padding: 15px;
         margin-bottom: 15px;
     }
@@ -1829,5 +1938,9 @@
 
     .JO-queue-item {
         padding: 10px;
+    }
+
+    .JO-queue-wrapper {
+        grid-template-columns: 1fr;
     }
 }

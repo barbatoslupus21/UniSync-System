@@ -1,0 +1,98 @@
+<div class="common-table-container">
+    <table class="Unisync-table" id="schedules-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Product</th>
+                <th>Line</th>
+                <th>Shift</th>
+                <th>Planned Qty</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="schedules-tbody">
+            {% for schedule in schedules %}
+            <tr data-date="{{ schedule.date_planned|date:'Y-m-d' }}" data-shift="{{ schedule.shift|lower }}" data-status="{{ schedule.status|lower }}">
+                <td data-label="Date">{{ schedule.date_planned|date:"M d, Y" }}</td>
+                <td data-label="Product">{{ schedule.product_number.product_name }}</td>
+                <td data-label="Line">{{ schedule.product_number.line.line_name }}</td>
+                <td data-label="Shift">{{ schedule.shift }}</td>
+                <td data-label="Planned Qty">{{ schedule.planned_qty }}</td>
+                <td data-label="Balance">{{ schedule.balance }}</td>
+                <td data-label="Status">
+                    <span class="JO-status JO-status-{{ schedule.status|lower|cut:' ' }}">{{ schedule.status }}</span>
+                </td>
+                <td data-label="Actions" class="text-center">
+                    <div class="JO-action-buttons JO-action-buttons-row">
+                        <button class="btn btn-icon edit-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Edit">
+                            <i class="fas fa-edit"></i>
+                            <span class="sr-only">Edit</span>
+                        </button>
+                        <button class="btn btn-icon btn-error delete-schedule-btn" data-schedule-id="{{ schedule.id }}" title="Delete">
+                            <i class="fas fa-trash"></i>
+                            <span class="sr-only">Delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="JO-empty-table">
+                    <div class="empty-state">
+                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                        <h4>No schedules found</h4>
+                        {% if schedules_search_query %}
+                            <p>No results found for "{{ schedules_search_query }}"</p>
+                        {% else %}
+                            <p>No schedules have been added yet</p>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="JO-pagination">
+    {% if schedules.paginator.num_pages > 1 %}
+    <div class="JO-pagination-info">
+        Showing {{ schedules.start_index }} to {{ schedules.end_index }} of {{ schedules.paginator.count }} entries
+    </div>
+    <div class="JO-pagination-controls">
+        <div class="JO-pagination-nav-container">
+            {% if schedules.has_previous %}
+            <a href="?schedules_page={{ schedules.previous_page_number }}{% if schedules_search_query %}&schedules_search={{ schedules_search_query }}{% endif %}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if page and page != '1' %}&page={{ page }}{% endif %}" class="JO-pagination-btn">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </span>
+            {% endif %}
+            
+            <div class="JO-pagination-pages">
+                {% for num in schedules.paginator.page_range %}
+                {% if schedules.number == num %}
+                <span class="JO-pagination-page active">{{ num }}</span>
+                {% elif num > schedules.number|add:'-3' and num < schedules.number|add:'3' %}
+                <a href="?schedules_page={{ num }}{% if schedules_search_query %}&schedules_search={{ schedules_search_query }}{% endif %}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if page and page != '1' %}&page={{ page }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            
+            {% if schedules.has_next %}
+            <a href="?schedules_page={{ schedules.next_page_number }}{% if schedules_search_query %}&schedules_search={{ schedules_search_query }}{% endif %}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if page and page != '1' %}&page={{ page }}{% endif %}" class="JO-pagination-btn">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>

@@ -120,6 +120,18 @@ class CutAway(models.Model):
         ('cancelled', 'Cancelled'),
     ]
     
+    PURPOSE_CHOICES = [
+        ('new_product', 'New Product'),
+        ('reached_50000', 'Reached 50,000 pcs'),
+        ('reached_100000', 'Reached 100,000 pcs'),
+        ('new_applicator', 'New Applicator'),
+        ('change_wire_crimper', 'Change Wire Crimper'),
+        ('change_wire_anvil', 'Change Wire Anvil'),
+        ('new_combination', 'New Combination'),
+        ('big_burr', 'Big Burr'),
+        ('change_supplier', 'Change Supplier'),
+    ]
+    
     control_number = models.CharField(max_length=20,unique=True,editable=False,verbose_name="Control Number")
     date_prepared = models.DateField(default=timezone.now,verbose_name="Date Prepared")
     assy_line = models.ForeignKey(Line,on_delete=models.PROTECT,related_name='cut_aways',verbose_name="Assembly Line")
@@ -128,6 +140,13 @@ class CutAway(models.Model):
     crimped_quantity = models.PositiveIntegerField(verbose_name="Crimped Quantity")
     product_number = models.CharField(max_length=100,verbose_name="Product Number")
     terminal_part_number = models.CharField(max_length=100,verbose_name="Terminal Part Number")
+    
+    # New fields
+    purpose = models.CharField(max_length=50, choices=PURPOSE_CHOICES, verbose_name="Purpose", blank=True, null=True)
+    purpose_reason = models.TextField(verbose_name="Reason for Changing Parts", blank=True, null=True)
+    leadwire_partnumber = models.CharField(max_length=255, verbose_name="Leadwire Partnumber/Combination", blank=True, null=True)
+    rubber_seal_partnumber = models.CharField(max_length=255, verbose_name="Rubber Seal Partnumber/Combination", blank=True, null=True)
+    
     received_date_by_qa = models.DateField(null=True,blank=True,verbose_name="Received Date By QA")
     schedule_of_cut_away = models.DateField(null=True, blank=True, verbose_name="Schedule Of Cut-Away")
     status_of_cut_away = models.CharField(max_length=20,choices=STATUS_CHOICES,default='pending',verbose_name="Status of Cut-Away")
