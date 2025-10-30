@@ -979,6 +979,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         checkbox.checked = true;
                     }
                 });
+                
+                // Update the Edit Default Line dropdown to reflect the checked boxes.
+                // line-selection.js exposes window.updateEditDefaultLineOptions when loaded.
+                if (window.updateEditDefaultLineOptions) {
+                    try {
+                        window.updateEditDefaultLineOptions();
+                    } catch (err) {
+                        console.warn('updateEditDefaultLineOptions threw:', err);
+                    }
+                } else {
+                    // As a fallback, dispatch change events on checked boxes so listeners run
+                    const checkedBoxes = editLinesContainer.querySelectorAll('input[type="checkbox"]:checked');
+                    checkedBoxes.forEach(cb => cb.dispatchEvent(new Event('change')));
+                }
+
+                // If server returned a default line, try to set it explicitly
+                const defaultLineId = (userData.default_line && userData.default_line.id) || userData.default_line_id || null;
+                const editDefaultSelect = document.getElementById('default_line');
+                if (defaultLineId && editDefaultSelect) {
+                    // Ensure the option exists (it should after updateEditDefaultLineOptions)
+                    editDefaultSelect.value = defaultLineId;
+                    editDefaultSelect.disabled = false;
+                }
             }
 
             // Set admin checkbox

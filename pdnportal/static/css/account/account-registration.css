@@ -1223,9 +1223,6 @@
     transition: var(--jo-transition);
 }
 
-.UM-table tr:hover {
-    background-color: var(--jo-bg-color);
-}
 
 .UM-table tbody tr {
     opacity: 0;
@@ -1466,4 +1463,8 @@
 .Unisync-table td.column-permissions .UM-permission-pill {
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+.UM-form-2-column{
+    margin: 16px 0;
 }

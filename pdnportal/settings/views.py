@@ -151,6 +151,8 @@ def create_user(request):
             password = request.POST.get('password')
             line_ids = request.POST.getlist('line')
             is_admin = request.POST.get('is_admin') == 'on'
+            # Default line selected in Add User modal uses name="user_default_line"
+            default_line = request.POST.get('user_default_line') or request.POST.get('default_line')
 
             avatar_filename = request.POST.get('avatar')
             avatar_path = f'profile/{avatar_filename}'
@@ -279,6 +281,23 @@ def create_user(request):
 
             # Set many-to-many lines
             user.line.set(line_ids)
+
+            # Set default_line FK if provided
+            try:
+                if default_line:
+                    from settings.models import Line as LineModel
+                    try:
+                        line_obj = LineModel.objects.get(id=default_line)
+                        user.default_line = line_obj
+                    except LineModel.DoesNotExist:
+                        # If line id not found, ignore and keep default_line as None
+                        user.default_line = None
+                else:
+                    user.default_line = None
+                user.save()
+            except Exception:
+                # Non-fatal: ensure user exists and continue
+                pass
 
             approver_modules = request.POST.getlist('approver_module[]')
             approver_roles = request.POST.getlist('approver_role[]')
@@ -484,6 +503,23 @@ def edit_user(request, user_id):
             # Set many-to-many lines
             user.line.set(line_ids)
 
+            # Save default_line from edit form (name="default_line")
+            try:
+                default_line = request.POST.get('default_line') or request.POST.get('user_default_line')
+                if default_line:
+                    from settings.models import Line as LineModel
+                    try:
+                        line_obj = LineModel.objects.get(id=default_line)
+                        user.default_line = line_obj
+                    except LineModel.DoesNotExist:
+                        user.default_line = None
+                else:
+                    user.default_line = None
+                user.save()
+            except Exception:
+                # Non-fatal; continue
+                pass
+
             UserApprovers.objects.filter(user=user).delete()
 
             approver_modules = request.POST.getlist('approver_module[]')
@@ -602,6 +638,13 @@ def get_user_data(request, user_id):
 
         # Serialize ManyToMany lines field
         lines_data = [{'id': line.id, 'line_name': line.line_name} for line in user.line.all()]
+        # Include default_line information if set on the user
+        default_line_data = None
+        if user.default_line:
+            default_line_data = {
+                'id': user.default_line.id,
+                'line_name': user.default_line.line_name
+            }
         
         user_data = {
             'id': user.id,
@@ -642,6 +685,8 @@ def get_user_data(request, user_id):
             'docunotification_role': docunotification_role,
             'docunotification_requestor': user.docunotification_requestor,
             'docunotification_admin': user.docunotification_admin,
+            'default_line': default_line_data,
+            'default_line_id': default_line_data['id'] if default_line_data else None,
             'approvers': approvers_data
         }
 

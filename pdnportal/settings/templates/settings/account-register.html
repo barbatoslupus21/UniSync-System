@@ -295,15 +295,26 @@
                         </div>
 
                         <div class="UM-form-group">
-                            <label for="position">Position</label>
-                            <select id="position" name="position" class="UM-select" required>
-                                <option value="">Select a position</option>
-                                {% for position_value, position_label in position_choices %}
-                                <option value="{{ position_value }}">{{ position_label }}</option>
-                                {% endfor %}
-                            </select>
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" class="UM-input" required>
                         </div>
 
+                        <div class="UM-form-group">
+                            <label for="password">Password</label>
+                            <div class="UM-password-field">
+                                <input type="password" id="password" name="password" class="UM-input" required>
+                                <button type="button" class="UM-password-toggle">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        
+
+                        
+                    </div>
+
+                    <div class="UM-form-2-column">
                         <div class="UM-form-group">
                             <label for="line">Line *</label>
                             <div class="lines-search-container">
@@ -320,22 +331,28 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
+                    <div class="UM-form-grid">
                         <div class="UM-form-group">
-                            <label for="username">Username</label>
-                            <input type="text" id="username" name="username" class="UM-input" required>
+                            <label for="position">Position</label>
+                            <select id="position" name="position" class="UM-select" required>
+                                <option value="">Select a position</option>
+                                {% for position_value, position_label in position_choices %}
+                                <option value="{{ position_value }}">{{ position_label }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
 
                         <div class="UM-form-group">
-                            <label for="password">Password</label>
-                            <div class="UM-password-field">
-                                <input type="password" id="password" name="password" class="UM-input" required>
-                                <button type="button" class="UM-password-toggle">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </div>
+                            <label for="user_default_line">Default Line</label>
+                            <select id="user_default_line" name="user_default_line" class="UM-select" required disabled>
+                                <option value="">Select a line</option>
+                            </select>
                         </div>
+                    </div>
 
+                    <div class="UM-form-2-column">
                         <div class="UM-form-group UM-checkbox-wrapper">
                             <label class="UM-checkbox-container">
                                 <input type="checkbox" id="is-admin" name="is_admin">
@@ -723,33 +740,6 @@
                         </div>
 
                         <div class="UM-form-group">
-                            <label for="edit-position">Position</label>
-                            <select id="edit-position" name="position" class="UM-select" required>
-                                <option value="">Select a position</option>
-                                {% for position_value, position_label in position_choices %}
-                                <option value="{{ position_value }}">{{ position_label }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="UM-form-group">
-                            <label for="edit-line">Line *</label>
-                            <div class="lines-search-container">
-                                <input type="text" id="edit-lines-search" class="lines-search-input" placeholder="Search lines...">
-                            </div>
-                            <div class="lines-scrollable-container">
-                                <div class="JO-tooling-options" id="edit-lines-container">
-                                    {% for line in lines %}
-                                    <div class="JO-checkbox-container line-item" data-line-name="{{ line.line_name|lower }}">
-                                        <input type="checkbox" id="edit_line_{{ line.id }}" name="line" value="{{ line.id }}">
-                                        <label for="edit_line_{{ line.id }}" class="JO-checkbox-label">{{ line.line_name }}</label>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="UM-form-group">
                             <label for="edit-username">Username</label>
                             <input type="text" id="edit-username" name="username" class="UM-input" required>
                         </div>
@@ -763,7 +753,57 @@
                                 </button>
                             </div>
                         </div>
+                    </div>
 
+                    <div class="UM-form-2-column">
+                        <div class="UM-form-group">
+                            <label for="edit-line">Line *</label>
+                            <div class="lines-search-container">
+                                <input type="text" id="edit-lines-search" class="lines-search-input" placeholder="Search lines...">
+                            </div>
+                            <div class="lines-scrollable-container">
+                                <div class="JO-tooling-options two-column-lines" id="edit-lines-container">
+                                    {% for line in lines %}
+                                    <div class="JO-checkbox-container line-item" data-line-name="{{ line.line_name|lower }}">
+                                        <input type="checkbox" id="edit_line_{{ line.id }}" name="line" value="{{ line.id }}">
+                                        <label for="edit_line_{{ line.id }}" class="JO-checkbox-label">{{ line.line_name }}</label>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="UM-form-grid">
+                        <div class="UM-form-group">
+                            <label for="edit-position">Position</label>
+                            <select id="edit-position" name="position" class="UM-select" required>
+                                <option value="">Select a position</option>
+                                {% for position_value, position_label in position_choices %}
+                                <option value="{{ position_value }}">{{ position_label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="UM-form-group">
+                            <label for="default_line">Default Line</label>
+                            <select id="default_line" name="default_line" class="UM-select" required>
+                                {% if request.user.default_line %}
+                                    <option value="{{ request.user.default_line.id }}" selected>
+                                        {{ request.user.default_line.line_name }}
+                                    </option>
+                                {% endif %}
+                                {% for line in request.user.line.all %}
+                                    {% if not request.user.default_line or line.id != request.user.default_line.id %}
+                                        <option value="{{ line.id }}">{{ line.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                    </div>
+
+                    <div class="UM-form-2-column">
                         <div class="UM-form-group UM-checkbox-wrapper">
                             <label class="UM-checkbox-container">
                                 <input type="checkbox" id="edit-is-admin" name="is_admin">
@@ -1099,4 +1139,5 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="{% static 'js/account/account-registration.js' %}"></script>
+<script src="{% static 'js/account/line-selection.js' %}"></script>
 {% endblock %}
