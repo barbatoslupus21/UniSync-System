@@ -220,7 +220,7 @@
     flex: 1;
     overflow-y: auto;
     min-height: 150px;
-    max-height: calc(100% - 220px);
+    max-height: 400px;
 }
 
 .JO-workload-item {

@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     'qualitycontrol.apps.QualitycontrolConfig',
     'stockdeclaration.apps.StockdeclarationConfig',
     'docunotification.apps.DocunotificationConfig',
+    'meetingscheduler.apps.MeetingschedulerConfig',
 ]
 
 AUTH_USER_MODEL ='portalusers.users'

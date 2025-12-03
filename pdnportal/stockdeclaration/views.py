@@ -251,21 +251,6 @@ def receive_stock_declaration(request, declaration_id):
             'message': 'You do not have a production line assigned.'
         }, status=403)
     
-    # Check if any of user's lines are in the declaration's lines
-    user_line_ids = request.user.line.values_list('id', flat=True)
-    if not declaration.lines.filter(id__in=user_line_ids).exists():
-        return JsonResponse({
-            'success': False,
-            'message': 'This stock declaration is not assigned to your production line.'
-        }, status=403)
-    
-    # Check if already received
-    if declaration.received_by_production:
-        return JsonResponse({
-            'success': False,
-            'message': 'This stock declaration has already been received by production.'
-        }, status=400)
-    
     # Check if status allows receiving (should be in_transit or arrived)
     if declaration.status not in ['in_transit', 'arrived', 'filed']:
         return JsonResponse({

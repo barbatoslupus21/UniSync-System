@@ -23,6 +23,7 @@ urlpatterns = [
     path('quality-control/', include('qualitycontrol.urls')),
     path('stock-declaration/', include('stockdeclaration.urls')),
     path('docu-notification/', include('docunotification.urls')),
+    path('meeting/', include('meetingscheduler.urls')),
 ]
 
 if settings.DEBUG:

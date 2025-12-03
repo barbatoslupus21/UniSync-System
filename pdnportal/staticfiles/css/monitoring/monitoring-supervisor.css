@@ -431,6 +431,15 @@
     background-color: var(--jo-background);
 }
 
+.empty-lines {
+    gap: 12px;
+    height: 200px;
+    padding: 8px;
+    border: 1px solid var(--jo-border);
+    border-radius: 6px;
+    background-color: var(--jo-background);
+}
+
 .FD-checkbox-item {
     display: flex;
     align-items: center;

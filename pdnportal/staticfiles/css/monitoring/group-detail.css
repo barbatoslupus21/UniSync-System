@@ -187,20 +187,14 @@
 
 .FGD-stat-card {
     background-color: var(--jo-card-bg);
+    border: 0.5px solid var(--border-color);
     border-radius: 12px;
     padding: 20px;
     display: flex;
     align-items: center;
-    box-shadow: var(--jo-shadow);
     transition: all 0.3s ease;
     opacity: 0;
     animation: FGD-fade-in 0.6s ease forwards;
-}
-
-.FGD-stat-card:hover {
-    /* Remove hover effect */
-    transform: none;
-    box-shadow: var(--jo-shadow);
 }
 
 .FGD-stat-icon {
@@ -429,17 +423,6 @@
     color: var(--jo-red);
 }
 
-.JO-search-input:focus {
-    border-color: var(--jo-primary);
-    outline: none;
-    box-shadow: 0 0 0 2px var(--jo-primary-light);
-}
-
-.JO-card-actions .JO-search-input {
-    width: 220px;
-    max-width: 100%;
-}
-
 .JO-file-input-wrapper {
     position: relative;
     border: 2px dashed var(--jo-primary);
@@ -587,21 +570,6 @@
     min-width: 120px;
 }
 
-.JO-select {
-    flex-wrap: wrap !important;
-    padding: 11px 12px !important;
-    border: 1px solid var(--jo-border);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    outline: none;
-    transition: var(--jo-transition);
-}
-
-.JO-select:focus {
-    border-color: var(--jo-primary);
-    box-shadow: 0 0 0 2px rgba(51, 102, 255, 0.2);
-}
 
 @media (max-width: 800px) {
     .FGD-product-actions-row {
@@ -830,10 +798,6 @@
     display: flex;
     flex-direction: row;
 }
-.FGD-product-search-row .JO-search-input {
-    width: 100%;
-    min-width: 180px;
-}
 .FGD-product-controls-row {
     display: flex;
     justify-content: space-between;
@@ -857,9 +821,6 @@
     
 }
 @media (max-width: 480px) {
-    .FGD-product-search-row .JO-search-input {
-        min-width: 100px;
-    }
     .FGD-product-controls-row > * {
         min-width: 70px;
     }
@@ -911,9 +872,6 @@
     }
 }
 @media (max-width: 600px) {
-    .FGD-schedule-search-row .JO-search-input {
-        min-width: 80px;
-    }
     .FGD-schedule-filters-row > * {
         min-width: 60px;
     }
@@ -934,11 +892,6 @@
   .FGD-product-search-row {
     width: auto;
     margin-right: 8px;
-  }
-  .FGD-product-search-row .JO-search-input {
-    width: 220px;
-    min-width: 180px;
-    max-width: 260px;
   }
   .FGD-product-controls-row {
     flex-direction: row;
@@ -965,11 +918,6 @@
     width: auto;
     margin-right: 8px;
     justify-content: flex-end;
-  }
-  .FGD-schedule-search-row .JO-search-input {
-    width: 220px;
-    min-width: 180px;
-    max-width: 260px;
   }
   .FGD-schedule-filters-row > * {
     min-width: 100px;

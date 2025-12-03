@@ -84,6 +84,11 @@ class Users(AbstractUser):
     docunotification_requestor = models.BooleanField(default=False)
     docunotification_admin = models.BooleanField(default=False)
 
+    # Meeting Scheduler Permission
+    meetingscheduler_user = models.BooleanField(default=False)
+    meetingscheduler = models.BooleanField(default=False)
+    meetingadmin = models.BooleanField(default=False)
+
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = []
 
@@ -91,7 +96,7 @@ class UserApprovers(models.Model):
     MODULES = [
         ('Job Order', 'Job Order'),
         ('Manhours', 'Manhours'),
-        ('Monitoring', 'Monitoring')
+        ('Monitoring', 'Monitoring'),
     ]
 
     ROLES = [

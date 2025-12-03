@@ -515,72 +515,85 @@ def delete_product(request, product_id):
 @login_required(login_url="user-login")
 @require_POST
 def add_schedule(request):
-    monitoring_id = request.POST.get('monitoring_id')
-    monitoring = get_object_or_404(Monitoring, id=monitoring_id)
+    try:
+        monitoring_id = request.POST.get('monitoring_id')
+        monitoring = get_object_or_404(Monitoring, id=monitoring_id)
 
-    if not (request.user.monitoring_sales or monitoring.created_by == request.user or 
-            SupervisorToMonitor.objects.filter(monitoring=monitoring, supervisor=request.user).exists()):
-        return JsonResponse({
-            'status': 'error',
-            'message': 'You do not have permission to add schedules to this group'
-        }, status=403)
+        if not (request.user.monitoring_sales or monitoring.created_by == request.user or 
+                SupervisorToMonitor.objects.filter(monitoring=monitoring, supervisor=request.user).exists()):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'You do not have permission to add schedules to this group'
+            }, status=403)
 
-    form = ScheduleForm(request.POST, monitoring=monitoring)
+        form = ScheduleForm(request.POST, monitoring=monitoring)
 
-    if form.is_valid():
-        # Check for duplicate schedule before saving
-        product_number = form.cleaned_data.get('product_number')
-        date_planned = form.cleaned_data.get('date_planned')
-        shift = form.cleaned_data.get('shift')
-        
-        existing_schedule = ProductionSchedulePlan.objects.filter(
-            monitoring=monitoring,
-            product_number=product_number,
-            date_planned=date_planned,
-            shift=shift
-        ).first()
-        
-        if existing_schedule:
-            error_message = f"A schedule for '{product_number.product_name}' on {date_planned} ({shift} shift) already exists for this line."
+        if form.is_valid():
+            # Check for duplicate schedule before saving
+            product_number = form.cleaned_data.get('product_number')
+            date_planned = form.cleaned_data.get('date_planned')
+            shift = form.cleaned_data.get('shift')
+            status = form.cleaned_data.get('status')
+            
+            existing_schedule = ProductionSchedulePlan.objects.filter(
+                monitoring=monitoring,
+                product_number=product_number,
+                date_planned=date_planned,
+                shift=shift,
+                status=status
+            ).first()
+            
+            if existing_schedule:
+                error_message = f"A schedule for '{product_number.product_name}' on {date_planned} ({shift} shift) with status '{status}' already exists for this line."
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_message
+                    }, status=400)
+                messages.error(request, error_message)
+                return redirect('group_detail', group_id=monitoring_id)
+            
+            schedule = form.save(commit=False)
+            schedule.monitoring = monitoring
+            schedule.save()
+
+            RecentActivity.objects.create(
+                monitoring=monitoring,
+                title=f"Schedule Added - {schedule.product_number.line.line_name}",
+                description=f"Schedule for '{schedule.product_number.product_name}' added with target of {schedule.planned_qty} units",
+                activity_type='info',
+                shift=schedule.shift,
+                created_by=request.user
+            )
+
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
-                    'status': 'error',
-                    'message': error_message
-                }, status=400)
-            messages.error(request, error_message)
-            return redirect('group_detail', group_id=monitoring_id)
-        
-        schedule = form.save(commit=False)
-        schedule.monitoring = monitoring
-        schedule.save()
+                    'status': 'success',
+                    'message': 'Production schedule added successfully!'
+                })
 
-        RecentActivity.objects.create(
-            monitoring=monitoring,
-            title=f"Schedule Added - {schedule.product_number.line.line_name}",
-            description=f"Schedule for '{schedule.product_number.product_name}' added with target of {schedule.planned_qty} units",
-            activity_type='info',
-            shift=schedule.shift,
-            created_by=request.user
-        )
+            messages.success(request, 'Production schedule added successfully!')
+            return redirect('group_detail', group_id=monitoring_id)
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
-                'status': 'success',
-                'message': 'Production schedule added successfully!'
-            })
+                'status': 'error',
+                'message': "Please correct the errors in the schedule form.",
+                'errors': form.errors
+            }, status=400)
 
-        messages.success(request, 'Production schedule added successfully!')
+        messages.error(request, "Please correct the errors in the schedule form.")
         return redirect('group_detail', group_id=monitoring_id)
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'status': 'error',
-            'message': "Please correct the errors in the schedule form.",
-            'errors': form.errors
-        })
-
-    messages.error(request, "Please correct the errors in the schedule form.")
-    return redirect('group_detail', group_id=monitoring_id)
+    
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error adding schedule: {str(e)}'
+            }, status=500)
+        
+        messages.error(request, f'Error adding schedule: {str(e)}')
+        return redirect('group_detail', group_id=monitoring_id)
 
 @login_required(login_url="user-login")
 def get_schedule(request, schedule_id):
@@ -612,47 +625,82 @@ def get_schedule(request, schedule_id):
 @login_required(login_url="user-login")
 @require_POST
 def edit_schedule(request, schedule_id):
-    schedule = get_object_or_404(ProductionSchedulePlan, id=schedule_id)
+    try:
+        schedule = get_object_or_404(ProductionSchedulePlan, id=schedule_id)
 
-    if not (request.user.monitoring_sales or schedule.monitoring.created_by == request.user or 
-            SupervisorToMonitor.objects.filter(monitoring=schedule.monitoring, supervisor=request.user).exists()):
-        return JsonResponse({
-            'status': 'error',
-            'message': 'You do not have permission to edit this schedule'
-        }, status=403)
+        if not (request.user.monitoring_sales or schedule.monitoring.created_by == request.user or 
+                SupervisorToMonitor.objects.filter(monitoring=schedule.monitoring, supervisor=request.user).exists()):
+            return JsonResponse({
+                'status': 'error',
+                'message': 'You do not have permission to edit this schedule'
+            }, status=403)
 
-    form = ScheduleForm(request.POST, instance=schedule, monitoring=schedule.monitoring)
+        form = ScheduleForm(request.POST, instance=schedule, monitoring=schedule.monitoring)
 
-    if form.is_valid():
-        form.save()
+        if form.is_valid():
+            # Check for duplicate schedule before saving (exclude current schedule)
+            product_number = form.cleaned_data.get('product_number')
+            date_planned = form.cleaned_data.get('date_planned')
+            shift = form.cleaned_data.get('shift')
+            status = form.cleaned_data.get('status')
+            
+            existing_schedule = ProductionSchedulePlan.objects.filter(
+                monitoring=schedule.monitoring,
+                product_number=product_number,
+                date_planned=date_planned,
+                shift=shift,
+                status=status
+            ).exclude(id=schedule.id).first()
+            
+            if existing_schedule:
+                error_message = f"A schedule for '{product_number.product_name}' on {date_planned} ({shift} shift) with status '{status}' already exists for this line."
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_message
+                    }, status=400)
+                messages.error(request, error_message)
+                return redirect('group_detail', group_id=schedule.monitoring.id)
+            
+            form.save()
 
-        RecentActivity.objects.create(
-            monitoring=schedule.monitoring,
-            title="Schedule Updated",
-            description=f"Schedule for '{schedule.product_number.product_name}' has been updated",
-            activity_type='info',
-            shift=schedule.shift,
-            created_by=request.user
-        )
+            RecentActivity.objects.create(
+                monitoring=schedule.monitoring,
+                title="Schedule Updated",
+                description=f"Schedule for '{schedule.product_number.product_name}' has been updated",
+                activity_type='info',
+                shift=schedule.shift,
+                created_by=request.user
+            )
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Schedule updated successfully!'
+                })
+
+            messages.success(request, 'Schedule updated successfully!')
+            return redirect('group_detail', group_id=schedule.monitoring.id)
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
-                'status': 'success',
-                'message': 'Schedule updated successfully!'
-            })
+                'status': 'error',
+                'message': "Please correct the errors in the form.",
+                'errors': form.errors
+            }, status=400)
 
-        messages.success(request, 'Schedule updated successfully!')
+        messages.error(request, "Please correct the errors in the schedule form.")
         return redirect('group_detail', group_id=schedule.monitoring.id)
-
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({
-            'status': 'error',
-            'message': "Please correct the errors in the form.",
-            'errors': form.errors
-        })
-
-    messages.error(request, "Please correct the errors in the schedule form.")
-    return redirect('group_detail', group_id=schedule.monitoring.id)
+    
+    except Exception as e:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Error updating schedule: {str(e)}'
+            }, status=500)
+        
+        messages.error(request, f'Error updating schedule: {str(e)}')
+        return redirect('group_detail', group_id=schedule.monitoring.id)
 
 @login_required(login_url="user-login")
 @require_POST
@@ -1655,21 +1703,22 @@ def facilitator_dashboard(request):
     if status_filter and status_filter != 'all':
         monitoring_groups = monitoring_groups.filter(status=status_filter)
 
-    # Pagination
+    today = timezone.now().date()
+    
+    # Get stats for all groups BEFORE pagination (to avoid MySQL LIMIT subquery error)
+    # Convert queryset to list of IDs to prevent LIMIT & IN/ALL/ANY/SOME subquery error
+    all_groups_ids = list(monitoring_groups.values_list('id', flat=True))
+    total_groups = len(all_groups_ids)
+    total_lines = LineToMonitor.objects.filter(monitoring_id__in=all_groups_ids).values('line').distinct().count()
+    todays_outputs = ProductionOutput.objects.filter(monitoring_id__in=all_groups_ids, recorded_at__date=today)
+    todays_output = todays_outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
+    backlog_issues = ProductionSchedulePlan.objects.filter(monitoring_id__in=all_groups_ids, status='Backlog').count()
+
+    # Pagination (after getting stats to avoid MySQL subquery limitations)
     from django.core.paginator import Paginator
     paginator = Paginator(monitoring_groups, 10)  # 10 items per page
     page_number = request.GET.get('page')
     monitoring_groups = paginator.get_page(page_number)
-
-    today = timezone.now().date()
-    
-    # Get stats for all groups (not just paginated ones for accurate totals)
-    all_groups = monitoring_groups.object_list if hasattr(monitoring_groups, 'object_list') else monitoring_groups
-    total_groups = all_groups.count()
-    total_lines = LineToMonitor.objects.filter(monitoring__in=all_groups).values('line').distinct().count()
-    todays_outputs = ProductionOutput.objects.filter(monitoring__in=all_groups, recorded_at__date=today)
-    todays_output = todays_outputs.aggregate(total=Sum('quantity_produced'))['total'] or 0
-    backlog_issues = ProductionSchedulePlan.objects.filter(monitoring__in=all_groups, status='Backlog').count()
 
     # Exclude lines already assigned to a monitoring group for create modal
     assigned_line_ids = LineToMonitor.objects.values_list('line_id', flat=True)
@@ -2147,6 +2196,8 @@ def group_dashboard_data(request, group_id):
         date_filter = request.GET.get('dateFilter', 'today')
         specific_date = request.GET.get('specificDate')
         shift_filter = request.GET.get('shiftFilter', 'all')
+        page = int(request.GET.get('page', 1))
+        per_page = int(request.GET.get('per_page', 10))
         
         date_range = _calculate_date_range(date_filter, specific_date)
         start_date, end_date = date_range
@@ -2160,7 +2211,7 @@ def group_dashboard_data(request, group_id):
         dashboard_data = {
             **_get_production_metrics(base_filters),
             **_get_chart_data(base_filters),
-            **_get_schedule_data(base_filters),
+            **_get_schedule_data(base_filters, page=page, per_page=per_page),
             'periodLabel': _get_period_label(date_filter, start_date, end_date),
             'lastUpdated': timezone.now().isoformat(),
             'refreshInterval': 60000
@@ -2699,8 +2750,8 @@ def _get_status_distribution_data(monitoring, start_date, end_date, shift_filter
         for item in status_counts
     ]
 
-def _get_schedule_data(base_filters):
-    """Get formatted schedule data for table"""
+def _get_schedule_data(base_filters, page=1, per_page=10):
+    """Get formatted schedule data for table with pagination"""
     monitoring = base_filters['monitoring']
     start_date, end_date = base_filters['date_range']
     shift_filter = base_filters['shift_filter']
@@ -2713,9 +2764,16 @@ def _get_schedule_data(base_filters):
     if shift_filter != 'all':
         schedules = schedules.filter(shift=shift_filter.upper())
     
+    # Get total count before pagination
+    total_schedules = schedules.count()
+    
+    # Apply pagination
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    
     schedule_list = []
     
-    for schedule in schedules.order_by('-date_planned', '-created_at')[:100]:
+    for schedule in schedules.order_by('-date_planned', '-created_at')[start_idx:end_idx]:
         outputs = schedule.outputs.all()
         produced_qty = sum(output.quantity_produced for output in outputs)
         progress = round((produced_qty / schedule.planned_qty) * 100, 1) if schedule.planned_qty > 0 else 0
@@ -2734,7 +2792,20 @@ def _get_schedule_data(base_filters):
             'efficiency': min(progress, 100)
         })
     
-    return {'schedules': schedule_list}
+    # Calculate pagination metadata
+    total_pages = (total_schedules + per_page - 1) // per_page  # Ceiling division
+    
+    return {
+        'schedules': schedule_list,
+        'pagination': {
+            'current_page': page,
+            'per_page': per_page,
+            'total_schedules': total_schedules,
+            'total_pages': total_pages,
+            'has_previous': page > 1,
+            'has_next': page < total_pages
+        }
+    }
 
 def _generate_chart_labels(start_date, end_date):
     """Generate labels for charts"""

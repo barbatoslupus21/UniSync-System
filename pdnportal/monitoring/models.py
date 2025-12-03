@@ -166,7 +166,7 @@ class ProductionSchedulePlan(models.Model):
         super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ['monitoring', 'date_planned', 'product_number', 'shift']
+        unique_together = ['monitoring', 'date_planned', 'product_number', 'shift', 'status']
 
 class ProductionOutput(models.Model):
     SHIFT_CHOICES = (

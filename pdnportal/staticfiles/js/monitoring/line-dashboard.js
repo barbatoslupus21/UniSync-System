@@ -967,9 +967,7 @@ function addNewTableRow(quantity, target, evaluation, operatorName, lineName) {
     newRow.innerHTML = `
         <td data-label="Time">${timeStr}</td>
         <td data-label="Operator">${operatorName}</td>
-        <td data-label="Line">${lineName}</td>
         <td data-label="Output">${quantity}</td>
-        <td data-label="Target">${target}</td>
         <td data-label="Variance">
             <span class="${variance >= 0 ? 'PM-positive' : 'PM-negative'}">
                 ${variance >= 0 ? '+' : ''}${variance}

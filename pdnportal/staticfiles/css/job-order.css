@@ -657,20 +657,29 @@
 }
 
 .JO-status-pending,
-.JO-status-routing {
+.JO-status-routing,
+.JO-status-onhold,
+.JO-status-change-load {
     background-color: var(--jo-yellow-light);
     color: var(--jo-status-pending);
 }
 
 .JO-status-approved,
 .JO-status-closed,
-.JO-status-assigned {
+.JO-status-assigned,
+.JO-status-planned {
     background-color: var(--jo-green-light);
     color: var(--jo-status-approved);
 }
 
+.text-danger{
+    color: var(--error-color);
+    font-style: italic;
+}
+
 .JO-status-rejected,
-.JO-status-cancelled {
+.JO-status-cancelled,
+.JO-status-backlog {
     background-color: var(--jo-orange-light);
     color: var(--jo-status-rejected);
 }
@@ -757,25 +766,6 @@
 .JO-view-details-btn {
     font-size: 0.8rem;
     padding: 5px 10px;
-}
-
-.JO-icon-button {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border: none;
-    color: var(--jo-text-light);
-    cursor: pointer;
-    transition: var(--jo-transition);
-}
-
-.JO-icon-button:hover {
-    background-color: var(--jo-primary-light);
-    color: var(--jo-primary);
 }
 
 .JO-search-container {

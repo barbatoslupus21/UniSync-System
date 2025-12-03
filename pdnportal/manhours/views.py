@@ -8,11 +8,12 @@ from datetime import datetime, timedelta
 from .models import ManhoursLogsheet, Machine, Operators
 from django.core.paginator import Paginator
 from decimal import Decimal
-from django.db.models import Sum
-from django.db.models.functions import TruncDay, TruncWeek
+from django.db.models import Sum, Q
+from django.db.models.functions import TruncDay, TruncWeek, TruncHour
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 from django.views.decorators.csrf import csrf_exempt
+from portalusers.models import UserApprovers
 
 @login_required(login_url="user-login")
 def manhours(request):
@@ -20,30 +21,24 @@ def manhours(request):
     month_start = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     next_month = month_start.replace(month=month_start.month+1) if month_start.month < 12 else month_start.replace(year=month_start.year+1, month=1)
 
-    # Check if user is a manhours supervisor
-    is_supervisor = request.user.manhours_supervisor
-
-    if is_supervisor:
-        # Get all users for which the current user is an approver in the Manhours module
-        from portalusers.models import UserApprovers
-        approved_users = UserApprovers.objects.filter(
+    if request.user.manhours_supervisor:
+        user_requestors = UserApprovers.objects.filter(
             approver=request.user,
-            module="Manhours"
+            module="Manhours", 
+            approver_role="Approver"
         ).values_list('user', flat=True)
 
         # Include both the supervisor's own entries and entries from users they approve
         monthly_logs = ManhoursLogsheet.objects.filter(
+            user__in=user_requestors,
             date_completed__gte=month_start,
-            date_completed__lt=next_month
-        ).filter(
-            user__in=list(approved_users) + [request.user.id]
-        )
+            date_completed__lte=next_month
+        ).order_by('-date_completed')
 
         all_records = ManhoursLogsheet.objects.filter(
-            user__in=list(approved_users) + [request.user.id]
+            user__in=user_requestors,
         ).order_by('-date_completed')
     else:
-        # Regular user - only show their own entries
         monthly_logs = ManhoursLogsheet.objects.filter(
             user=request.user,
             date_completed__gte=month_start,
@@ -89,7 +84,6 @@ def manhours(request):
         'logsheet_entries': logsheet_entries,
         'machines': machines,
         'operators': operators,
-        'is_supervisor': is_supervisor,
     }
     return render(request, 'manhours/manhours.html', context)
 
@@ -203,7 +197,92 @@ def update_manhours(request):
     return redirect('manhours')
 
 @login_required(login_url="user-login")
-def get_manhours_details(request, id):
+def search_manhours(request):
+    """AJAX endpoint for searching manhours entries with pagination"""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    
+    query = request.POST.get('search', '').strip()
+    page = int(request.POST.get('page', 1))
+    per_page = 10  # Number of results per page
+    
+    # Check if user is a manhours supervisor
+    is_supervisor = request.user.manhours_supervisor
+    
+    if is_supervisor:
+        # Get all users for which the current user is an approver in the Manhours module
+        from portalusers.models import UserApprovers
+        approved_users = UserApprovers.objects.filter(
+            approver=request.user,
+            module="Manhours"
+        ).values_list('user', flat=True)
+        
+        # Include both the supervisor's own entries and entries from users they approve
+        base_queryset = ManhoursLogsheet.objects.filter(
+            user__in=list(approved_users) + [request.user.id]
+        )
+    else:
+        # Regular user - only show their own entries
+        base_queryset = ManhoursLogsheet.objects.filter(user=request.user)
+    
+    if query:
+        # Search across multiple fields
+        search_queryset = base_queryset.filter(
+            Q(operator__icontains=query) |
+            Q(line__icontains=query) |
+            Q(machine__machine_name__icontains=query) |
+            Q(shift__icontains=query) |
+            Q(date_completed__icontains=query)
+        ).order_by('-date_completed')
+    else:
+        # Return all entries when no search query
+        search_queryset = base_queryset.order_by('-date_completed')
+    
+    # Apply pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(search_queryset, per_page)
+    
+    try:
+        paginated_results = paginator.page(page)
+    except:
+        paginated_results = paginator.page(1)
+    
+    # Format results for JSON response matching the table structure
+    results = []
+    for entry in paginated_results:
+        results.append({
+            'id': entry.id,
+            'date_completed': entry.date_completed.isoformat(),
+            'operator': entry.operator,
+            'operator_name': entry.operator,  # Alias for consistency
+            'shift': entry.shift,
+            'line': entry.line,
+            'line_name': entry.line,  # Alias for consistency
+            'machine_name': entry.machine.machine_name if entry.machine else 'N/A',
+            'total_output': float(entry.total_output),
+            'setup': entry.setup,
+            'manhours': float(entry.manhours),
+            'output': float(entry.output),
+            'user_id': entry.user.id
+        })
+    
+    return JsonResponse({
+        'status': 'success',
+        'results': results,
+        'query': query,
+        'pagination': {
+            'current_page': paginated_results.number,
+            'total_pages': paginator.num_pages,
+            'total_results': paginator.count,
+            'per_page': per_page,
+            'has_previous': paginated_results.has_previous(),
+            'has_next': paginated_results.has_next(),
+            'previous_page': paginated_results.previous_page_number() if paginated_results.has_previous() else None,
+            'next_page': paginated_results.next_page_number() if paginated_results.has_next() else None,
+            'start_index': paginated_results.start_index(),
+            'end_index': paginated_results.end_index(),
+        }
+    })
     try:
         entry = ManhoursLogsheet.objects.get(id=id, user=request.user)
 
@@ -239,7 +318,14 @@ def get_chart_data(request):
 
     today = timezone.now()
 
-    if period == 'week':
+    if period == 'today':
+        start_date = today.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_date = today.replace(hour=23, minute=59, second=59, microsecond=59)
+
+        date_trunc = TruncHour('date_completed')
+        date_format = '%I %p'
+
+    elif period == 'week':
         start_of_week = today - timedelta(days=today.weekday())
         start_date = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
         end_date = start_date + timedelta(days=6, hours=23, minutes=59, seconds=59)
@@ -312,7 +398,10 @@ def get_chart_data(request):
         all_dates = set()
 
         # Create date range information for the chart title/subtitle
-        if period == 'week':
+        if period == 'today':
+            today_str = start_date.strftime('%B %d, %Y')
+            period_range = f"Today - {today_str}"
+        elif period == 'week':
             week_start_str = start_date.strftime('%b %d')
             week_end_str = end_date.strftime('%b %d, %Y')
             period_range = f"Week of {week_start_str} - {week_end_str}"
@@ -324,9 +413,18 @@ def get_chart_data(request):
             quarter_str = f"Q{quarter_num} {start_date.year}"
             period_range = quarter_str
 
+        # For month period, populate all_dates with all days of the month
+        if period == 'month':
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            for day in range(1, last_day + 1):
+                date_str = f"{day:02d}"  # Format as 01, 02, 03, etc.
+                all_dates.add(date_str)
+
         for item in data:
             # Format the date string based on the period
-            if period == 'week':
+            if period == 'today':
+                date_str = item['date_group'].strftime('%I %p')
+            elif period == 'week':
                 date_str = item['date_group'].strftime('%a')
             elif period == 'month':
                 date_str = item['date_group'].strftime('%d')
@@ -335,7 +433,9 @@ def get_chart_data(request):
                 week_num = int(item['date_group'].strftime('%W'))
                 date_str = f"W{week_num}"
 
-            all_dates.add(date_str)
+            # For periods other than month, add dates to set as we process data
+            if period != 'month':
+                all_dates.add(date_str)
 
             if item['shift'] == 'AM':
                 am_data[date_str] = float(item['total_output'])
@@ -346,8 +446,23 @@ def get_chart_data(request):
         date_to_full_date = {}
         date_objects = {}  # Store actual date objects for sorting
 
+        # For month period, pre-populate date_objects with all days
+        if period == 'month':
+            last_day = calendar.monthrange(today.year, today.month)[1]
+            for day in range(1, last_day + 1):
+                date_key = f"{day:02d}"
+                date_obj = start_date.replace(day=day)
+                date_to_full_date[date_key] = date_key
+                date_objects[date_key] = date_obj
+
         for item in data:
-            if period == 'week':
+            if period == 'today':
+                # For today view, use hour format
+                date_obj = item['date_group']
+                date_key = date_obj.strftime('%I %p')  # 01 AM, 02 PM, etc.
+                date_to_full_date[date_key] = date_key
+                date_objects[date_key] = date_obj
+            elif period == 'week':
                 # For weekly view, use day of week with day number
                 date_obj = item['date_group']
                 date_key = date_obj.strftime('%a')  # Mon, Tue, etc.
@@ -355,11 +470,11 @@ def get_chart_data(request):
                 date_to_full_date[date_key] = date_value
                 date_objects[date_key] = date_obj
             elif period == 'month':
-                # For monthly view, use day number
+                # For monthly view, use day number (already pre-populated above)
+                # But update if data exists to ensure correct date_obj
                 date_obj = item['date_group']
                 date_key = date_obj.strftime('%d')  # Day number: 01, 02, etc.
-                date_to_full_date[date_key] = date_key  # Same as key
-                date_objects[date_key] = date_obj
+                date_objects[date_key] = date_obj  # Update with actual data date
             else:
                 # For quarterly view, use week number
                 date_obj = item['date_group']
@@ -370,7 +485,18 @@ def get_chart_data(request):
                 date_objects[date_key] = date_obj
 
         # Sort the dates appropriately
-        if period == 'week':
+        if period == 'today':
+            # Sort by hour (parse hour from format like "01 AM", "02 PM")
+            def parse_hour(time_str):
+                hour_str, period_str = time_str.split()
+                hour = int(hour_str)
+                if period_str == 'PM' and hour != 12:
+                    hour += 12
+                elif period_str == 'AM' and hour == 12:
+                    hour = 0
+                return hour
+            sorted_dates = sorted(all_dates, key=parse_hour)
+        elif period == 'week':
             day_order = {'Mon': 0, 'Tue': 1, 'Wed': 2, 'Thu': 3, 'Fri': 4, 'Sat': 5, 'Sun': 6}
             sorted_dates = sorted(all_dates, key=lambda x: day_order.get(x, 7))
         elif period == 'month':
@@ -381,7 +507,10 @@ def get_chart_data(request):
         # Create display labels with dates for tooltips
         tooltip_labels = []
         for date in sorted_dates:
-            if period == 'week':
+            if period == 'today':
+                # For today, just use the hour label
+                tooltip_labels.append(date)
+            elif period == 'week':
                 date_obj = date_objects.get(date)
                 if date_obj:
                     tooltip = f"{date} ({date_obj.strftime('%b %d')})"
@@ -535,13 +664,16 @@ def get_chart_data(request):
 @csrf_exempt
 def get_operators(request):
     operators = Operators.objects.all()
-    search_term = request.GET.get('search', '')
+    search_term = request.GET.get('search', '').strip()
     
     if search_term:
-        operators = operators.filter(name__icontains=search_term)
+        operators = operators.filter(
+            Q(name__icontains=search_term) | Q(id_number__icontains=search_term)
+        )
         
     return JsonResponse({
         'status': 'success',
+        'search_query': search_term,
         'operators': [{
             'id': operator.id,
             'name': operator.name,
@@ -611,7 +743,7 @@ def update_operator(request, operator_id):
 @login_required(login_url="user-login")
 @csrf_exempt
 def delete_operator(request, operator_id):
-    if request.method == 'DELETE':
+    if request.method == 'POST' or request.method == 'DELETE':
         operator = get_object_or_404(Operators, id=operator_id)
         operator_name = operator.name
         operator.delete()
@@ -823,3 +955,61 @@ def export_reports(request):
         return response
 
     return redirect(request, 'manhours')
+
+@login_required(login_url="user-login")
+def get_manhours_details(request, id):
+    """Get details of a specific manhours entry for AJAX requests"""
+    try:
+        # Check if user is a manhours supervisor
+        is_supervisor = request.user.manhours_supervisor
+
+        if is_supervisor:
+            # Get all users for which the current user is an approver in the Manhours module
+            from portalusers.models import UserApprovers
+            approved_users = UserApprovers.objects.filter(
+                approver=request.user,
+                module="Manhours"
+            ).values_list('user', flat=True)
+
+            # Include both the supervisor's own entries and entries from users they approve
+            entry = get_object_or_404(
+                ManhoursLogsheet,
+                id=id,
+                user__in=list(approved_users) + [request.user.id]
+            )
+        else:
+            # Regular user - only show their own entries
+            entry = get_object_or_404(ManhoursLogsheet, id=id, user=request.user)
+
+        # Prepare entry data for JSON response
+        entry_data = {
+            'id': entry.id,
+            'date_completed': entry.date_completed.isoformat(),
+            'operator': entry.operator,
+            'shift': entry.shift,
+            'line': entry.line,
+            'machine_id': entry.machine.id if entry.machine else None,
+            'machine_name': entry.machine.machine_name if entry.machine else 'N/A',
+            'setup': float(entry.setup),
+            'manhours': float(entry.manhours),
+            'output': entry.output,
+            'total_output': entry.total_output,
+            'date_submitted': entry.date_submitted.isoformat() if entry.date_submitted else None,
+            'user_id': entry.user.id
+        }
+
+        return JsonResponse({
+            'status': 'success',
+            'entry': entry_data
+        })
+
+    except ManhoursLogsheet.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Entry not found or access denied'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)

@@ -21,6 +21,13 @@ document.addEventListener('DOMContentLoaded', function() {
   
         updateOutputChart(periodSelector.value);
     }
+
+    const machinePeriodSelector = document.getElementById('machine-period-selector');
+    if (machinePeriodSelector) {
+        machinePeriodSelector.addEventListener('change', function() {
+            updateMachineChart(this.value);
+        });
+    }
   
     document.addEventListener('scheduleTabShown', function() {
         console.log('Schedule tab is now active');
@@ -78,8 +85,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Handle modal close buttons
-        if (e.target.matches('.PM-modal-close') || e.target.closest('.PM-modal-close')) {
-            const modal = e.target.closest('.PM-modal');
+        if (e.target.matches('.JO-modal-close') || e.target.closest('.JO-modal-close')) {
+            const modal = e.target.closest('.JO-modal');
             if (modal) {
                 closeModal(modal);
             }
@@ -110,20 +117,137 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-  
-    // Setup search functionality
-    const searchInput = document.querySelector('.PM-search-input');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const groupCards = document.querySelectorAll('.PM-group-card');
-            
-            groupCards.forEach(card => {
-                const title = card.querySelector('h3').textContent.toLowerCase();
-                const visible = title.includes(searchTerm);
-                card.style.display = visible ? '' : 'none';
-            });
+
+    // Setup new entry button
+    const newEntryBtn = document.getElementById('new-entry-btn');
+    if (newEntryBtn) {
+        newEntryBtn.addEventListener('click', function() {
+            const modal = document.getElementById('new-manhours-modal');
+            if (modal) {
+                openModal(modal);
+            }
         });
+    }
+
+    // Setup manage operators button
+    const manageOperatorsBtn = document.getElementById('manage-operators-btn');
+    if (manageOperatorsBtn) {
+        manageOperatorsBtn.addEventListener('click', function() {
+            const modal = document.getElementById('manage-operators-modal');
+            if (modal) {
+                openModal(modal);
+            }
+        });
+    }
+
+    // Setup view details buttons for manhours entries
+    document.addEventListener('click', function(e) {
+        // Handle view details buttons for manhours entries
+        if (e.target.matches('.view-details-btn') || e.target.closest('.view-details-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const button = e.target.matches('.view-details-btn') ? e.target : e.target.closest('.view-details-btn');
+            const entryId = button.getAttribute('data-id');
+            
+            console.log('View details clicked for manhours entry ID:', entryId);
+            
+            if (entryId) {
+                loadManhoursDetails(entryId);
+            } else {
+                console.error('No entry ID found on view details button');
+                createToast('Entry ID not found. Please refresh the page.', 'error');
+            }
+        }
+        
+        // Handle edit manhours buttons
+        if (e.target.matches('.edit-manhours-btn') || e.target.closest('.edit-manhours-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const button = e.target.matches('.edit-manhours-btn') ? e.target : e.target.closest('.edit-manhours-btn');
+            const entryId = button.getAttribute('data-id');
+            
+            console.log('Edit clicked for manhours entry ID:', entryId);
+            
+            if (entryId) {
+                loadManhoursForEditing(entryId);
+            } else {
+                console.error('No entry ID found on edit button');
+                createToast('Entry ID not found. Please refresh the page.', 'error');
+            }
+        }
+        
+        // Handle view-edit-btn in details modal
+        if (e.target.matches('#view-edit-btn') || e.target.closest('#view-edit-btn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const button = document.getElementById('view-edit-btn');
+            const entryId = button.getAttribute('data-id');
+            
+            console.log('Edit from details clicked for entry ID:', entryId);
+            
+            if (entryId) {
+                // Close view modal and open edit modal
+                const viewModal = document.getElementById('view-details-modal');
+                if (viewModal) {
+                    closeModal(viewModal);
+                }
+                loadManhoursForEditing(entryId);
+            } else {
+                console.error('No entry ID found on view edit button');
+                createToast('Entry ID not found. Please try again.', 'error');
+            }
+        }
+    });
+  
+    // Setup search functionality for manhours entries
+    const manhoursSearchInput = document.querySelector('.JO-search-input');
+    console.log('Search input found:', manhoursSearchInput);
+    if (manhoursSearchInput) {
+        let searchTimeout;
+        
+        manhoursSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            console.log('Search input event triggered, term:', searchTerm);
+            
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+            
+            // Debounce search to avoid too many requests
+            searchTimeout = setTimeout(() => {
+                performManhoursSearch(searchTerm, 1); // Always start from page 1 on new search
+            }, 300);
+        });
+        
+        // Also trigger search on Enter key
+        manhoursSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const searchTerm = this.value.trim();
+                console.log('Enter key pressed, searching for:', searchTerm);
+                performManhoursSearch(searchTerm, 1); // Always start from page 1 on new search
+            }
+        });
+    } else {
+        console.error('Search input not found!');
+    }
+    
+    // Setup search button click
+    const manhoursSearchButton = document.querySelector('.JO-search-button');
+    console.log('Search button found:', manhoursSearchButton);
+    if (manhoursSearchButton) {
+        manhoursSearchButton.addEventListener('click', function() {
+            const searchInput = document.querySelector('.JO-search-input');
+            if (searchInput) {
+                const searchTerm = searchInput.value.trim();
+                console.log('Search button clicked, searching for:', searchTerm);
+                performManhoursSearch(searchTerm, 1); // Always start from page 1 on new search
+            }
+        });
+    } else {
+        console.error('Search button not found!');
     }
   
     // Setup filter functionality
@@ -177,9 +301,11 @@ document.addEventListener('DOMContentLoaded', function() {
   
   let outputChart = null;
   let detailPerformanceChart = null;
+  let machineChart = null;
   
   function initializeCharts() {
       initializeOutputChart();
+      initializeMachineChart();
   
       const detailChartElement = document.getElementById('detail-performance-chart');
       if (detailChartElement) {
@@ -317,26 +443,30 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   function initializeOutputChart() {
-      const canvas = document.getElementById('output-chart');
+      const canvas = document.getElementById('mh-analysis-chart');
       if (!canvas) {
-          console.error("Chart canvas element 'output-chart' not found!");
+          console.error("Chart canvas element 'mh-analysis-chart' not found!");
           return;
       }
   
       const ctx = canvas.getContext('2d');
-      console.log("Initializing output chart with context:", ctx);
+      console.log("Initializing manhours analysis chart with context:", ctx);
   
       const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       const actualData = [3200, 3500, 3100, 3800, 4200, 3600, 3900];
       const targetData = [3500, 3500, 3500, 3500, 3500, 3500, 3500];
   
-      const gradientActual = ctx.createLinearGradient(0, 0, 0, 400);
-      gradientActual.addColorStop(0, 'rgba(51, 102, 255, 0.8)');
-      gradientActual.addColorStop(1, 'rgba(51, 102, 255, 0.2)');
+      // Create gradient for AM Shift (Blue gradient)
+      const gradientAM = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientAM.addColorStop(0, 'rgba(51, 102, 255, 0.8)');
+      gradientAM.addColorStop(0.5, 'rgba(51, 102, 255, 0.5)');
+      gradientAM.addColorStop(1, 'rgba(51, 102, 255, 0.1)');
   
-      const gradientTarget = ctx.createLinearGradient(0, 0, 0, 400);
-      gradientTarget.addColorStop(0, 'rgba(255, 99, 132, 0.8)');
-      gradientTarget.addColorStop(1, 'rgba(255, 99, 132, 0.2)');
+      // Create gradient for PM Shift (Pink/Red gradient)
+      const gradientPM = ctx.createLinearGradient(0, 0, 0, 400);
+      gradientPM.addColorStop(0, 'rgba(241, 70, 104, 0.8)');
+      gradientPM.addColorStop(0.5, 'rgba(241, 70, 104, 0.5)');
+      gradientPM.addColorStop(1, 'rgba(241, 70, 104, 0.1)');
   
       outputChart = new Chart(ctx, {
           type: 'line',
@@ -344,55 +474,218 @@ document.addEventListener('DOMContentLoaded', function() {
               labels: labels,
               datasets: [
                   {
-                      label: 'Actual Output',
+                      label: 'AM Shift',
                       data: actualData,
                       borderColor: 'rgba(51, 102, 255, 1)',
-                      backgroundColor: gradientActual,
-                      borderWidth: 3,
+                      backgroundColor: gradientAM,
+                      borderWidth: 4,
                       pointBackgroundColor: 'rgba(51, 102, 255, 1)',
-                      pointRadius: 3,
-                      tension: 0.3,
-                      fill: 'origin'
+                      pointBorderColor: '#fff',
+                      pointBorderWidth: 2,
+                      pointRadius: 5,
+                      pointHoverRadius: 7,
+                      tension: 0.4,
+                      fill: true,
+                      shadowOffsetX: 0,
+                      shadowOffsetY: 0,
+                      shadowBlur: 0
                   },
                   {
-                      label: 'Target Output',
+                      label: 'PM Shift',
                       data: targetData,
-                      borderColor: 'rgba(255, 99, 132, 1)',
-                      backgroundColor: gradientTarget,
-                      borderWidth: 2,
-                      pointBackgroundColor: 'rgba(255, 99, 132, 1)',
-                      pointRadius: 3,
-                      tension: 0.1,
-                      fill: 'origin'
+                      borderColor: 'rgba(241, 70, 104, 1)',
+                      backgroundColor: gradientPM,
+                      borderWidth: 4,
+                      pointBackgroundColor: 'rgba(241, 70, 104, 1)',
+                      pointBorderColor: '#fff',
+                      pointBorderWidth: 2,
+                      pointRadius: 5,
+                      pointHoverRadius: 7,
+                      tension: 0.4,
+                      fill: true,
+                      shadowOffsetX: 0,
+                      shadowOffsetY: 0,
+                      shadowBlur: 0
                   }
               ]
           },
           options: {
               responsive: true,
               maintainAspectRatio: false,
+              interaction: {
+                  mode: 'index',
+                  intersect: false
+              },
               plugins: {
                   legend: {
                       position: 'top',
                       labels: {
                           boxWidth: 15,
-                          padding: 15
+                          padding: 15,
+                          usePointStyle: true,
+                          font: {
+                              size: 12,
+                              weight: '500'
+                          }
                       }
                   },
                   tooltip: {
                       mode: 'index',
-                      intersect: false
+                      intersect: false,
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      titleColor: '#333',
+                      bodyColor: '#666',
+                      borderColor: '#ddd',
+                      borderWidth: 1,
+                      padding: 12,
+                      boxPadding: 6,
+                      usePointStyle: true,
+                      callbacks: {
+                          label: function(context) {
+                              let label = context.dataset.label || '';
+                              if (label) {
+                                  label += ': ';
+                              }
+                              if (context.parsed.y !== null) {
+                                  label += new Intl.NumberFormat().format(context.parsed.y);
+                              }
+                              return label;
+                          }
+                      }
                   }
               },
               scales: {
                   x: {
                       grid: {
-                          display: false
+                          display: false,
+                          drawBorder: true
+                      },
+                      ticks: {
+                          font: {
+                              size: 11
+                          }
                       }
                   },
                   y: {
                       beginAtZero: true,
+                      grid: {
+                          color: 'rgba(0, 0, 0, 0.05)',
+                          drawBorder: false
+                      },
                       ticks: {
-                          stepSize: 500
+                          font: {
+                              size: 11
+                          },
+                          callback: function(value) {
+                              return new Intl.NumberFormat().format(value);
+                          }
+                      }
+                  }
+              },
+              animation: {
+                  duration: 1000,
+                  easing: 'easeOutQuart'
+              },
+              elements: {
+                  line: {
+                      borderWidth: 4
+                  },
+                  point: {
+                      radius: 5,
+                      hoverRadius: 7,
+                      borderWidth: 2
+                  }
+              }
+          }
+      });
+  
+      updateOutputChart('month');
+  }
+  
+  function initializeMachineChart() {
+      const canvas = document.getElementById('machine-chart');
+      if (!canvas) {
+          console.error("Chart canvas element 'machine-chart' not found!");
+          return;
+      }
+  
+      const ctx = canvas.getContext('2d');
+      console.log("Initializing machine performance chart with context:", ctx);
+  
+      machineChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+              labels: [],
+              datasets: [{
+                  label: 'Total Output',
+                  data: [],
+                  backgroundColor: [],
+                  borderColor: [],
+                  borderWidth: 0,
+                  borderRadius: 8,
+                  borderSkipped: false
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                  mode: 'index',
+                  intersect: false
+              },
+              plugins: {
+                  legend: {
+                      display: false
+                  },
+                  tooltip: {
+                      mode: 'index',
+                      intersect: false,
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                      titleColor: '#333',
+                      bodyColor: '#666',
+                      borderColor: '#ddd',
+                      borderWidth: 1,
+                      padding: 12,
+                      boxPadding: 6,
+                      callbacks: {
+                          label: function(context) {
+                              let label = context.dataset.label || '';
+                              if (label) {
+                                  label += ': ';
+                              }
+                              if (context.parsed.y !== null) {
+                                  label += new Intl.NumberFormat().format(context.parsed.y);
+                              }
+                              return label;
+                          }
+                      }
+                  }
+              },
+              scales: {
+                  x: {
+                      grid: {
+                          display: false,
+                          drawBorder: true
+                      },
+                      ticks: {
+                          font: {
+                              size: 11
+                          }
+                      }
+                  },
+                  y: {
+                      beginAtZero: true,
+                      grid: {
+                          color: 'rgba(0, 0, 0, 0.05)',
+                          drawBorder: false
+                      },
+                      ticks: {
+                          font: {
+                              size: 11
+                          },
+                          callback: function(value) {
+                              return new Intl.NumberFormat().format(value);
+                          }
                       }
                   }
               },
@@ -403,20 +696,94 @@ document.addEventListener('DOMContentLoaded', function() {
           }
       });
   
-      updateOutputChart('month');
+      updateMachineChart('month');
+  }
+  
+  function updateMachineChart(period) {
+      if (!machineChart) return;
+  
+      const chartWrapper = document.querySelector('.MH-metric-chart');
+      if (chartWrapper) {
+          chartWrapper.classList.add('loading');
+      }
+  
+      const csrfToken = getCSRFToken();
+  
+      fetch(`/manhours/machine-performance/?period=${period}`, {
+          method: 'GET',
+          headers: {
+              'Content-Type': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrfToken
+          },
+          credentials: 'same-origin'
+      })
+      .then(response => {
+          if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          return response.json();
+      })
+      .then(data => {
+          const ctx = machineChart.ctx;
+          
+          // Create gradient colors for each bar (3D effect)
+          const gradientColors = data.datasets[0].backgroundColor.map((color, index) => {
+              const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+              
+              // Extract RGB from the color string
+              const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
+              if (rgbaMatch) {
+                  const r = rgbaMatch[1];
+                  const g = rgbaMatch[2];
+                  const b = rgbaMatch[3];
+                  
+                  gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 0.9)`);
+                  gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.7)`);
+                  gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0.5)`);
+              } else {
+                  // Fallback gradient
+                  gradient.addColorStop(0, color);
+                  gradient.addColorStop(1, color);
+              }
+              
+              return gradient;
+          });
+          
+          machineChart.data.labels = data.labels;
+          machineChart.data.datasets[0].data = data.datasets[0].data;
+          machineChart.data.datasets[0].backgroundColor = gradientColors;
+          machineChart.data.datasets[0].borderColor = 'transparent';
+  
+          machineChart.update({
+              duration: 800,
+              easing: 'easeOutBounce'
+          });
+  
+          if (chartWrapper) {
+              chartWrapper.classList.remove('loading');
+          }
+      })
+      .catch(error => {
+          console.error('Error fetching machine chart data:', error);
+          if (chartWrapper) {
+              chartWrapper.classList.remove('loading');
+          }
+          createToast('Failed to load machine performance data. Please try again.', 'error');
+      });
   }
   
   function updateOutputChart(period, isAutoRefresh = false) {
     if (!outputChart) return;
   
-    const chartWrapper = document.querySelector('.PM-chart-wrapper');
+    const chartWrapper = document.querySelector('.MH-chart-wrapper');
     if (chartWrapper) {
         chartWrapper.classList.add('loading');
     }
   
     const csrfToken = getCSRFToken();
   
-    fetch(`/monitoring/chart-data/${period}/`, {
+    fetch(`/manhours/chart-data/?type=shiftOutput&period=${period}`, {
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -432,9 +799,20 @@ document.addEventListener('DOMContentLoaded', function() {
         return response.json();
     })
     .then(data => {
+        console.log('Received chart data:', data);
+        
+        // Update chart data
         outputChart.data.labels = data.labels;
-        outputChart.data.datasets[0].data = data.actual;
-        outputChart.data.datasets[1].data = data.target;
+        
+        // Update datasets from backend response
+        if (data.datasets && data.datasets.length > 0) {
+            data.datasets.forEach((dataset, index) => {
+                if (outputChart.data.datasets[index]) {
+                    outputChart.data.datasets[index].data = dataset.data;
+                    outputChart.data.datasets[index].label = dataset.label;
+                }
+            });
+        }
   
         outputChart.update({
             duration: 800,
@@ -2559,7 +2937,7 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
      // Fix close buttons for import modals
-     document.querySelectorAll('#import-product-modal .PM-modal-close, #import-schedule-modal .PM-modal-close, #cancel-product-import, #cancel-schedule-import').forEach(button => {
+     document.querySelectorAll('#import-product-modal .JO-modal-close, #import-schedule-modal .JO-modal-close, #cancel-product-import, #cancel-schedule-import').forEach(button => {
       // Remove existing listeners
       const newButton = button.cloneNode(true);
       button.parentNode.replaceChild(newButton, button);
@@ -4319,4 +4697,788 @@ document.addEventListener('DOMContentLoaded', function() {
       
       console.log('Chart filter events setup complete');
   }
+
+// ========================================================================
+// Manhours Entry Functions
+// ========================================================================
+
+function loadManhoursDetails(entryId) {
+    console.log('Loading manhours details for entry ID:', entryId);
+    
+    const modal = document.getElementById('view-details-modal');
+    if (!modal) {
+        console.error('View details modal not found');
+        createToast('Error: Could not find details modal', 'error');
+        return;
+    }
+    
+    // Show loading state
+    const modalBody = modal.querySelector('.JO-modal-body');
+    if (modalBody) {
+        modalBody.innerHTML = `
+            <div class="JO-loading text-center p-5">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading entry details...</p>
+            </div>
+        `;
+    }
+    
+    // Open the modal
+    openModal(modal);
+    
+    // Fetch entry details
+    fetch(`/manhours/manhour-details/${entryId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Received manhours details:', data);
+        
+        if (data.status === 'error') {
+            throw new Error(data.message || 'Failed to load entry details');
+        }
+        
+        // Populate modal with entry details
+        const entry = data.entry;
+        modalBody.innerHTML = `
+            <div class="modal-details-grid">
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Date:</div>
+                    <div class="JO-view-value">${formatDate(entry.date_completed)}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Operator:</div>
+                    <div class="JO-view-value">${entry.operator}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Shift:</div>
+                    <div class="JO-view-value">${entry.shift}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Line:</div>
+                    <div class="JO-view-value">${entry.line}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Machine:</div>
+                    <div class="JO-view-value">${entry.machine_name}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Setup Hours:</div>
+                    <div class="JO-view-value">${entry.setup}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Man-hours:</div>
+                    <div class="JO-view-value">${entry.manhours}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Output:</div>
+                    <div class="JO-view-value">${entry.output}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Total Output:</div>
+                    <div class="JO-view-value">${entry.total_output}</div>
+                </div>
+                <div class="JO-details-item">
+                    <div class="JO-details-label">Submitted:</div>
+                    <div class="JO-view-value">${formatDate(entry.date_submitted)}</div>
+                </div>
+            </div>
+        `;
+        
+        // Update edit button
+        const editBtn = modal.querySelector('#view-edit-btn');
+        if (editBtn) {
+            editBtn.setAttribute('data-id', entryId);
+            // Show/hide edit button based on ownership
+            const isOwner = entry.user_id === window.currentUserId;
+            editBtn.style.display = isOwner ? 'inline-block' : 'none';
+        }
+        
+    })
+    .catch(error => {
+        console.error('Error loading manhours details:', error);
+        if (modalBody) {
+            modalBody.innerHTML = `
+                <div class="JO-error-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error Loading Details</h3>
+                    <p>${error.message}</p>
+                    <button class="JO-button JO-primary-button" onclick="loadManhoursDetails('${entryId}')">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
+        createToast('Failed to load entry details', 'error');
+    });
+}
+
+function loadManhoursForEditing(entryId) {
+    console.log('Loading manhours entry for editing:', entryId);
+    
+    // Fetch entry details
+    fetch(`/manhours/manhour-details/${entryId}/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Received manhours data for editing:', data);
+        
+        if (data.status === 'error') {
+            throw new Error(data.message || 'Failed to load entry data');
+        }
+        
+        const entry = data.entry;
+        
+        // Populate edit form
+        console.log('Populating edit form with entry data:', entry);
+        document.getElementById('edit-entry-id').value = entry.id;
+        
+        // Format date for HTML date input (YYYY-MM-DD)
+        const dateValue = entry.date_completed.split('T')[0]; // Extract date part only
+        console.log('Setting date value:', dateValue);
+        document.getElementById('edit-date-input').value = dateValue;
+        
+        console.log('Setting operator value:', entry.operator);
+        document.getElementById('edit-operator-input').value = entry.operator;
+        
+        document.getElementById('edit-shift-input').value = entry.shift;
+        document.getElementById('edit-line-input').value = entry.line;
+        document.getElementById('edit-machine-input').value = entry.machine_id;
+        document.getElementById('edit-setup-input').value = entry.setup;
+        document.getElementById('edit-manhours-input').value = entry.manhours;
+        document.getElementById('edit-output-input').value = entry.output;
+        
+        // Open edit modal
+        const modal = document.getElementById('edit-manhours-modal');
+        if (modal) {
+            openModal(modal);
+        }
+        
+    })
+    .catch(error => {
+        console.error('Error loading manhours for editing:', error);
+        createToast('Failed to load entry for editing', 'error');
+    });
+}
+
+// Function to perform manhours search
+// Store current search state
+let currentSearchTerm = '';
+let currentSearchPage = 1;
+
+function performManhoursSearch(searchTerm, page = 1) {
+    console.log('performManhoursSearch called with term:', searchTerm, 'page:', page);
+    const tableBody = document.querySelector('#manhours-table-body');
+    const paginationContainer = document.querySelector('.JO-pagination');
+    
+    console.log('Table body found:', tableBody);
+    console.log('Pagination container found:', paginationContainer);
+    
+    if (!tableBody) {
+        console.error('Table body not found');
+        return;
+    }
+    
+    // Update current search state
+    currentSearchTerm = searchTerm;
+    currentSearchPage = page;
+    
+    // Show loading state
+    tableBody.innerHTML = '<tr><td colspan="7" class="text-center">Searching...</td></tr>';
+    
+    // Get CSRF token
+    const csrfValue = getCSRFToken();
+    console.log('CSRF token found:', csrfValue ? 'value present' : 'no value');
+    
+    // Make AJAX request
+    console.log('Making AJAX request to /manhours/search/');
+    fetch('/manhours/search/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfValue
+        },
+        body: `search=${encodeURIComponent(searchTerm)}&page=${page}`
+    })
+    .then(response => {
+        console.log('Response received:', response.status, response.statusText);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Search response data:', data);
+        
+        // Clear loading state
+        tableBody.innerHTML = '';
+        
+        if (data.results && data.results.length > 0) {
+            console.log('Found', data.results.length, 'results on page', page);
+            // Populate table with search results
+            data.results.forEach(entry => {
+                const row = createManhoursTableRow(entry);
+                tableBody.appendChild(row);
+            });
+            
+            // Update pagination for search results
+            if (paginationContainer && data.pagination) {
+                updateSearchPagination(data.pagination);
+                paginationContainer.style.display = '';
+            }
+        } else {
+            console.log('No results found');
+            // Show empty state
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `
+                <td colspan="7" class="JO-empty-table">
+                    <div class="empty-state">
+                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                        <h4>No Manhours Entries Found</h4>
+                        <p>${searchTerm ? `No results found for "${searchTerm}"` : 'No manhours entries have been filed yet'}</p>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(emptyRow);
+            
+            // Hide pagination when no results
+            if (paginationContainer) {
+                paginationContainer.style.display = 'none';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Search error:', error);
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error occurred during search</td></tr>';
+    });
+}
+
+function updateSearchPagination(pagination) {
+    const paginationContainer = document.querySelector('.JO-pagination');
+    if (!paginationContainer) return;
+    
+    // Update pagination info
+    const paginationInfo = paginationContainer.querySelector('.JO-pagination-info');
+    if (paginationInfo) {
+        paginationInfo.textContent = `Showing ${pagination.start_index} to ${pagination.end_index} of ${pagination.total_results} entries`;
+    }
+    
+    // Update pagination controls
+    const paginationControls = paginationContainer.querySelector('.JO-pagination-nav-container');
+    if (!paginationControls) return;
+    
+    let paginationHTML = '';
+    
+    // Previous button
+    if (pagination.has_previous) {
+        paginationHTML += `
+            <a href="#" class="JO-pagination-btn search-page-btn" data-page="${pagination.previous_page}">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+        `;
+    } else {
+        paginationHTML += `
+            <span class="JO-pagination-btn disabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </span>
+        `;
+    }
+    
+    // Page numbers
+    paginationHTML += '<div class="JO-pagination-pages">';
+    
+    const currentPage = pagination.current_page;
+    const totalPages = pagination.total_pages;
+    
+    for (let i = 1; i <= totalPages; i++) {
+        // Show pages around current page (±2 range)
+        if (i === currentPage) {
+            paginationHTML += `<span class="JO-pagination-page active">${i}</span>`;
+        } else if (i > currentPage - 3 && i < currentPage + 3) {
+            paginationHTML += `<a href="#" class="JO-pagination-page search-page-btn" data-page="${i}">${i}</a>`;
+        }
+    }
+    
+    paginationHTML += '</div>';
+    
+    // Next button
+    if (pagination.has_next) {
+        paginationHTML += `
+            <a href="#" class="JO-pagination-btn search-page-btn" data-page="${pagination.next_page}">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+        `;
+    } else {
+        paginationHTML += `
+            <span class="JO-pagination-btn disabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </span>
+        `;
+    }
+    
+    paginationControls.innerHTML = paginationHTML;
+    
+    // Add click event listeners to pagination buttons
+    paginationControls.querySelectorAll('.search-page-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = parseInt(this.getAttribute('data-page'));
+            performManhoursSearch(currentSearchTerm, page);
+            
+            // Scroll to top of table
+            document.querySelector('.common-table-container').scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+}
+
+// Function to create a table row for manhours entry
+function createManhoursTableRow(entry) {
+    const row = document.createElement('tr');
+    
+    // Format date for display (matching template format)
+    const dateObj = new Date(entry.date_completed);
+    const formattedDate = dateObj.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+    });
+    
+    // Check if current user owns this entry
+    const isOwner = entry.user_id === window.currentUserId;
+    
+    // Build actions HTML - View button always shown, Edit button only for entry owner
+    let actionsHTML = `
+        <button class="btn btn-icon view-details-btn" title="View Details" data-id="${entry.id}">
+            <i class="fas fa-eye"></i>
+        </button>
+    `;
+    
+    if (isOwner) {
+        actionsHTML += `
+        <button class="btn btn-icon edit-manhours-btn" title="Edit Entry" data-id="${entry.id}">
+            <i class="fas fa-edit"></i>
+        </button>
+        `;
+    }
+    
+    row.innerHTML = `
+        <td data-label="Date">${formattedDate}</td>
+        <td data-label="Operator">${entry.operator_name || entry.operator}</td>
+        <td data-label="Shift">${entry.shift}</td>
+        <td class="hide-column" data-label="Line">${entry.line_name || entry.line}</td>
+        <td class="hide-column" data-label="Machine">${entry.machine_name}</td>
+        <td class="hide-column" data-label="Output/Hour">${entry.total_output || entry.output}</td>
+        <td data-label="Actions">${actionsHTML}</td>
+    `;
+    
+    return row;
+}
+
+// ==================== OPERATOR MANAGEMENT FUNCTIONS ====================
+
+// Function to search operators with live typing
+function searchOperators(searchTerm) {
+    const csrfToken = getCSRFToken();
+    
+    fetch(`/manhours/get-operators/?search=${encodeURIComponent(searchTerm)}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Operator search results:', data);
+        updateOperatorsTable(data.operators, data.search_query);
+    })
+    .catch(error => {
+        console.error('Error searching operators:', error);
+        createToast('Failed to search operators. Please try again.', 'error');
+    });
+}
+
+// Function to update the operators table with search results
+function updateOperatorsTable(operators, searchQuery) {
+    const tbody = document.getElementById('operators-table-body');
+    const noOperatorsDiv = document.getElementById('no-operators-found');
+    
+    if (!tbody) {
+        console.error('Operators table body not found');
+        return;
+    }
+    
+    // Clear existing rows
+    tbody.innerHTML = '';
+    
+    if (operators.length === 0) {
+        // Show empty state message
+        const emptyRow = document.createElement('tr');
+        emptyRow.innerHTML = `
+            <td colspan="3" class="JO-empty-table">
+                <div class="empty-state">
+                    <i class="fa fa-question-circle" aria-hidden="true"></i>
+                    <h4>No Operators Found</h4>
+                    ${searchQuery ? `<p>No results found for "${searchQuery}"</p>` : '<p>No operators have been added yet</p>'}
+                </div>
+            </td>
+        `;
+        tbody.appendChild(emptyRow);
+    } else {
+        // Populate table with operators
+        operators.forEach(operator => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${operator.id_number || ''}</td>
+                <td>${operator.name}</td>
+                <td>
+                    <button class="MH-icon-button edit-operator-btn" title="Edit Operator" data-id="${operator.id}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="MH-icon-button delete-operator-btn" title="Delete Operator" data-id="${operator.id}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+}
+
+// Setup operator search event listener
+function setupOperatorSearch() {
+    const operatorSearchInput = document.getElementById('operator-search');
+    
+    if (operatorSearchInput) {
+        let searchTimeout;
+        
+        // Live search as user types
+        operatorSearchInput.addEventListener('input', function() {
+            const searchTerm = this.value.trim();
+            console.log('Operator search input:', searchTerm);
+            
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+            
+            // Debounce search to avoid too many requests (wait 300ms after user stops typing)
+            searchTimeout = setTimeout(() => {
+                searchOperators(searchTerm);
+            }, 300);
+        });
+        
+        // Also trigger search on Enter key
+        operatorSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const searchTerm = this.value.trim();
+                console.log('Operator search Enter key:', searchTerm);
+                clearTimeout(searchTimeout);
+                searchOperators(searchTerm);
+            }
+        });
+    }
+}
+
+// Initialize operator search when modal opens
+document.addEventListener('click', function(e) {
+    if (e.target && e.target.id === 'manage-operators-btn') {
+        // Setup search when modal opens
+        setTimeout(() => {
+            setupOperatorSearch();
+            // Load all operators initially
+            searchOperators('');
+        }, 100);
+    }
+    
+    // Handle add operator button
+    if (e.target && e.target.id === 'add-operator-btn') {
+        openAddOperatorModal();
+    }
+    
+    // Handle edit operator button
+    if (e.target.matches('.edit-operator-btn') || e.target.closest('.edit-operator-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const button = e.target.matches('.edit-operator-btn') ? e.target : e.target.closest('.edit-operator-btn');
+        const operatorId = button.getAttribute('data-id');
+        if (operatorId) {
+            loadOperatorForEditing(operatorId);
+        }
+    }
+    
+    // Handle delete operator button
+    if (e.target.matches('.delete-operator-btn') || e.target.closest('.delete-operator-btn')) {
+        e.preventDefault();
+        e.stopPropagation();
+        const button = e.target.matches('.delete-operator-btn') ? e.target : e.target.closest('.delete-operator-btn');
+        const operatorId = button.getAttribute('data-id');
+        if (operatorId) {
+            openDeleteOperatorConfirmation(operatorId);
+        }
+    }
+});
+
+// Function to open add operator modal
+function openAddOperatorModal() {
+    const modal = document.getElementById('operator-form-modal');
+    const form = document.getElementById('operator-form');
+    const title = document.getElementById('operator-form-title');
+    
+    if (modal && form && title) {
+        // Reset form
+        form.reset();
+        document.getElementById('operator-id').value = '';
+        title.textContent = 'Add New Operator';
+        openModal(modal);
+    }
+}
+
+// Function to load operator for editing
+function loadOperatorForEditing(operatorId) {
+    const csrfToken = getCSRFToken();
+    
+    fetch(`/manhours/get-operator/${operatorId}/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            const modal = document.getElementById('operator-form-modal');
+            const title = document.getElementById('operator-form-title');
+            
+            // Populate form
+            document.getElementById('operator-id').value = data.operator.id;
+            document.getElementById('operator-name').value = data.operator.name;
+            document.getElementById('operator-id-number').value = data.operator.id_number || '';
+            
+            title.textContent = 'Edit Operator';
+            openModal(modal);
+        }
+    })
+    .catch(error => {
+        console.error('Error loading operator:', error);
+        createToast('Failed to load operator details. Please try again.', 'error');
+    });
+}
+
+// Function to save operator (create or update)
+function saveOperator(e) {
+    e.preventDefault();
+    
+    const operatorId = document.getElementById('operator-id').value;
+    const name = document.getElementById('operator-name').value.trim();
+    const idNumber = document.getElementById('operator-id-number').value.trim();
+    
+    if (!name) {
+        createToast('Operator name is required', 'error');
+        return;
+    }
+    
+    const csrfToken = getCSRFToken();
+    const url = operatorId ? `/manhours/update-operator/${operatorId}/` : '/manhours/create-operator/';
+    const method = 'POST';
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin',
+        body: new URLSearchParams({
+            name: name,
+            id_number: idNumber
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            createToast(operatorId ? 'Operator updated successfully' : 'Operator added successfully', 'success');
+            
+            // Close form modal
+            const modal = document.getElementById('operator-form-modal');
+            if (modal) {
+                closeModal(modal);
+            }
+            
+            // Refresh operators list
+            const searchTerm = document.getElementById('operator-search')?.value || '';
+            searchOperators(searchTerm);
+        } else {
+            createToast(data.message || 'Failed to save operator', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving operator:', error);
+        createToast('Failed to save operator. Please try again.', 'error');
+    });
+}
+
+// Function to open delete operator confirmation
+function openDeleteOperatorConfirmation(operatorId) {
+    const modal = document.getElementById('delete-operator-modal');
+    const deleteIdInput = document.getElementById('delete-operator-id');
+    
+    if (modal && deleteIdInput) {
+        deleteIdInput.value = operatorId;
+        openModal(modal);
+    }
+}
+
+// Function to delete operator
+function deleteOperator() {
+    const operatorId = document.getElementById('delete-operator-id').value;
+    
+    if (!operatorId) {
+        createToast('Operator ID not found', 'error');
+        return;
+    }
+    
+    const csrfToken = getCSRFToken();
+    
+    fetch(`/manhours/delete-operator/${operatorId}/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+        },
+        credentials: 'same-origin',
+        body: new URLSearchParams({
+            _method: 'DELETE'
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.status === 'success') {
+            createToast('Operator deleted successfully', 'success');
+            
+            // Close delete modal
+            const modal = document.getElementById('delete-operator-modal');
+            if (modal) {
+                closeModal(modal);
+            }
+            
+            // Refresh operators list
+            const searchTerm = document.getElementById('operator-search')?.value || '';
+            searchOperators(searchTerm);
+        } else {
+            createToast(data.message || 'Failed to delete operator', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting operator:', error);
+        createToast('Failed to delete operator. Please try again.', 'error');
+    });
+}
+
+// Setup operator form submit handler
+const operatorSubmitBtn = document.getElementById('operator-submit-btn');
+if (operatorSubmitBtn) {
+    operatorSubmitBtn.addEventListener('click', saveOperator);
+}
+
+// Setup operator cancel button
+const operatorCancelBtn = document.getElementById('operator-cancel-btn');
+if (operatorCancelBtn) {
+    operatorCancelBtn.addEventListener('click', function() {
+        const modal = document.getElementById('operator-form-modal');
+        if (modal) {
+            closeModal(modal);
+        }
+    });
+}
+
+// Setup delete confirmation button
+const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+if (confirmDeleteBtn) {
+    confirmDeleteBtn.addEventListener('click', deleteOperator);
+}
+
+// Setup cancel delete button
+const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+if (cancelDeleteBtn) {
+    cancelDeleteBtn.addEventListener('click', function() {
+        const modal = document.getElementById('delete-operator-modal');
+        if (modal) {
+            closeModal(modal);
+        }
+    });
+}
+
+// Setup close manage operators modal button
+const closeManageOperatorsBtn = document.querySelector('.close-manage-operators-modal');
+if (closeManageOperatorsBtn) {
+    closeManageOperatorsBtn.addEventListener('click', function() {
+        const modal = document.getElementById('manage-operators-modal');
+        if (modal) {
+            closeModal(modal);
+        }
+    });
+}
+
+// Setup export reports button
+const exportReportsBtn = document.getElementById('export-reports-btn');
+if (exportReportsBtn) {
+    exportReportsBtn.addEventListener('click', function() {
+        const modal = document.getElementById('export-options-modal');
+        if (modal) {
+            openModal(modal);
+        }
+    });
+}
+
+// Setup close export modal button
+const closeExportModalBtn = document.querySelector('.close-export-modal');
+if (closeExportModalBtn) {
+    closeExportModalBtn.addEventListener('click', function() {
+        const modal = document.getElementById('export-options-modal');
+        if (modal) {
+            closeModal(modal);
+        }
+    });
+}
   

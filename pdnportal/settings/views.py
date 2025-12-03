@@ -95,7 +95,7 @@ def search_users(request):
             if user.is_admin:
                 permissions.append({'type': 'admin', 'label': 'Admin'})
             if user.job_order_user:
-                permissions.append({'type': 'job_order', 'label': 'Job Order'})
+                permissions.append({'type': 'job-order', 'label': 'Job Order'})
             if user.manhours_user:
                 permissions.append({'type': 'manhours', 'label': 'Manhours'})
             if user.monitoring_user:
@@ -104,6 +104,16 @@ def search_users(request):
                 permissions.append({'type': 'dcf', 'label': 'DCF'})
             if user.ecis_user:
                 permissions.append({'type': 'ecis', 'label': 'ECIS'})
+            if user.quality_control_user:
+                permissions.append({'type': 'quality-control', 'label': 'Quality Control'})
+            if user.stock_declaration_user:
+                permissions.append({'type': 'stock-declaration', 'label': 'Stock Declaration'})
+            if user.docunotification_user:
+                permissions.append({'type': 'docunotification', 'label': 'DocuWatcher'})
+            
+            # Format lines as comma-separated string for display
+            lines_list = user.line.all()
+            line_name = ', '.join([line.line_name for line in lines_list]) if lines_list else 'undefined'
             
             users_data.append({
                 'id': user.id,
@@ -111,7 +121,8 @@ def search_users(request):
                 'id_number': user.id_number,
                 'name': user.name,
                 'position': user.position,
-                'lines': [{'id': line.id, 'name': line.line_name} for line in user.line.all()],
+                'line_name': line_name,
+                'lines': [{'id': line.id, 'name': line.line_name} for line in lines_list],
                 'permissions': permissions,
                 'is_active': user.is_active,
             })
@@ -275,6 +286,17 @@ def create_user(request):
                     user.docunotification_requestor = True
                 elif docunotification_role == 'admin':
                     user.docunotification_admin = True
+
+            # Meeting Scheduler permissions
+            meetingscheduler_user = request.POST.get('meetingscheduler_user') == 'on'
+            user.meetingscheduler_user = meetingscheduler_user
+
+            if meetingscheduler_user:
+                meetingscheduler_role = request.POST.get('meetingscheduler_role')
+                if meetingscheduler_role == 'user':
+                    user.meetingscheduler = True
+                elif meetingscheduler_role == 'admin':
+                    user.meetingadmin = True
 
             user.set_password(password)
             user.save()
@@ -498,6 +520,20 @@ def edit_user(request, user_id):
                 elif docunotification_role == 'admin':
                     user.docunotification_admin = True
 
+            # Meeting Scheduler permissions
+            meetingscheduler_user = request.POST.get('meetingscheduler_user') == 'on'
+            user.meetingscheduler_user = meetingscheduler_user
+            # Reset roles first
+            user.meetingscheduler = False
+            user.meetingadmin = False
+
+            if meetingscheduler_user:
+                meetingscheduler_role = request.POST.get('meetingscheduler_role')
+                if meetingscheduler_role == 'user':
+                    user.meetingscheduler = True
+                elif meetingscheduler_role == 'admin':
+                    user.meetingadmin = True
+
             user.save()
 
             # Set many-to-many lines
@@ -685,6 +721,9 @@ def get_user_data(request, user_id):
             'docunotification_role': docunotification_role,
             'docunotification_requestor': user.docunotification_requestor,
             'docunotification_admin': user.docunotification_admin,
+            'meetingscheduler_user': user.meetingscheduler_user,
+            'meetingscheduler': user.meetingscheduler,
+            'meetingadmin': user.meetingadmin,
             'default_line': default_line_data,
             'default_line_id': default_line_data['id'] if default_line_data else None,
             'approvers': approvers_data

@@ -134,7 +134,7 @@
                                     <button class="btn btn-icon JO-icon-button view-dashboard-btn" title="View Dashboard" data-id="{{ monitoring.id }}">
                                         <i class="fa fa-eye" aria-hidden="true"></i>
                                     </button>
-                                    {% if user.monitoring_manager or monitoring.created_by == user %}
+                                    {% if monitoring.created_by == user %}
                                     <button class="btn btn-icon JO-icon-button edit-group-btn" title="Edit Group" data-id="{{ monitoring.id }}">
                                         <i class="fas fa-edit"></i>
                                     </button>

@@ -658,14 +658,16 @@
 
 .JO-status-pending,
 .JO-status-routing,
-.JO-status-onhold {
+.JO-status-onhold,
+.JO-status-change-load {
     background-color: var(--jo-yellow-light);
     color: var(--jo-status-pending);
 }
 
 .JO-status-approved,
 .JO-status-closed,
-.JO-status-assigned {
+.JO-status-assigned,
+.JO-status-planned {
     background-color: var(--jo-green-light);
     color: var(--jo-status-approved);
 }
@@ -676,7 +678,8 @@
 }
 
 .JO-status-rejected,
-.JO-status-cancelled {
+.JO-status-cancelled,
+.JO-status-backlog {
     background-color: var(--jo-orange-light);
     color: var(--jo-status-rejected);
 }

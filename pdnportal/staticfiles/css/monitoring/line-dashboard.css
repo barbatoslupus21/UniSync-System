@@ -91,18 +91,13 @@
     padding: 20px;
     display: flex;
     align-items: center;
-    box-shadow: var(--jo-shadow);
     position: relative;
     overflow: hidden;
     opacity: 0;
     animation: PM-card-appear 0.6s ease forwards;
+    border: solid 0.5px var(--border-color);
 }
 
-/* Remove hover effect */
-.PM-stat-card:hover {
-    transform: none;
-    box-shadow: var(--jo-shadow);
-}
 
 /* Stat Icon Styles */
 .PM-stat-icon {
@@ -615,11 +610,6 @@
 }
 
 @media (max-width: 768px) {
-    .PM-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
     
     .PM-page-title {
         font-size: 1.5rem;
@@ -676,9 +666,20 @@
     .JO-textarea {
         font-size: 16px; /* Prevents zoom on iOS */
     }
+
+    .PM-stat-content h3,
+    .PM-stat-content p  {
+        font-size: 0.7rem;
+    }
 }
 
 @media (max-width: 480px) {
+    .PM-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
     .PM-stats-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 8px;

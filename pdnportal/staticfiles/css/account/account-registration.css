@@ -1223,9 +1223,6 @@
     transition: var(--jo-transition);
 }
 
-.UM-table tr:hover {
-    background-color: var(--jo-bg-color);
-}
 
 .UM-table tbody tr {
     opacity: 0;
@@ -1311,6 +1308,11 @@
 .UM-docunotification-pill {
     background-color: var(--um-docu-light, #e8f5e9);
     color: var(--um-docu-color, #2e7d32);
+}
+
+.UM-meetingscheduler-pill {
+    background-color: var(--um-meeting-light, #e3f2fd);
+    color: var(--um-meeting-color, #1565c0);
 }
 
 /* Status */
@@ -1466,4 +1468,8 @@
 .Unisync-table td.column-permissions .UM-permission-pill {
     flex-shrink: 0;
     white-space: nowrap;
+}
+
+.UM-form-2-column{
+    margin: 16px 0;
 }

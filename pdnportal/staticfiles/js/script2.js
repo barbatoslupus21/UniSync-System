@@ -309,9 +309,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabContents = document.querySelectorAll('.tab-content');
     const tabSlider = document.querySelector('.tab-slider');
 
+    // Exit early if no tab buttons exist on this page
+    if (tabButtons.length === 0) return;
+
     function updateSlider() {
         const activeButton = document.querySelector('.tab-btn.active');
-        if (activeButton) {
+        if (activeButton && tabSlider) {
             tabSlider.style.left = activeButton.offsetLeft + 'px';
             tabSlider.style.width = activeButton.offsetWidth + 'px';
         }
@@ -323,6 +326,13 @@ document.addEventListener('DOMContentLoaded', function() {
     tabButtons.forEach(button => {
         button.addEventListener('click', function() {
             const tabId = this.getAttribute('data-tab');
+            const targetTab = document.getElementById(tabId);
+
+            // Check if target tab exists
+            if (!targetTab) {
+                console.warn(`Tab content with id "${tabId}" not found`);
+                return;
+            }
 
             // Remove active class from all buttons and contents
             tabButtons.forEach(btn => btn.classList.remove('active'));
@@ -330,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Add active class to clicked button and corresponding content
             this.classList.add('active');
-            document.getElementById(tabId).classList.add('active');
+            targetTab.classList.add('active');
 
             // Update slider position
             updateSlider();

@@ -160,6 +160,10 @@
                                             {% if user.docunotification_user %}
                                             <span class="UM-permission-pill UM-docunotification-pill">DocuWatcher</span>
                                             {% endif %}
+
+                                            {% if user.meetingscheduler_user %}
+                                            <span class="UM-permission-pill UM-meetingscheduler-pill">Meeting Scheduler</span>
+                                            {% endif %}
                                         </div>
                                     </td>
                                     <td class="text-center" data-label="Status">
@@ -614,6 +618,30 @@
                         </div>
                     </div>
 
+                    <!-- Meeting Scheduler Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="meetingscheduler-user" name="meetingscheduler_user">
+                                <span class="UM-checkbox-label UM-category-label">Meeting Scheduler Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="meetingscheduler-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="meetingscheduler_role" value="user">
+                                    <span class="UM-radio-label">User</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="meetingscheduler_role" value="admin">
+                                    <span class="UM-radio-label">Admin</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
                 <!-- User Approvers Section -->
@@ -1061,6 +1089,30 @@
                             </div>
                             <div class="UM-validation-message" id="edit-docunotification-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
                                 Please select either User or Admin role
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Meeting Scheduler Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-meetingscheduler-user" name="meetingscheduler_user">
+                                <span class="UM-checkbox-label UM-category-label">Meeting Scheduler Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-meetingscheduler-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="meetingscheduler_role" value="user">
+                                    <span class="UM-radio-label">User</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="meetingscheduler_role" value="admin">
+                                    <span class="UM-radio-label">Admin</span>
+                                </label>
                             </div>
                         </div>
                     </div>

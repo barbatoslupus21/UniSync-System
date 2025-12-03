@@ -54,6 +54,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const editDocunotificationUser = document.getElementById('edit-docunotification-user');
     const editDocunotificationRoles = document.getElementById('edit-docunotification-roles');
     const editDocunotificationRoleValidation = document.getElementById('edit-docunotification-role-validation');
+    
+    // Meeting Scheduler permissions
+    const meetingSchedulerUser = document.getElementById('meetingscheduler-user');
+    const meetingSchedulerRoles = document.getElementById('meetingscheduler-roles');
+    const editMeetingSchedulerUser = document.getElementById('edit-meetingscheduler-user');
+    const editMeetingSchedulerRoles = document.getElementById('edit-meetingscheduler-roles');
 
     // Password toggle - Add form
     const passwordField = document.getElementById('password');
@@ -421,6 +427,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Meeting Scheduler user checkbox
+    if (meetingSchedulerUser) {
+        // Set initial state
+        if (meetingSchedulerUser.checked && meetingSchedulerRoles) {
+            meetingSchedulerRoles.style.display = 'block';
+        }
+
+        meetingSchedulerUser.addEventListener('change', function() {
+            toggleSubpermissions(this, meetingSchedulerRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = meetingSchedulerRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
     // Toggle subpermissions when main permission checkbox is clicked - Edit form
     if (editJobOrderUser) {
         editJobOrderUser.addEventListener('change', function() {
@@ -599,6 +625,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     editDocunotificationRoleValidation.style.display = 'none';
                 }
             });
+        });
+    }
+
+    // Meeting Scheduler user checkbox for edit form
+    if (editMeetingSchedulerUser) {
+        // Set initial state
+        if (editMeetingSchedulerUser.checked && editMeetingSchedulerRoles) {
+            editMeetingSchedulerRoles.style.display = 'block';
+        }
+
+        editMeetingSchedulerUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editMeetingSchedulerRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = editMeetingSchedulerRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
         });
     }
 
@@ -1172,6 +1218,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
+            // Meeting Scheduler
+            if (userData.meetingscheduler_user && editMeetingSchedulerUser) {
+                editMeetingSchedulerUser.checked = true;
+                toggleSubpermissions(editMeetingSchedulerUser, editMeetingSchedulerRoles);
+
+                // Set Meeting Scheduler role
+                const meetingSchedulerRoleRadios = editMeetingSchedulerRoles.querySelectorAll('input[type="radio"]');
+                meetingSchedulerRoleRadios.forEach(radio => {
+                    if (radio.value === 'user' && userData.meetingscheduler) {
+                        radio.checked = true;
+                    } else if (radio.value === 'admin' && userData.meetingadmin) {
+                        radio.checked = true;
+                    }
+                });
+            }
+
             // Set approvers
             if (editApproversList) {
                 // Clear existing approvers
@@ -1227,6 +1289,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (stockDeclarationRoles) {
             stockDeclarationRoles.style.display = 'none';
+        }
+        if (meetingSchedulerRoles) {
+            meetingSchedulerRoles.style.display = 'none';
         }
 
         // Reset lines search
@@ -1284,6 +1349,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (editDocunotificationRoles) {
             editDocunotificationRoles.style.display = 'none';
             if (editDocunotificationRoleValidation) editDocunotificationRoleValidation.style.display = 'none';
+        }
+        if (editMeetingSchedulerRoles) {
+            editMeetingSchedulerRoles.style.display = 'none';
         }
 
         // Reset lines search
@@ -1727,6 +1795,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         permissionsHtml += '</div>';
         
+        // Build lines HTML as pills
+        let linesHtml = '<div class="UM-permission-pills">';
+        if (user.lines && user.lines.length > 0) {
+            user.lines.forEach(line => {
+                linesHtml += `<span class="UM-permission-pill UM-monitoring-pill">${line.name}</span>`;
+            });
+        } else {
+            linesHtml += '<span style="color: #999;">No lines assigned</span>';
+        }
+        linesHtml += '</div>';
+        
         // Build status HTML
         const statusClass = user.is_active ? 'UM-status-active' : 'UM-status-inactive';
         const statusText = user.is_active ? 'Active' : 'Inactive';
@@ -1740,8 +1819,8 @@ document.addEventListener('DOMContentLoaded', function() {
             <td data-label="ID">${user.id_number}</td>
             <td data-label="Name">${user.name}</td>
             <td data-label="Position">${user.position}</td>
-            <td data-label="Line">${user.line_name}</td>
-            <td data-label="Permissions">${permissionsHtml}</td>
+            <td data-label="Line" class="column-line">${linesHtml}</td>
+            <td data-label="Permissions" class="column-permissions">${permissionsHtml}</td>
             <td class="text-center" data-label="Status">
                 <span class="UM-status ${statusClass}">${statusText}</span>
             </td>

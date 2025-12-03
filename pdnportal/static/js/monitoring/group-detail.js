@@ -173,19 +173,17 @@ function initEventListeners() {
         });
     }
 
-    // Use event delegation for edit product buttons
-    document.getElementById('products-tbody')?.addEventListener('click', (e) => {
+    // Use event delegation for edit product buttons on the tab content (parent that doesn't get replaced)
+    document.getElementById('products-tab')?.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-product-btn');
         if (editBtn) {
             handleEditProductClick(e);
+            return;
         }
-    });
-
-    // Use event delegation for delete product buttons
-    document.getElementById('products-tbody')?.addEventListener('click', (e) => {
         const deleteBtn = e.target.closest('.delete-product-btn');
         if (deleteBtn) {
             handleDeleteProductClick(e);
+            return;
         }
     });
 
@@ -244,8 +242,8 @@ function initEventListeners() {
         editScheduleForm.addEventListener('submit', handleEditSchedule);
     }
 
-    // Use event delegation for edit schedule buttons
-    document.getElementById('schedules-tbody')?.addEventListener('click', (e) => {
+    // Use event delegation for edit schedule buttons on the tab content (parent that doesn't get replaced)
+    document.getElementById('schedules-tab')?.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-schedule-btn');
         if (editBtn) {
             handleEditScheduleClick(e);
@@ -690,7 +688,15 @@ function handleEditSchedule(e) {
     e.preventDefault();
     const formData = new FormData(e.target);
     
-    fetch(`${editScheduleUrl}${currentScheduleToEdit}/`, {
+    // Debug: Log form data
+    console.log('Submitting edit schedule with data:');
+    for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+    }
+    console.log('Current schedule ID:', currentScheduleToEdit);
+    console.log('Edit URL:', `${editScheduleUrl}${currentScheduleToEdit}/edit/`);
+    
+    fetch(`${editScheduleUrl}${currentScheduleToEdit}/edit/`, {
         method: 'POST',
         body: formData,
         headers: {
@@ -698,20 +704,36 @@ function handleEditSchedule(e) {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
-    .then(data => {
+    .then(response => {
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        return response.json().then(data => ({data, status: response.status}));
+    })
+    .then(({data, status}) => {
+        console.log('Response data:', data);
         if (data.status === 'success') {
             showToast(data.message || 'Schedule updated successfully!', 'success');
             document.getElementById('edit-schedule-modal').classList.remove('active');
             currentScheduleToEdit = null;
             refreshSchedulesTable();
         } else {
-            throw new Error(data.message || 'Failed to update schedule');
+            // Show specific error messages from form validation
+            let errorMessage = data.message || 'Failed to update schedule';
+            if (data.errors) {
+                // Format form errors for display
+                const errorDetails = Object.entries(data.errors)
+                    .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+                    .join('; ');
+                errorMessage += ` - ${errorDetails}`;
+                console.error('Form validation errors:', data.errors);
+            }
+            console.error('Server returned error:', errorMessage);
+            showToast(errorMessage, 'error');
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        showToast(error.message || 'Error updating schedule', 'error');
+        console.error('Fetch error:', error);
+        showToast('Error updating schedule. Please try again.', 'error');
     });
 }
 

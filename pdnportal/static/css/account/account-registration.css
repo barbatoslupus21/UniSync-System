@@ -1310,6 +1310,11 @@
     color: var(--um-docu-color, #2e7d32);
 }
 
+.UM-meetingscheduler-pill {
+    background-color: var(--um-meeting-light, #e3f2fd);
+    color: var(--um-meeting-color, #1565c0);
+}
+
 /* Status */
 .UM-status {
     display: inline-flex;

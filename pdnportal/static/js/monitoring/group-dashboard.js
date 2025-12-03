@@ -20,6 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     let currentData = null;
+    let currentPage = 1;
+    const perPage = 10;
     const REFRESH_INTERVAL = 5 * 60 * 1000;
     const PIE_CHART_REFRESH_INTERVAL = 60 * 1000; // 1 minute
     let refreshTimer;
@@ -118,18 +120,21 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             specificDate.classList.remove('visible');
         }
+        currentPage = 1; // Reset to page 1 when filter changes
         loadDashboard();
         loadPieCharts();
     });
 
     specificDate.addEventListener('change', function() {
         if (dateFilter.value === 'customDate') {
+            currentPage = 1; // Reset to page 1 when filter changes
             loadDashboard();
             loadPieCharts();
         }
     });
 
     shiftFilter.addEventListener('change', function() {
+        currentPage = 1; // Reset to page 1 when filter changes
         loadDashboard();
         loadPieCharts();
     });
@@ -199,7 +204,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const params = new URLSearchParams({
             dateFilter: dateFilter.value,
             specificDate: specificDate.value,
-            shiftFilter: shiftFilter.value
+            shiftFilter: shiftFilter.value,
+            page: currentPage,
+            per_page: perPage
         });
 
         try {
@@ -835,6 +842,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                 </tr>
             `;
+            updatePaginationControls(null);
             return;
         }
 
@@ -865,8 +873,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         <span class="gd-progress-text">${schedule.progress.toFixed(0)}%</span>
                     </div>
                 </td>
-                <td>
-                    <span class="gd-status-badge ${statusClass}">${schedule.status}</span>
+                <td style="text-align: center;">
+                    <span class="JO-status JO-status-${statusClass}">${schedule.status}</span>
                 </td>
             `;
 
@@ -876,6 +884,82 @@ document.addEventListener('DOMContentLoaded', function() {
                 row.classList.add('fade-in');
             }, index * 50);
         });
+        
+        // Update pagination controls
+        if (currentData && currentData.pagination) {
+            updatePaginationControls(currentData.pagination);
+        }
+    }
+    
+    function updatePaginationControls(pagination) {
+        const paginationContainer = document.querySelector('.gd-schedules .JO-pagination');
+        
+        if (!pagination || pagination.total_pages <= 1) {
+            paginationContainer.style.display = 'none';
+            return;
+        }
+        
+        paginationContainer.style.display = 'flex';
+        
+        const startIndex = ((pagination.current_page - 1) * pagination.per_page) + 1;
+        const endIndex = Math.min(pagination.current_page * pagination.per_page, pagination.total_schedules);
+        
+        paginationContainer.innerHTML = `
+            <div class="JO-pagination-info">
+                Showing ${startIndex} to ${endIndex} of ${pagination.total_schedules} entries
+            </div>
+            <div class="JO-pagination-controls">
+                <div class="JO-pagination-nav-container">
+                    ${pagination.has_previous 
+                        ? `<button class="JO-pagination-btn" onclick="goToPage(${pagination.current_page - 1})">
+                            <i class="fas fa-chevron-left"></i> Previous
+                           </button>`
+                        : `<span class="JO-pagination-btn disabled">
+                            <i class="fas fa-chevron-left"></i> Previous
+                           </span>`
+                    }
+                    
+                    <div class="JO-pagination-pages">
+                        ${generatePageNumbers(pagination.current_page, pagination.total_pages)}
+                    </div>
+                    
+                    ${pagination.has_next
+                        ? `<button class="JO-pagination-btn" onclick="goToPage(${pagination.current_page + 1})">
+                            Next <i class="fas fa-chevron-right"></i>
+                           </button>`
+                        : `<span class="JO-pagination-btn disabled">
+                            Next <i class="fas fa-chevron-right"></i>
+                           </span>`
+                    }
+                </div>
+            </div>
+        `;
+    }
+    
+    function generatePageNumbers(currentPage, totalPages) {
+        let pages = '';
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        if (endPage - startPage < maxPagesToShow - 1) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                pages += `<span class="JO-pagination-page active">${i}</span>`;
+            } else {
+                pages += `<button class="JO-pagination-page" onclick="goToPage(${i})">${i}</button>`;
+            }
+        }
+        
+        return pages;
+    }
+    
+    window.goToPage = function(page) {
+        currentPage = page;
+        loadDashboard(false);
     }
 
     function showEmptyState() {
