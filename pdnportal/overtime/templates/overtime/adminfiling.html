@@ -1,0 +1,759 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Overtime Administration{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/overtime/overtime.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+<link rel="stylesheet" href="{% static 'css/stockdeclaration/stockdeclaration.css' %}">
+<link rel="stylesheet" href="{% static 'css/style-ver2.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content" data-shuttle-admin="{{ request.user.overtime_shuttle_admin|yesno:'true,false' }}">
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">Overtime Administration</h1>
+            <p class="JO-subtitle">Manage shuttle services, settings, and export overtime data</p>
+        </div>
+        <div class="JO-card-actions">
+            <button class="btn btn-icon" id="open-settings-modal-btn" title="Meeting Settings">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="content-tabs">
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="overview">
+                Overview
+            </button>
+            <button class="tab-btn" data-tab="shuttle-assignment">
+                Shuttle Assignment
+            </button>
+        </div>
+    </div>
+
+    <div class="tab-content active" id="tab-overview">
+        <div class="overview-container">
+            <!-- Shift Summary Cards + Filters in one row -->
+            <div class="shift-summary-section" id="shift-summary-section">
+                <div class="shift-summary-row">
+                    <!-- Day Shift Card -->
+                    <div class="shift-summary-card dayshift">
+                        <div class="shift-card-bg-icon">
+                            <i class="fas fa-sun"></i>
+                        </div>
+                        <div class="shift-card-content">
+                            <div class="shift-label">Day Shift</div>
+                            <div class="shift-totals" id="dayshift-totals">
+                                <!-- Totals will be inserted by JS -->
+                            </div>
+                            <div class="shift-provider-breakdown" id="dayshift-provider-breakdown">
+                                <!-- Provider breakdown will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Night Shift Card -->
+                    <div class="shift-summary-card nightshift">
+                        <div class="shift-card-bg-icon">
+                            <i class="fas fa-moon"></i>
+                        </div>
+                        <div class="shift-card-content">
+                            <div class="shift-label">Night Shift</div>
+                            <div class="shift-totals" id="nightshift-totals">
+                                <!-- Totals will be inserted by JS -->
+                            </div>
+                            <div class="shift-provider-breakdown" id="nightshift-provider-breakdown">
+                                <!-- Provider breakdown will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters Panel -->
+                    <div class="overview-filters-panel">
+                        <div class="filter-form">
+                            <div class="filter-group">
+                                <label class="form-label">Filing Type</label>
+                                <select class="form-control" id="overview-filing-type">
+                                    <option value="daily" selected>Daily</option>
+                                    <option value="shifting">Shifting</option>
+                                    <option value="holiday">Holiday</option>
+                                    <option value="sunday">Sunday</option>
+                                    <option value="saturday_off">Saturday Off</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label class="form-label">Date</label>
+                                <input type="date" class="form-control" id="overview-date">
+                            </div>
+                            <div class="filter-actions">
+                                <button class="btn btn-primary" id="overview-export-btn">
+                                    <i class="fas fa-file-export"></i> Export
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vehicle Requirements (Collapsible) -->
+            <div class="overview-vehicles-section">
+                <div class="vehicles-section-header" id="vehicles-section-toggle">
+                    <h3><i class="fas fa-shuttle-van"></i> Vehicle Requirements</h3>
+                    <button class="collapse-toggle-btn" type="button">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="vehicle-requirements-collapsible collapsed" id="vehicle-requirements-wrapper">
+                    <div class="vehicle-requirements" id="vehicle-requirements">
+                        <div class="empty-state">
+                            <i class="fas fa-shuttle-van"></i>
+                            <p>No vehicle requirements calculated yet</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employee List -->
+            <div class="overview-employees-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-users"></i> Employee Overtime List</h3>
+                    <div class="section-header-actions">
+                        <div class="section-info">
+                            <span id="overview-total-employees">0</span> employees
+                        </div>
+
+                        <div class="overview-search-container">
+                            <input type="text" id="overview-search" class="form-control" placeholder="Search employees...">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        
+                    </div>
+                </div>
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="overview-table">
+                        <thead>
+                            <tr>
+                                <th>Date/Time Filed</th>
+                                <th>Employee ID</th>
+                                <th>Employee Name</th>
+                                <th>Department</th>
+                                <th>Destination</th>
+                                <th>Status</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                            </tr>
+                        </thead>
+                        <tbody id="overview-tbody">
+                            <tr>
+                                <td colspan="8">
+                                    <div class="empty-state">
+                                        <i class="fas fa-filter"></i>
+                                        <h5>Select filters to view data</h5>
+                                        <p>Choose a filing type and date, then click Refresh</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="overview-pagination" id="overview-pagination" style="display: none;">
+                    <div class="pagination-info" id="overview-pagination-info">
+                        Showing 0 to 0 of 0 entries
+                    </div>
+                    <div class="pagination-controls" id="overview-pagination-nav">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-shuttle-assignment">
+        <div>
+            <div class="card-header">
+                <h2>User Shuttle Assignment</h2>
+                <div class="card-header-action">
+                    <div class="JO-search-container">
+                        <input type="text" id="shuttle-user-search" class="JO-search-input" placeholder="Search employees...">
+                        <button class="JO-search-button">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <button id="add-shuttle-user-btn" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Add Shuttle
+                    </button>
+                    <button id="import-shuttle-btn" class="btn btn-primary">
+                        <i class="fa fa-upload" aria-hidden="true"></i>
+                        Import
+                    </button>
+                    <button id="export-shuttle-btn" class="btn btn-primary">
+                        <i class="fa fa-download" aria-hidden="true"></i>
+                        Export
+                    </button>
+                </div>
+            </div>
+            
+            <div class="common-table-container">
+                <table class="Unisync-table" id="shuttle-assignment-table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Employee Name</th>
+                            <th>Line</th>
+                            <th>Department</th>
+                            <th>Shuttle Destination</th>
+                            <th>Group</th>
+                            <th style="text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shuttle-assignment-tbody">
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-spinner fa-spin"></i>
+                                    <h5>Loading...</h5>
+                                    <p>Please wait while we fetch shuttle user data</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="JO-pagination" id="shuttle-pagination">
+                <div class="JO-pagination-info" id="pagination-info">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <div class="JO-pagination-nav-container" id="pagination-nav">
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settings-modal-overlay">
+    <div class="settings-modal-container">
+        <div class="settings-modal-header">
+            <div class="settings-modal-title">
+                <i class="fa-solid fa-gear"></i>
+                <h2>Settings</h2>
+            </div>
+            <button class="modal-close" id="close-settings-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="settings-modal-body">
+            <div class="settings-sidebar">
+                <button class="settings-nav-item active" data-settings-tab="vehicles">
+                    <i class="fa-solid fa-bus"></i>
+                    <span>Shuttle Vehicles</span>
+                </button>
+                <button class="settings-nav-item" data-settings-tab="providers">
+                    <i class="fa-solid fa-building"></i>
+                    <span>Shuttle Providers</span>
+                </button>
+                <button class="settings-nav-item" data-settings-tab="destinations">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span>Destinations</span>
+                </button>
+                <button class="settings-nav-item" data-settings-tab="destination-groups">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <span>Destination Groups</span>
+                </button>
+                <button class="settings-nav-item" data-settings-tab="holidays">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    <span>Holidays</span>
+                </button>
+                <button class="settings-nav-item" data-settings-tab="passcode">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Passcode</span>
+                </button>
+            </div>
+            <div class="settings-content">
+                <!-- Vehicles Tab -->
+                <div class="settings-panel active" id="settings-vehicles">
+                    <div class="settings-panel-header">
+                        <h3>Shuttle Vehicles</h3>
+                        <button class="btn btn-primary btn-sm" id="add-vehicle-btn">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Vehicle
+                        </button>
+                    </div>
+                    <div class="settings-panel-body">
+                        <div class="settings-list" id="vehicles-list">
+                            <div class="settings-list-loading">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Loading vehicles...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shuttle Providers Tab -->
+                <div class="settings-panel" id="settings-providers">
+                    <div class="settings-panel-header">
+                        <h3>Shuttle Providers</h3>
+                        <button class="btn btn-primary btn-sm" id="add-provider-btn">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Provider
+                        </button>
+                    </div>
+                    <p class="settings-panel-desc">Manage shuttle service providers (e.g., transport companies)</p>
+                    <div class="settings-panel-body">
+                        <div class="settings-list" id="providers-list">
+                            <div class="settings-list-loading">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Loading providers...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Destinations Tab (Individual Locations) -->
+                <div class="settings-panel" id="settings-destinations">
+                    <div class="settings-panel-header">
+                        <h3>Destinations</h3>
+                        <button class="btn btn-primary btn-sm" id="add-destination-btn">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Destination
+                        </button>
+                    </div>
+                    <p class="settings-panel-desc">Add shuttle destination locations (e.g., SM City, Robinsons, etc.)</p>
+                    <div class="settings-panel-body">
+                        <div class="settings-list" id="destinations-list">
+                            <div class="settings-list-loading">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Loading destinations...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Destination Groups Tab (Vehicle + Multiple Destinations) -->
+                <div class="settings-panel" id="settings-destination-groups">
+                    <div class="settings-panel-header">
+                        <h3>Destination Groups</h3>
+                        <button class="btn btn-primary btn-sm" id="add-destination-group-btn">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Group
+                        </button>
+                    </div>
+                    <p class="settings-panel-desc">Create groups that combine a shuttle vehicle with multiple destinations</p>
+                    <div class="settings-panel-body">
+                        <div class="settings-list" id="destination-groups-list">
+                            <div class="settings-list-loading">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Loading destination groups...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Holidays Tab -->
+                <div class="settings-panel" id="settings-holidays">
+                    <div class="settings-panel-header">
+                        <h3>Holidays</h3>
+                        <button class="btn btn-primary btn-sm" id="add-holiday-btn">
+                            <i class="fa-solid fa-plus"></i>
+                            Add Holiday
+                        </button>
+                    </div>
+                    <div class="settings-panel-body">
+                        <div class="settings-list" id="holidays-list">
+                            <div class="settings-list-loading">
+                                <i class="fa-solid fa-spinner fa-spin"></i>
+                                <span>Loading holidays...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passcode Tab -->
+                <div class="settings-panel" id="settings-passcode">
+                    <div class="settings-panel-header">
+                        <h3>Late Filing Passcode</h3>
+                    </div>
+                    <div class="settings-panel-body">
+                        <form class="settings-form" id="passcode-form" autocomplete="off">
+                            <!-- Hidden username field for accessibility -->
+                            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true">
+                            <div class="form-group">
+                                <label class="form-label">Current Passcode</label>
+                                <div class="passcode-display">
+                                    <input type="password" class="form-control" id="current-passcode" readonly autocomplete="off">
+                                    <button type="button" class="btn btn-icon" id="toggle-passcode-visibility">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">New Passcode</label>
+                                <input type="password" class="form-control" id="new-passcode" placeholder="Enter new passcode" autocomplete="new-password">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confirm Passcode</label>
+                                <input type="password" class="form-control" id="confirm-passcode" placeholder="Confirm new passcode" autocomplete="new-password">
+                            </div>
+                            <button type="button" class="btn btn-primary" id="update-passcode-btn">
+                                <i class="fa-solid fa-save"></i>
+                                Update Passcode
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="vehicle-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3 id="vehicle-modal-title">Add Vehicle</h3>
+            <button class="modal-close" id="close-vehicle-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="vehicle-id">
+            <div class="form-group">
+                <label class="form-label">Vehicle Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="vehicle-name" placeholder="Enter vehicle name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Seating Capacity <span class="input-required">*</span></label>
+                <input type="number" class="form-control" id="vehicle-capacity" min="1" placeholder="Enter capacity">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-vehicle-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-vehicle">
+                <i class="fa-solid fa-save"></i>
+                Save Vehicle
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="destination-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3 id="destination-modal-title">Add Destination</h3>
+            <button class="modal-close" id="close-destination-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="destination-id">
+            <div class="form-group">
+                <label class="form-label">Destination Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="destination-name" placeholder="e.g., SM City, Robinsons, etc.">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-destination-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-destination">
+                <i class="fa-solid fa-save"></i>
+                Save Destination
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="provider-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3 id="provider-modal-title">Add Shuttle Provider</h3>
+            <button class="modal-close" id="close-provider-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="provider-id">
+            <div class="form-group">
+                <label class="form-label">Provider Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="provider-name" placeholder="Enter provider name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contact Person</label>
+                <input type="text" class="form-control" id="provider-contact-person" placeholder="Enter contact person name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Contact Number</label>
+                <input type="text" class="form-control" id="provider-contact-number" placeholder="Enter contact number">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-provider-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-provider">
+                <i class="fa-solid fa-save"></i>
+                Save Provider
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="destination-group-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-lg">
+        <div class="modal-header">
+            <h3 id="destination-group-modal-title">Add Destination Group</h3>
+            <button class="modal-close" id="close-destination-group-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="destination-group-id">
+            <div class="form-group">
+                <label class="form-label">Group Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="destination-group-name" placeholder="e.g., Route A, Morning Shift, etc.">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Shuttle Provider <span class="input-required">*</span></label>
+                <select class="form-control" id="destination-group-provider">
+                    <option value="">Select a provider</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Shuttle Vehicle <span class="input-required">*</span></label>
+                <select class="form-control" id="destination-group-vehicle">
+                    <option value="">Select a vehicle</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Destinations <span class="input-required">*</span></label>
+                <p class="form-hint">Select the destinations covered by this group</p>
+                <div class="checkbox-list" id="destination-group-destinations">
+                    <div class="settings-list-loading">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                        <span>Loading destinations...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-destination-group-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-destination-group">
+                <i class="fa-solid fa-save"></i>
+                Save Group
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="holiday-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3>Add Holiday</h3>
+            <button class="modal-close" id="close-holiday-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Holiday Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="holiday-name" placeholder="Enter holiday name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Date <span class="input-required">*</span></label>
+                <input type="date" class="form-control" id="holiday-date">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-holiday-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-holiday">
+                <i class="fa-solid fa-save"></i>
+                Save Holiday
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="admin-confirm-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-sm">
+        <div class="modal-body">
+            <div class="confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h4 id="admin-confirm-title">Confirm Action</h4>
+                <p id="admin-confirm-message">Are you sure you want to proceed?</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-admin-confirm-modal">Cancel</button>
+            <button class="btn btn-error" id="admin-confirm-action-btn">
+                <i class="fa-solid fa-check"></i>
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add/Edit Shuttle User Modal -->
+<div class="modal-overlay" id="shuttle-user-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3 id="shuttle-user-modal-title">Add Shuttle User</h3>
+            <button class="modal-close" id="close-shuttle-user-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="shuttle-user-id">
+            <div class="form-group">
+                <label class="form-label">Employee ID <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="shuttle-user-employee-id" placeholder="Enter Employee ID">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Employee Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="shuttle-user-employee-name" placeholder="Enter Employee Name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Line</label>
+                <input type="text" class="form-control" id="shuttle-user-line" placeholder="Enter Line">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Department</label>
+                <input type="text" class="form-control" id="shuttle-user-department" placeholder="Enter Department">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Shuttle Destination <span class="input-required">*</span></label>
+                <select class="form-control" id="shuttle-user-destination">
+                    <option value="">Select Destination</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">With Vehicle</label>
+                <div class="toggle-switch-container">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="shuttle-user-with-vehicle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label" id="with-vehicle-label">No</span>
+                </div>
+                <small class="form-hint">Employees with their own vehicle will be excluded from shuttle counts and exports</small>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-shuttle-user-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-shuttle-user">
+                <i class="fa-solid fa-save"></i>
+                Save
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Import Shuttle Users Modal -->
+<div class="modal-overlay" id="import-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-lg">
+        <div class="modal-header">
+            <h3>Import Shuttle Users</h3>
+            <button class="modal-close" id="close-import-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="import-section">
+                <div class="import-template-section">
+                    <h4><i class="fa-solid fa-file-excel"></i> Download Template</h4>
+                    <p>Download the Excel template with the correct format and destination list for data validation.</p>
+                    <button class="btn btn-outline" id="download-template-btn">
+                        <i class="fa-solid fa-download"></i>
+                        Download Template
+                    </button>
+                </div>
+                
+                <div class="import-divider">
+                    <span>or</span>
+                </div>
+                
+                <div class="import-upload-section">
+                    <h4><i class="fa-solid fa-upload"></i> Upload File</h4>
+                    <p>Drag and drop your completed Excel file here, or click to browse.</p>
+                    <div class="drop-zone" id="drop-zone">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <p>Drop your Excel file here</p>
+                        <span>or</span>
+                        <button class="btn btn-outline" id="browse-file-btn">Browse Files</button>
+                        <input type="file" id="import-file-input" accept=".xlsx,.xls" hidden>
+                    </div>
+                    <div class="selected-file" id="selected-file" style="display: none;">
+                        <i class="fa-solid fa-file-excel"></i>
+                        <span id="selected-file-name">filename.xlsx</span>
+                        <button class="btn btn-icon btn-sm" id="remove-file-btn">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="import-progress" id="import-progress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <p id="progress-text">Processing...</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-import-modal">Cancel</button>
+            <button class="btn btn-primary" id="upload-import-btn" disabled>
+                <i class="fa-solid fa-upload"></i>
+                Upload & Import
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Export Shift Selection Modal -->
+<div class="modal-overlay" id="export-shift-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-sm">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-export"></i> Export Daily Overtime</h3>
+            <button class="modal-close" id="close-export-shift-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p class="export-shift-description">Select which shift to export. The exported file will contain 2 sheets: Not OT and OT employees grouped by shuttle destination.</p>
+            <div class="shift-selection-options">
+                <label class="shift-option">
+                    <input type="radio" name="export-shift" value="day" checked>
+                    <span class="shift-option-content">
+                        <i class="fas fa-sun"></i>
+                        <span>Day Shift</span>
+                    </span>
+                </label>
+                <label class="shift-option">
+                    <input type="radio" name="export-shift" value="night">
+                    <span class="shift-option-content">
+                        <i class="fas fa-moon"></i>
+                        <span>Night Shift</span>
+                    </span>
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-export-shift-modal">Cancel</button>
+            <button class="btn btn-primary" id="confirm-export-shift-btn">
+                <i class="fas fa-download"></i>
+                Export
+            </button>
+        </div>
+    </div>
+</div>
+
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/overtime/overtime-admin.js' %}"></script>
+{% endblock %}

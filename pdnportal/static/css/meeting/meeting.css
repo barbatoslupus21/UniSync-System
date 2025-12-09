@@ -1929,3 +1929,105 @@
 [data-theme="dark"] .icon-badge {
     background-color: var(--surface);
 }
+
+/* ==========================================================================
+   Repetition Form Styles
+   ========================================================================== */
+.repetition-group {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--jo-border);
+}
+
+.repetition-group .form-group {
+    margin-bottom: 16px;
+}
+
+.repetition-group select.form-control {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--jo-border);
+    border-radius: var(--radius-md);
+    background-color: var(--jo-card-bg);
+    color: var(--jo-text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.repetition-group select.form-control:hover {
+    border-color: var(--jo-primary);
+}
+
+.repetition-group select.form-control:focus {
+    outline: none;
+    border-color: var(--jo-primary);
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+#repetition-end-date-group {
+    display: none;
+    margin-top: 16px;
+    padding: 14px;
+    background-color: var(--jo-primary-light);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--jo-primary);
+}
+
+#repetition-end-date-group.show {
+    display: block;
+    animation: JO-fade-in 0.3s ease-out;
+}
+
+#repetition-end-date-group label {
+    color: var(--jo-primary);
+    font-weight: 600;
+}
+
+#repetition-end-date-group label i {
+    color: var(--jo-primary);
+}
+
+#repetition-end-date-group .form-control {
+    margin-top: 8px;
+    background-color: var(--jo-card-bg);
+}
+
+/* Repetition Info Badge */
+.repetition-info {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background-color: var(--jo-purple-light);
+    color: var(--jo-purple);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.repetition-info i {
+    font-size: 0.7rem;
+}
+
+/* Dark Theme for Repetition */
+[data-theme="dark"] .repetition-group {
+    border-top-color: var(--border);
+}
+
+[data-theme="dark"] .repetition-group select.form-control {
+    background-color: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+[data-theme="dark"] #repetition-end-date-group {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-left-color: var(--primary);
+}
+
+[data-theme="dark"] #repetition-end-date-group label,
+[data-theme="dark"] #repetition-end-date-group label i {
+    color: var(--primary-light);
+}

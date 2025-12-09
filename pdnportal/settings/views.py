@@ -67,7 +67,7 @@ def search_users(request):
                 Q(username__icontains=search_query) |
                 Q(position__icontains=search_query) |
                 Q(line__line_name__icontains=search_query)
-            )
+            ).distinct()
         
         # Apply permission filter
         if permission_filter != 'all':
@@ -108,8 +108,12 @@ def search_users(request):
                 permissions.append({'type': 'quality-control', 'label': 'Quality Control'})
             if user.stock_declaration_user:
                 permissions.append({'type': 'stock-declaration', 'label': 'Stock Declaration'})
+            if user.overtime_user:
+                permissions.append({'type': 'overtime', 'label': 'Overtime'})
             if user.docunotification_user:
                 permissions.append({'type': 'docunotification', 'label': 'DocuWatcher'})
+            if user.meetingscheduler_user:
+                permissions.append({'type': 'meetingscheduler', 'label': 'Meeting Scheduler'})
             
             # Format lines as comma-separated string for display
             lines_list = user.line.all()
@@ -275,6 +279,19 @@ def create_user(request):
                     user.stock_declaration_warehouse = True
                 elif stock_declaration_role == 'purchasing':
                     user.stock_declaration_purchasing = True
+
+            # Overtime permissions
+            overtime_user = request.POST.get('overtime_user') == 'on'
+            user.overtime_user = overtime_user
+
+            if overtime_user:
+                overtime_role = request.POST.get('overtime_role')
+                if overtime_role == 'requestor':
+                    user.overtime_requestor = True
+                elif overtime_role == 'facilitator':
+                    user.overtime_facilitator = True
+                elif overtime_role == 'shuttle_admin':
+                    user.overtime_shuttle_admin = True
 
             # Document Notification permissions
             docunotification_user = request.POST.get('docunotification_user') == 'on'
@@ -509,6 +526,23 @@ def edit_user(request, user_id):
                 elif stock_declaration_role == 'purchasing':
                     user.stock_declaration_purchasing = True
 
+            # Overtime permissions
+            overtime_user = request.POST.get('overtime_user') == 'on'
+            user.overtime_user = overtime_user
+            # Reset roles first
+            user.overtime_requestor = False
+            user.overtime_facilitator = False
+            user.overtime_shuttle_admin = False
+
+            if overtime_user:
+                overtime_role = request.POST.get('overtime_role')
+                if overtime_role == 'requestor':
+                    user.overtime_requestor = True
+                elif overtime_role == 'facilitator':
+                    user.overtime_facilitator = True
+                elif overtime_role == 'shuttle_admin':
+                    user.overtime_shuttle_admin = True
+
             # Document Notification permissions
             docunotification_user = request.POST.get('docunotification_user') == 'on'
             user.docunotification_user = docunotification_user
@@ -665,6 +699,15 @@ def get_user_data(request, user_id):
         elif user.stock_declaration_purchasing:
             stock_declaration_role = 'purchasing'
 
+        # Determine Overtime role
+        overtime_role = None
+        if user.overtime_requestor:
+            overtime_role = 'requestor'
+        elif user.overtime_facilitator:
+            overtime_role = 'facilitator'
+        elif user.overtime_shuttle_admin:
+            overtime_role = 'shuttle_admin'
+
         # Determine Document Notification role
         docunotification_role = None
         if user.docunotification_requestor:
@@ -717,6 +760,11 @@ def get_user_data(request, user_id):
             'stock_declaration_production': user.stock_declaration_production,
             'stock_declaration_warehouse': user.stock_declaration_warehouse,
             'stock_declaration_purchasing': user.stock_declaration_purchasing,
+            'overtime_user': user.overtime_user,
+            'overtime_role': overtime_role,
+            'overtime_requestor': user.overtime_requestor,
+            'overtime_facilitator': user.overtime_facilitator,
+            'overtime_shuttle_admin': user.overtime_shuttle_admin,
             'docunotification_user': user.docunotification_user,
             'docunotification_role': docunotification_role,
             'docunotification_requestor': user.docunotification_requestor,

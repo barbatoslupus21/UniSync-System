@@ -48,6 +48,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const editQualityControlRoles = document.getElementById('edit-quality-control-roles');
     const editStockDeclarationUser = document.getElementById('edit-stock-declaration-user');
     const editStockDeclarationRoles = document.getElementById('edit-stock-declaration-roles');
+    
+    // Overtime permissions
+    const overtimeUser = document.getElementById('overtime-user');
+    const overtimeRoles = document.getElementById('overtime-roles');
+    const editOvertimeUser = document.getElementById('edit-overtime-user');
+    const editOvertimeRoles = document.getElementById('edit-overtime-roles');
+    
     const docunotificationUser = document.getElementById('docunotification-user');
     const docunotificationRoles = document.getElementById('docunotification-roles');
     const docunotificationRoleValidation = document.getElementById('docunotification-role-validation');
@@ -427,6 +434,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Overtime user checkbox
+    if (overtimeUser) {
+        // Set initial state
+        if (overtimeUser.checked && overtimeRoles) {
+            overtimeRoles.style.display = 'block';
+        }
+
+        overtimeUser.addEventListener('change', function() {
+            toggleSubpermissions(this, overtimeRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = overtimeRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
     // Meeting Scheduler user checkbox
     if (meetingSchedulerUser) {
         // Set initial state
@@ -625,6 +652,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     editDocunotificationRoleValidation.style.display = 'none';
                 }
             });
+        });
+    }
+
+    // Overtime user checkbox for edit form
+    if (editOvertimeUser) {
+        // Set initial state
+        if (editOvertimeUser.checked && editOvertimeRoles) {
+            editOvertimeRoles.style.display = 'block';
+        }
+
+        editOvertimeUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editOvertimeRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = editOvertimeRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
         });
     }
 
@@ -1218,6 +1265,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
+            // Overtime
+            if (userData.overtime_user && editOvertimeUser) {
+                editOvertimeUser.checked = true;
+                toggleSubpermissions(editOvertimeUser, editOvertimeRoles);
+
+                // Set Overtime role
+                const overtimeRoleRadios = editOvertimeRoles.querySelectorAll('input[type="radio"]');
+                overtimeRoleRadios.forEach(radio => {
+                    if (radio.value === 'requestor' && userData.overtime_requestor) {
+                        radio.checked = true;
+                    } else if (radio.value === 'facilitator' && userData.overtime_facilitator) {
+                        radio.checked = true;
+                    } else if (radio.value === 'shuttle_admin' && userData.overtime_shuttle_admin) {
+                        radio.checked = true;
+                    }
+                });
+            }
+
             // Meeting Scheduler
             if (userData.meetingscheduler_user && editMeetingSchedulerUser) {
                 editMeetingSchedulerUser.checked = true;
@@ -1345,6 +1410,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (editStockDeclarationRoles) {
             editStockDeclarationRoles.style.display = 'none';
+        }
+        if (editOvertimeRoles) {
+            editOvertimeRoles.style.display = 'none';
         }
         if (editDocunotificationRoles) {
             editDocunotificationRoles.style.display = 'none';

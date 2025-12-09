@@ -3,182 +3,202 @@ from django.utils import timezone
 from portalusers.models import Users
 from django.conf import settings
 
-class Employee(models.Model):
-    id_number = models.CharField(max_length=20, unique=True)
+
+class ShuttleVehicle(models.Model):
     name = models.CharField(max_length=100)
-    department = models.CharField(max_length=100, blank=True, null=True)
-    line = models.CharField(max_length=100, blank=True, null=True)
-    shuttle_service = models.CharField(max_length=100, blank=True, null=True)
-    date_added = models.DateTimeField(auto_now_add=True)
+    capacity = models.PositiveIntegerField(default=13)
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
 
     def __str__(self):
-        return f"{self.id_number} - {self.name}"
-    
-    def save(self, *args, **kwargs):
-        if self.name:
-            self.name = self.name.title()
-        super().save(*args, **kwargs)
-    
-    class Meta:
-        ordering = ['-date_added']
-        verbose_name = 'Employee'
-        verbose_name_plural = 'Employees'
+        return f"{self.name} (Capacity: {self.capacity})"
 
 
-class EmployeeGroup(models.Model):
+class ShuttleProvider(models.Model):
     name = models.CharField(max_length=100)
-    employees = models.ManyToManyField(Employee, related_name='groups')
-    created_by = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='created_groups')
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_updated = models.DateTimeField(auto_now=True)
+    contact_person = models.CharField(max_length=100, blank=True, null=True)
+    contact_number = models.CharField(max_length=50, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
 
     def __str__(self):
         return self.name
-    
+
+
+class Destination(models.Model):
+    name = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
-        ordering = ['-date_updated']
-        verbose_name = 'Employee Group'
-        verbose_name_plural = 'Employee Groups'
+        ordering = ['name']
 
-
-class OTFiling(models.Model):
-    FILING_TYPES = (
-        ('SHIFTING', 'Shifting OT'),
-        ('DAILY', 'Daily OT')
-    )
-    
-    STATUS_CHOICES = (
-        ('PENDING', 'Pending'),
-        ('COMPLETED', 'Completed'),
-        ('CANCELLED', 'Cancelled')
-    )
-    
-    filing_id = models.CharField(max_length=20, unique=True)
-    filing_type = models.CharField(max_length=10, choices=FILING_TYPES)
-    group = models.ForeignKey(EmployeeGroup, on_delete=models.PROTECT, related_name='ot_filings')
-    requestor = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='ot_filings')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
-    date_created = models.DateTimeField(auto_now_add=True)
-    date_updated = models.DateTimeField(auto_now=True)
-    
     def __str__(self):
-        return f"{self.filing_id} - {self.get_filing_type_display()}"
-    
+        return self.name
+
+
+class DestinationGroup(models.Model):
+    name = models.CharField(max_length=100)
+    shuttle_vehicle = models.ForeignKey(
+        ShuttleVehicle,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='destination_groups'
+    )
+    shuttle_provider = models.ForeignKey(
+        ShuttleProvider,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=False,
+        related_name='destination_groups'
+    )
+    destinations = models.ManyToManyField(
+        Destination,
+        related_name='groups',
+        blank=True
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        vehicle_name = self.shuttle_vehicle.name if self.shuttle_vehicle else "No Vehicle"
+        return f"{self.name} - {vehicle_name}"
+
+
+class UserShuttleAssignment(models.Model):
+    employee_id = models.CharField(max_length=200)
+    employee_name = models.CharField(max_length=200)
+    department = models.CharField(max_length=200, blank=True, null=True)
+    line_name = models.CharField(max_length=200, blank=True, null=True)
+    destination = models.ForeignKey(
+        Destination,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='user_assignments'
+    )
+    with_vehicle = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['employee_name']
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.destination.name if self.destination else 'Unassigned'}"
+
+class SubordinateGroup(models.Model):
+    name = models.CharField(max_length=100)
+    created_by = models.ForeignKey(
+        Users,
+        on_delete=models.CASCADE,
+        related_name='subordinate_groups'
+    )
+    employee_ids = models.JSONField(default=list)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['name', 'created_by']
+
+    def __str__(self):
+        return f"{self.name} - {self.created_by.name}"
+
+
+class OvertimeFiling(models.Model):
+    FILING_TYPE_CHOICES = [
+        ('shifting', 'Shifting'),
+        ('daily', 'Daily'),
+        ('saturday_off', 'Saturday Off'),
+        ('sunday', 'Sunday'),
+        ('holiday', 'Holiday'),
+    ]
+
+    STATUS_CHOICES = [
+        ('not_ot', 'Not OT'),
+        ('ot', 'OT'),
+        ('absent', 'Absent'),
+        ('leave', 'Leave'),
+    ]
+
+    SHIFT_CHOICES = [
+        ('day', 'Day Shift'),
+        ('night', 'Night Shift'),
+        ('mid', 'Mid Shift'),
+    ]
+
+    filing_type = models.CharField(max_length=20, choices=FILING_TYPE_CHOICES)
+    employee_id = models.CharField(max_length=200)
+    employee_name = models.CharField(max_length=200)
+    department = models.CharField(max_length=200, blank=True, null=True)
+    line_name = models.CharField(max_length=200, blank=True, null=True)
+    shift = models.CharField(max_length=20, choices=SHIFT_CHOICES)
+    time_in = models.TimeField()
+    time_out = models.TimeField()
+    date_from = models.DateField()
+    date_to = models.DateField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ot')
+    filed_by = models.ForeignKey(
+        Users,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='overtime_filings'
+    )
+    is_late_filing = models.BooleanField(default=False)
+    late_filing_approved_by = models.CharField(max_length=200, blank=True, null=True)
+    week_number = models.PositiveIntegerField(null=True, blank=True)
+    year = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.employee_name} - {self.filing_type} - {self.date_from}"
+
     def save(self, *args, **kwargs):
-        if not self.filing_id:
-            prefix = "SFT" if self.filing_type == "SHIFTING" else "DLY"
-            date_str = timezone.now().strftime('%Y%m%d')
-            
-            today_start = timezone.now().replace(hour=0, minute=0, second=0)
-            count = OTFiling.objects.filter(date_created__gte=today_start, filing_type=self.filing_type).count() + 1
-            
-            self.filing_id = f"{prefix}{date_str}{count:03d}"
-        
+        if self.date_from:
+            self.week_number = self.date_from.isocalendar()[1]
+            self.year = self.date_from.year
         super().save(*args, **kwargs)
-    
-    class Meta:
-        ordering = ['-date_created']
-        verbose_name = 'OT Filing'
-        verbose_name_plural = 'OT Filings'
 
 
-class ShiftingOT(models.Model):
-    filing = models.OneToOneField(OTFiling, on_delete=models.CASCADE, primary_key=True, related_name='shifting_details')
-    start_date = models.DateField()
-    end_date = models.DateField()
-    shift_type = models.CharField(max_length=2, choices=(('AM', 'AM Shift'), ('PM', 'PM Shift')))
-    
+class OvertimePasscode(models.Model):
+    passcode = models.CharField(max_length=50)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
-        return f"{self.filing.filing_id} - {self.shift_type} ({self.start_date} to {self.end_date})"
-    
+        return f"Passcode (Active: {self.is_active})"
+
+
+class Holiday(models.Model):
+    name = models.CharField(max_length=200)
+    date = models.DateField(unique=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
-        verbose_name = 'Shifting OT'
-        verbose_name_plural = 'Shifting OTs'
+        ordering = ['date']
 
-
-class DailyOT(models.Model):
-    SCHEDULE_CHOICES = (
-        ('WEEKDAY', 'Weekday'),
-        ('SATURDAY', 'Saturday'),
-        ('SUNDAY', 'Sunday'),
-        ('HOLIDAY', 'Holiday')
-    )
-    
-    filing = models.OneToOneField(OTFiling, on_delete=models.CASCADE, primary_key=True, related_name='daily_details')
-    date = models.DateField()
-    schedule_type = models.CharField(max_length=10, choices=SCHEDULE_CHOICES)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-    reason = models.TextField()
-    
     def __str__(self):
-        return f"{self.filing.filing_id} - {self.get_schedule_type_display()} ({self.date})"
-    
-    class Meta:
-        verbose_name = 'Daily OT'
-        verbose_name_plural = 'Daily OTs'
-
-
-class EmployeeOTStatus(models.Model):
-    STATUS_CHOICES = (
-        ('OT', 'OT'),
-        ('NOT-OT', 'Not OT'),
-        ('ABSENT', 'Absent'),
-        ('LEAVE', 'Leave')
-    )
-    
-    filing = models.ForeignKey(OTFiling, on_delete=models.CASCADE, related_name='employee_statuses')
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='ot_statuses')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES)
-    
-    def __str__(self):
-        return f"{self.employee.name} - {self.get_status_display()} ({self.filing.filing_id})"
-    
-    class Meta:
-        unique_together = ('filing', 'employee')
-        verbose_name = 'Employee OT Status'
-        verbose_name_plural = 'Employee OT Statuses'
-
-
-class LateFilingPassword(models.Model):
-    PASSWORD_TYPES = (
-        ('SHIFTING', 'Shifting OT Password'),
-        ('DAILY', 'Daily OT Password'),
-        ('WEEKEND', 'Weekend/Holiday Password'),
-        ('HOLIDAY', 'Holiday Filing Password')
-    )
-    
-    password_type = models.CharField(max_length=10, choices=PASSWORD_TYPES, unique=True)
-    password = models.CharField(max_length=50)
-    last_updated = models.DateTimeField(auto_now=True)
-    updated_by = models.ForeignKey(Users, on_delete=models.SET_NULL, null=True, related_name='updated_passwords')
-    
-    def __str__(self):
-        return f"{self.get_password_type_display()}"
-    
-    class Meta:
-        verbose_name = 'Late Filing Password'
-        verbose_name_plural = 'Late Filing Passwords'
-
-
-class SystemActivity(models.Model):
-    ACTIVITY_TYPES = (
-        ('EXPORT', 'Export'),
-        ('PASSWORD', 'Password Change'),
-        ('LOGIN', 'Login/Logout'),
-        ('OTHER', 'Other')
-    )
-    
-    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name='system_activities')
-    activity_type = models.CharField(max_length=10, choices=ACTIVITY_TYPES)
-    description = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"{self.get_activity_type_display()} - {self.user.username} ({self.timestamp})"
-    
-    class Meta:
-        ordering = ['-timestamp']
-        verbose_name = 'System Activity'
-        verbose_name_plural = 'System Activities'
+        return f"{self.name} - {self.date}"

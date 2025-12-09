@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', function() {
         attendeeSearch: document.getElementById('attendee-search'),
         selectedAttendees: document.getElementById('selected-attendees'),
         availabilityIndicator: document.getElementById('availability-indicator'),
+        meetingRepetition: document.getElementById('meeting-repetition'),
+        repetitionEndGroup: document.getElementById('repetition-end-group'),
+        repetitionEndDate: document.getElementById('repetition-end-date'),
         
         // Detail Modal
         meetingDetailModal: document.getElementById('meeting-detail-modal'),
@@ -68,7 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Utility functions
     const formatDate = (date) => {
-        return date.toISOString().split('T')[0];
+        // Use local date components to avoid timezone shifting
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     const formatDateDisplay = (date) => {
@@ -521,10 +528,24 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.selectedAttendees.innerHTML = '';
         elements.availabilityIndicator.style.display = 'none';
         
+        // Reset repetition fields
+        if (elements.meetingRepetition) {
+            elements.meetingRepetition.value = 'once';
+            elements.meetingRepetition.closest('.form-group').style.display = 'block';
+            elements.repetitionEndGroup.style.display = 'none';
+            elements.repetitionEndDate.value = '';
+        }
+        
         // Reset attendee search
         if (elements.attendeeSearch) {
             elements.attendeeSearch.value = '';
             filterAttendees('');
+        }
+        
+        // Hide capacity indicator
+        const capacityIndicator = document.getElementById('capacity-indicator');
+        if (capacityIndicator) {
+            capacityIndicator.style.display = 'none';
         }
         
         // Set default date
@@ -552,6 +573,13 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.meetingStartTime.value = meeting.start_time;
         elements.meetingEndTime.value = meeting.end_time;
         elements.meetingDescription.value = meeting.description || '';
+        
+        // Hide repetition fields when editing (repetition only applies to new meetings)
+        if (elements.meetingRepetition) {
+            elements.meetingRepetition.value = 'once';
+            elements.meetingRepetition.closest('.form-group').style.display = 'none';
+            elements.repetitionEndGroup.style.display = 'none';
+        }
         
         // Reset attendee search
         if (elements.attendeeSearch) {
@@ -749,6 +777,22 @@ document.addEventListener('DOMContentLoaded', function() {
         const attendeeIds = Array.from(elements.selectedAttendees.querySelectorAll('.selected-attendee'))
             .map(el => parseInt(el.dataset.id));
         
+        // Get repetition settings
+        const repetition = elements.meetingRepetition?.value || 'once';
+        const repetitionEndDate = elements.repetitionEndDate?.value || null;
+        
+        // Validate repetition end date if repetition is not 'once'
+        if (repetition !== 'once' && !state.editingMeetingId) {
+            if (!repetitionEndDate) {
+                showToast('Please select an end date for the repeating meeting', 'error');
+                return;
+            }
+            if (repetitionEndDate <= elements.meetingDate.value) {
+                showToast('Repeat end date must be after the meeting date', 'error');
+                return;
+            }
+        }
+        
         const data = {
             title: elements.meetingTitle.value.trim(),
             room: parseInt(elements.meetingRoom.value),
@@ -757,7 +801,9 @@ document.addEventListener('DOMContentLoaded', function() {
             start_time: elements.meetingStartTime.value,
             end_time: elements.meetingEndTime.value,
             description: elements.meetingDescription.value.trim(),
-            attendees: attendeeIds
+            attendees: attendeeIds,
+            repetition: repetition,
+            repetition_end_date: repetitionEndDate
         };
         
         try {
@@ -1053,6 +1099,49 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Room change - also check capacity
         elements.meetingRoom.addEventListener('change', checkCapacity);
+
+        // Repetition change - show/hide end date field
+        if (elements.meetingRepetition) {
+            elements.meetingRepetition.addEventListener('change', (e) => {
+                const repetition = e.target.value;
+                if (repetition === 'once') {
+                    elements.repetitionEndGroup.style.display = 'none';
+                    elements.repetitionEndDate.value = '';
+                } else {
+                    elements.repetitionEndGroup.style.display = 'block';
+                    // Set default end date based on repetition type
+                    const startDate = new Date(elements.meetingDate.value || new Date());
+                    let endDate = new Date(startDate);
+                    switch(repetition) {
+                        case 'daily':
+                            endDate.setDate(endDate.getDate() + 7); // 1 week by default
+                            break;
+                        case 'weekly':
+                            endDate.setMonth(endDate.getMonth() + 1); // 1 month by default
+                            break;
+                        case 'monthly':
+                            endDate.setFullYear(endDate.getFullYear() + 1); // 1 year by default
+                            break;
+                        case 'yearly':
+                            endDate.setFullYear(endDate.getFullYear() + 3); // 3 years by default
+                            break;
+                    }
+                    elements.repetitionEndDate.value = formatDate(endDate);
+                    elements.repetitionEndDate.min = elements.meetingDate.value;
+                }
+            });
+        }
+
+        // Update repetition end date min when meeting date changes
+        elements.meetingDate.addEventListener('change', () => {
+            if (elements.repetitionEndDate) {
+                elements.repetitionEndDate.min = elements.meetingDate.value;
+                // If end date is before start date, clear it
+                if (elements.repetitionEndDate.value && elements.repetitionEndDate.value <= elements.meetingDate.value) {
+                    elements.repetitionEndDate.value = '';
+                }
+            }
+        });
 
         // Close modals on overlay click
         [elements.createMeetingModal, elements.meetingDetailModal, elements.deleteMeetingModal]

@@ -1,72 +1,66 @@
 from django.contrib import admin
 from .models import (
-    Employee, EmployeeGroup, OTFiling, ShiftingOT, 
-    DailyOT, EmployeeOTStatus, LateFilingPassword, SystemActivity
+    ShuttleVehicle,
+    DestinationGroup,
+    UserShuttleAssignment,
+    SubordinateGroup,
+    OvertimeFiling,
+    OvertimePasscode,
+    Holiday
 )
 
-class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('id_number', 'name', 'department', 'line', 'shuttle_service', 'is_active')
-    list_filter = ('department', 'line', 'is_active')
-    search_fields = ('id_number', 'name', 'department', 'line')
-    list_per_page = 20
 
-class EmployeeGroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'created_by', 'date_created', 'employee_count')
-    list_filter = ('created_by',)
-    search_fields = ('name',)
-    
-    def employee_count(self, obj):
-        return obj.employees.count()
-    employee_count.short_description = 'Number of Employees'
+@admin.register(ShuttleVehicle)
+class ShuttleVehicleAdmin(admin.ModelAdmin):
+    list_display = ['name', 'capacity', 'is_active', 'created_at']
+    list_filter = ['is_active']
+    search_fields = ['name']
+    ordering = ['name']
 
-class EmployeeOTStatusInline(admin.TabularInline):
-    model = EmployeeOTStatus
-    extra = 0
 
-class ShiftingOTInline(admin.StackedInline):
-    model = ShiftingOT
-    can_delete = False
+@admin.register(DestinationGroup)
+class DestinationGroupAdmin(admin.ModelAdmin):
+    list_display = ['name', 'shuttle_vehicle', 'is_active', 'created_at']
+    list_filter = ['is_active', 'shuttle_vehicle']
+    search_fields = ['name']
+    ordering = ['name']
 
-class DailyOTInline(admin.StackedInline):
-    model = DailyOT
-    can_delete = False
 
-class OTFilingAdmin(admin.ModelAdmin):
-    list_display = ('filing_id', 'filing_type', 'group', 'requestor', 'status', 'date_created')
-    list_filter = ('filing_type', 'status', 'requestor')
-    search_fields = ('filing_id', 'group__name', 'requestor__username')
-    readonly_fields = ('filing_id',)
-    inlines = [ShiftingOTInline, DailyOTInline, EmployeeOTStatusInline]
-    
-    def get_inlines(self, request, obj=None):
-        if obj is None:
-            return []
-        
-        if obj.filing_type == 'SHIFTING':
-            return [ShiftingOTInline, EmployeeOTStatusInline]
-        elif obj.filing_type == 'DAILY':
-            return [DailyOTInline, EmployeeOTStatusInline]
-        
-        return super().get_inlines(request, obj)
+@admin.register(UserShuttleAssignment)
+class UserShuttleAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['employee_name', 'employee_id', 'department', 'line_name', 'destination', 'updated_at']
+    list_filter = ['destination', 'department']
+    search_fields = ['employee_name', 'employee_id', 'department', 'line_name']
+    ordering = ['employee_name']
 
-class LateFilingPasswordAdmin(admin.ModelAdmin):
-    list_display = ('get_password_type_display', 'password', 'last_updated', 'updated_by')
-    list_filter = ('password_type',)
-    
-class SystemActivityAdmin(admin.ModelAdmin):
-    list_display = ('user', 'activity_type', 'description', 'timestamp')
-    list_filter = ('activity_type', 'user', 'timestamp')
-    search_fields = ('description', 'user__username')
-    readonly_fields = ('user', 'activity_type', 'description', 'timestamp')
-    
-    def has_add_permission(self, request):
-        return False
-    
-    def has_change_permission(self, request, obj=None):
-        return False
 
-admin.site.register(Employee, EmployeeAdmin)
-admin.site.register(EmployeeGroup, EmployeeGroupAdmin)
-admin.site.register(OTFiling, OTFilingAdmin)
-admin.site.register(LateFilingPassword, LateFilingPasswordAdmin)
-admin.site.register(SystemActivity, SystemActivityAdmin)
+@admin.register(SubordinateGroup)
+class SubordinateGroupAdmin(admin.ModelAdmin):
+    list_display = ['name', 'created_by', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_by']
+    search_fields = ['name', 'created_by__name']
+    ordering = ['-created_at']
+
+
+@admin.register(OvertimeFiling)
+class OvertimeFilingAdmin(admin.ModelAdmin):
+    list_display = ['employee_name', 'filing_type', 'shift', 'date_from', 'date_to', 'status', 'filed_by', 'is_late_filing', 'created_at']
+    list_filter = ['filing_type', 'status', 'shift', 'is_late_filing', 'filed_by']
+    search_fields = ['employee_name', 'employee_id', 'department', 'line_name']
+    ordering = ['-created_at']
+    date_hierarchy = 'date_from'
+
+
+@admin.register(OvertimePasscode)
+class OvertimePasscodeAdmin(admin.ModelAdmin):
+    list_display = ['passcode', 'is_active', 'created_at', 'updated_at']
+    list_filter = ['is_active']
+
+
+@admin.register(Holiday)
+class HolidayAdmin(admin.ModelAdmin):
+    list_display = ['name', 'date', 'is_active', 'created_at']
+    list_filter = ['is_active']
+    search_fields = ['name']
+    ordering = ['date']
+    date_hierarchy = 'date'

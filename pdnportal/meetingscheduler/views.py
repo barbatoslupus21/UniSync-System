@@ -212,48 +212,121 @@ def create_meeting(request):
         start_time = datetime.strptime(data['start_time'], '%H:%M').time()
         end_time = datetime.strptime(data['end_time'], '%H:%M').time()
         
-        # Check for overlapping meetings
-        is_available, conflicting_meeting = Meeting.check_availability(
-            room, meeting_date, start_time, end_time
-        )
+        # Get repetition settings
+        repetition = data.get('repetition', 'once')
+        repetition_end_date = None
+        if repetition != 'once' and data.get('repetition_end_date'):
+            repetition_end_date = datetime.strptime(data['repetition_end_date'], '%Y-%m-%d').date()
         
-        if not is_available:
-            return JsonResponse({
-                'error': f'Time slot conflicts with "{conflicting_meeting.title}" '
-                         f'({conflicting_meeting.start_time.strftime("%H:%M")} - '
-                         f'{conflicting_meeting.end_time.strftime("%H:%M")})'
-            }, status=400)
+        # Generate all meeting dates based on repetition
+        meeting_dates = [meeting_date]
+        if repetition != 'once' and repetition_end_date:
+            current_date = meeting_date
+            while True:
+                if repetition == 'daily':
+                    current_date = current_date + timedelta(days=1)
+                    # Skip weekends for daily repetition (0=Monday, 6=Sunday)
+                    while current_date.weekday() >= 5:  # Saturday(5) or Sunday(6)
+                        current_date = current_date + timedelta(days=1)
+                elif repetition == 'weekly':
+                    current_date = current_date + timedelta(weeks=1)
+                elif repetition == 'monthly':
+                    # Add one month
+                    month = current_date.month + 1
+                    year = current_date.year
+                    if month > 12:
+                        month = 1
+                        year += 1
+                    # Handle edge case for months with fewer days
+                    day = min(current_date.day, 28)  # Safe day to avoid issues
+                    try:
+                        current_date = date(year, month, day)
+                    except ValueError:
+                        # If day doesn't exist in target month, use last day
+                        current_date = date(year, month, 28)
+                elif repetition == 'yearly':
+                    try:
+                        current_date = date(current_date.year + 1, current_date.month, current_date.day)
+                    except ValueError:
+                        # Handle Feb 29 in non-leap years
+                        current_date = date(current_date.year + 1, current_date.month, 28)
+                
+                if current_date > repetition_end_date:
+                    break
+                meeting_dates.append(current_date)
+                
+                # Safety limit to prevent infinite loops
+                if len(meeting_dates) > 365:
+                    break
         
         meeting_type = None
         if data.get('meeting_type'):
             meeting_type = MeetingType.objects.filter(id=data['meeting_type']).first()
         
-        meeting = Meeting.objects.create(
-            title=data['title'],
-            description=data.get('description', ''),
-            room=room,
-            meeting_type=meeting_type,
-            date=meeting_date,
-            start_time=start_time,
-            end_time=end_time,
-            location=data.get('location', ''),
-            organizer=request.user
-        )
-        
-        # Add attendees
+        # Get attendees
+        attendees = []
         if data.get('attendees'):
             attendees = Users.objects.filter(id__in=data['attendees'])
-            meeting.attendees.set(attendees)
+        
+        # Create meetings for all dates
+        created_meetings = []
+        skipped_dates = []
+        
+        for m_date in meeting_dates:
+            # Check for overlapping meetings
+            is_available, conflicting_meeting = Meeting.check_availability(
+                room, m_date, start_time, end_time
+            )
+            
+            if not is_available:
+                skipped_dates.append({
+                    'date': m_date.strftime('%Y-%m-%d'),
+                    'reason': f'Conflicts with "{conflicting_meeting.title}"'
+                })
+                continue
+            
+            meeting = Meeting.objects.create(
+                title=data['title'],
+                description=data.get('description', ''),
+                room=room,
+                meeting_type=meeting_type,
+                date=m_date,
+                start_time=start_time,
+                end_time=end_time,
+                location=data.get('location', ''),
+                organizer=request.user
+            )
+            
+            # Add attendees
+            if attendees:
+                meeting.attendees.set(attendees)
+            
+            created_meetings.append(meeting)
+        
+        if not created_meetings:
+            return JsonResponse({
+                'error': 'Could not create any meetings due to conflicts',
+                'skipped_dates': skipped_dates
+            }, status=400)
+        
+        # Build response message
+        message = f'Meeting created successfully'
+        if len(created_meetings) > 1:
+            message = f'{len(created_meetings)} meetings created successfully'
+        if skipped_dates:
+            message += f' ({len(skipped_dates)} dates skipped due to conflicts)'
         
         return JsonResponse({
             'success': True,
-            'message': 'Meeting created successfully',
+            'message': message,
+            'meetings_created': len(created_meetings),
+            'skipped_dates': skipped_dates,
             'meeting': {
-                'id': meeting.id,
-                'title': meeting.title,
-                'date': meeting.date.strftime('%Y-%m-%d'),
-                'start_time': meeting.start_time.strftime('%H:%M'),
-                'end_time': meeting.end_time.strftime('%H:%M')
+                'id': created_meetings[0].id,
+                'title': created_meetings[0].title,
+                'date': created_meetings[0].date.strftime('%Y-%m-%d'),
+                'start_time': created_meetings[0].start_time.strftime('%H:%M'),
+                'end_time': created_meetings[0].end_time.strftime('%H:%M')
             }
         })
         

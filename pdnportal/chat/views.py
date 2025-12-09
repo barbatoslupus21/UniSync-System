@@ -535,7 +535,7 @@ def search_contacts(request):
             'name': user.name or user.username,
             'avatar_url': user.avatar.url if user.avatar else None,
             'title': user.position or '',
-            'department': ', '.join([line.line_name for line in user.line.all()]) if user.line.exists() else '',
+            'department': user.line.line_name if user.line else '',
             'is_contact': user.id in contacts
         })
 
@@ -792,7 +792,7 @@ def get_chat_data(chat, user):
                         'id': participant.id,
                         'name': participant.name or participant.username,
                         'avatar_url': participant.avatar.url if participant.avatar else None,
-                        'department': ', '.join([line.line_name for line in participant.line.all()]) if participant.line.exists() else '',
+                        'department': participant.line.line_name if participant.line else '',
                         'title': participant.position or '',
                         'role': role,
                         'online': get_user_online_status(participant)
@@ -991,7 +991,7 @@ def get_current_user(request):
         'username': user.username,
         'avatar_url': user.avatar.url if user.avatar else None,
         'position': user.position or '',
-        'department': ', '.join([line.line_name for line in user.line.all()]) if user.line.exists() else ''
+        'department': user.line.line_name if user.line else ''
     })
 
 @login_required

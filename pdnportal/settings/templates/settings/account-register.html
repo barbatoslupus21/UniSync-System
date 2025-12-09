@@ -149,6 +149,10 @@
                                             <span class="UM-permission-pill UM-stock-declaration-pill">Stock Declaration</span>
                                             {% endif %}
 
+                                            {% if user.overtime_user %}
+                                            <span class="UM-permission-pill UM-overtime-pill">Overtime</span>
+                                            {% endif %}
+
                                             {% if user.dcf_user %}
                                             <span class="UM-permission-pill UM-dcf-pill">DCF</span>
                                             {% endif %}
@@ -587,6 +591,35 @@
                                     <span class="UM-radio-label">Purchasing</span>
                                 </label>
 
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overtime Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="overtime-user" name="overtime_user">
+                                <span class="UM-checkbox-label UM-category-label">Overtime Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="overtime-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="overtime_role" value="requestor">
+                                    <span class="UM-radio-label">Requestor</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="overtime_role" value="facilitator">
+                                    <span class="UM-radio-label">Facilitator</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="overtime_role" value="shuttle_admin">
+                                    <span class="UM-radio-label">Shuttle Admin</span>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -1062,6 +1095,35 @@
                                     <span class="UM-radio-label">Purchasing</span>
                                 </label>
 
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Overtime Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-overtime-user" name="overtime_user">
+                                <span class="UM-checkbox-label UM-category-label">Overtime Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-overtime-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="overtime_role" value="requestor">
+                                    <span class="UM-radio-label">Requestor</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="overtime_role" value="facilitator">
+                                    <span class="UM-radio-label">Facilitator</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="overtime_role" value="shuttle_admin">
+                                    <span class="UM-radio-label">Shuttle Admin</span>
+                                </label>
                             </div>
                         </div>
                     </div>

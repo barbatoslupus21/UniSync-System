@@ -1,0 +1,607 @@
+{% extends 'main.html' %}
+{% load static %}
+
+{% block title %}UniSync - Overtime Filing{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/job-order.css' %}">
+<link rel="stylesheet" href="{% static 'css/overtime/overtime.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
+<link rel="stylesheet" href="{% static 'css/stockdeclaration/stockdeclaration.css' %}">
+<link rel="stylesheet" href="{% static 'css/style-ver2.css' %}">
+{% endblock %}
+
+{% block content %}
+<main class="main-content">
+    <div class="JO-header">
+        <div class="JO-title-section">
+            <h1 class="JO-page-title">Overtime Filing</h1>
+            <p class="JO-subtitle">Schedule, manage, and track overtime efficiently</p>
+        </div>
+    </div>
+
+    <div class="content-tabs">
+        <div class="tab-nav">
+            <button class="tab-btn active" data-tab="shifting">
+                <i class="fa-solid fa-calendar-week"></i>
+                Shifting (Weekly)
+            </button>
+            <button class="tab-btn" data-tab="daily">
+                <i class="fa-solid fa-calendar-day"></i>
+                Daily
+            </button>
+            <button class="tab-btn" data-tab="groups">
+                <i class="fa-solid fa-users-rectangle"></i>
+                Subordinate Groups
+            </button>
+            <button class="tab-btn" data-tab="history">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                Filing History
+            </button>
+        </div>
+    </div>
+
+    <div class="tab-content active" id="tab-shifting">
+        <div class="ot-filing-layout">
+            <div class="ot-filing-sidebar">
+                <div class="JO-card">
+                    <div class="JO-card-header">
+                        <h2><i class="fa-solid fa-user-group"></i> Subordinates</h2>
+                        <button class="btn btn-sm btn-outline" id="load-from-group-btn-shifting">
+                            <i class="fa-solid fa-folder-open"></i>
+                            Load Group
+                        </button>
+                    </div>
+                    <div class="ot-search-container">
+                        <input type="text" class="form-control" id="subordinate-search-shifting" placeholder="Search subordinates...">
+                    </div>
+                    <div class="ot-subordinate-list" id="subordinate-list-shifting">
+                        <div class="ot-loading">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span>Loading subordinates...</span>
+                        </div>
+                    </div>
+                    <div class="ot-selected-summary" id="selected-summary-shifting">
+                        <span class="selected-count">0 selected</span>
+                        <button class="btn btn-sm btn-primary" id="add-selected-shifting" disabled>
+                            <i class="fa-solid fa-plus"></i>
+                            Add Selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ot-filing-main">
+                <div class="JO-card">
+                    <div class="JO-card-header">
+                        <h2><i class="fa-solid fa-file-invoice"></i> Shifting Filing</h2>
+                        <div class="JO-card-actions">
+                            <button class="btn btn-sm btn-outline" id="clear-all-shifting">
+                                <i class="fa-solid fa-trash"></i>
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ot-filing-form">
+                        <div class="two-column-row">
+                            <div class="two-column-half">
+                                <label class="form-label">Date Range <span class="input-required">*</span></label>
+                                <div class="date-range-inputs">
+                                    <input type="date" class="form-control" id="shifting-date-from">
+                                    <span class="date-separator">to</span>
+                                    <input type="date" class="form-control" id="shifting-date-to">
+                                </div>
+                            </div>
+                            <div class="two-column-half">
+                                <label class="form-label">Shift <span class="input-required">*</span></label>
+                                <select class="form-control" id="shifting-shift">
+                                    <option value="">Select Shift</option>
+                                    <option value="day">Day Shift</option>
+                                    <option value="night">Night Shift</option>
+                                    <option value="mid">Mid Shift</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="two-column-row">
+                            <div class="two-column-half">
+                                <label class="form-label">Time In <span class="input-required">*</span></label>
+                                <input type="time" class="form-control" id="shifting-time-in">
+                            </div>
+                            <div class="two-column-half">
+                                <label class="form-label">Time Out <span class="input-required">*</span></label>
+                                <input type="time" class="form-control" id="shifting-time-out">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ot-employee-table-container">
+                        <table class="Unisync-table" id="shifting-employee-table">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Department</th>
+                                    <th>Shuttle Destination</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shifting-employee-tbody">
+                                <tr class="empty-row">
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <i class="fa-solid fa-user-plus"></i>
+                                            <h5>No employees added</h5>
+                                            <p>Select subordinates from the list and click "Add Selected"</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="ot-filing-actions">
+                        <div class="ot-cutoff-info" id="shifting-cutoff-info">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>Cutoff: Every Thursday</span>
+                        </div>
+                        <button class="btn btn-primary" id="submit-shifting">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            Submit Filing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-daily">
+        <div class="ot-filing-layout">
+            <div class="ot-filing-sidebar">
+                <div class="JO-card">
+                    <div class="JO-card-header">
+                        <h2><i class="fa-solid fa-user-group"></i> Subordinates</h2>
+                        <button class="btn btn-sm btn-outline" id="load-from-group-btn-daily">
+                            <i class="fa-solid fa-folder-open"></i>
+                            Load Group
+                        </button>
+                    </div>
+                    <div class="ot-search-container">
+                        <input type="text" class="form-control" id="subordinate-search-daily" placeholder="Search subordinates...">
+                    </div>
+                    <div class="ot-subordinate-list" id="subordinate-list-daily">
+                        <div class="ot-loading">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                            <span>Loading subordinates...</span>
+                        </div>
+                    </div>
+                    <div class="ot-selected-summary" id="selected-summary-daily">
+                        <span class="selected-count">0 selected</span>
+                        <button class="btn btn-sm btn-primary" id="add-selected-daily" disabled>
+                            <i class="fa-solid fa-plus"></i>
+                            Add Selected
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ot-filing-main">
+                <div class="JO-card">
+                    <div class="JO-card-header">
+                        <h2><i class="fa-solid fa-file-invoice"></i> Daily Filing</h2>
+                        <div class="JO-card-actions">
+                            <button class="btn btn-sm btn-outline" id="clear-all-daily">
+                                <i class="fa-solid fa-trash"></i>
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="ot-filing-form">
+                        <div class="two-column-row">
+                            <div class="two-column-half">
+                                <label class="form-label">Filing Type <span class="input-required">*</span></label>
+                                <select class="form-control" id="daily-filing-type">
+                                    <option value="daily">Daily</option>
+                                    <option value="saturday_off">Saturday Off</option>
+                                    <option value="sunday">Sunday</option>
+                                    <option value="holiday">Holiday</option>
+                                </select>
+                            </div>
+                            <div class="two-column-half">
+                                <label class="form-label">Date <span class="input-required">*</span></label>
+                                <input type="date" class="form-control" id="daily-date">
+                            </div>
+                        </div>
+                        <div class="two-column-row">
+                            <div class="two-column-half">
+                                <label class="form-label">Shift <span class="input-required">*</span></label>
+                                <select class="form-control" id="daily-shift">
+                                    <option value="">Select Shift</option>
+                                    <option value="day">Day Shift</option>
+                                    <option value="night">Night Shift</option>
+                                    <option value="mid">Mid Shift</option>
+                                </select>
+                            </div>
+                            <div class="two-column-half">
+                                <label class="form-label">Time</label>
+                                <div class="time-range-inputs">
+                                    <input type="time" class="form-control" id="daily-time-in" placeholder="Time In">
+                                    <span class="time-separator">-</span>
+                                    <input type="time" class="form-control" id="daily-time-out" placeholder="Time Out">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ot-employee-table-container">
+                        <table class="Unisync-table" id="daily-employee-table">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Department</th>
+                                    <th>Shuttle Destination</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-employee-tbody">
+                                <tr class="empty-row">
+                                    <td colspan="5">
+                                        <div class="empty-state">
+                                            <i class="fa-solid fa-user-plus"></i>
+                                            <h5>No employees added</h5>
+                                            <p>Select subordinates from the list and click "Add Selected"</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="ot-filing-actions">
+                        <div class="ot-cutoff-info" id="daily-cutoff-info">
+                            <i class="fa-solid fa-clock"></i>
+                            <span>Cutoff: 11:00 AM (Daily)</span>
+                        </div>
+                        <button class="btn btn-primary" id="submit-daily">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            Submit Filing
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-groups">
+        <div class="JO-card">
+            <div class="JO-card-header">
+                <h2><i class="fa-solid fa-users-rectangle"></i> Subordinate Groups</h2>
+                <button class="btn btn-primary" id="create-group-btn">
+                    <i class="fa-solid fa-plus"></i>
+                    Create Group
+                </button>
+            </div>
+            <div class="ot-groups-container" id="groups-container">
+                <div class="ot-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span>Loading groups...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-content" id="tab-history">
+        <div class="JO-card">
+            <div class="JO-card-header">
+                <h2><i class="fa-solid fa-clock-rotate-left"></i> Filing History</h2>
+                <div class="JO-card-actions">
+                    <div class="search-input-wrapper">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" class="form-control" id="history-search" placeholder="Search employee...">
+                    </div>
+                    <select class="form-control" id="history-filter-type">
+                        <option value="">All Types</option>
+                        <option value="shifting">Shifting</option>
+                        <option value="daily">Daily</option>
+                        <option value="saturday_off">Saturday Off</option>
+                        <option value="sunday">Sunday</option>
+                        <option value="holiday">Holiday</option>
+                    </select>
+                    <input type="date" class="form-control" id="history-filter-date">
+                </div>
+            </div>
+            <div class="common-table-container">
+                <table class="Unisync-table" id="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date Filed</th>
+                            <th>Type</th>
+                            <th>Overtime Date</th>
+                            <th>Employee</th>
+                            <th>Shift</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Late Filing</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-tbody">
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <i class="fa-solid fa-folder-open"></i>
+                                    <h5>No filing history</h5>
+                                    <p>Your overtime filings will appear here</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="history-pagination" id="history-pagination"></div>
+        </div>
+    </div>
+</main>
+
+<div class="modal-overlay" id="group-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3 id="group-modal-title">Create Group</h3>
+            <button class="modal-close" id="close-group-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">Group Name <span class="input-required">*</span></label>
+                <input type="text" class="form-control" id="group-name" placeholder="Enter group name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Select Subordinates <span class="input-required">*</span></label>
+                <div class="subordinate-search-container">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" class="form-control" id="group-subordinate-search" placeholder="Search by ID or name...">
+                </div>
+                <div class="ot-subordinate-checklist" id="group-subordinate-list"></div>
+            </div>
+            <div class="selected-subordinates-preview" id="selected-subordinates-preview">
+                <span class="preview-count">0 subordinates selected</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-group-modal">Cancel</button>
+            <button class="btn btn-primary" id="save-group">
+                <i class="fa-solid fa-save"></i>
+                Save Group
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="load-group-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3>Load Subordinate Group</h3>
+            <button class="modal-close" id="close-load-group-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="ot-groups-select-list" id="load-group-list"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-load-group-modal">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="passcode-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-sm">
+        <div class="modal-header">
+            <h3>Late Filing Authorization</h3>
+            <button class="modal-close" id="close-passcode-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="passcode-info">
+                <i class="fa-solid fa-clock"></i>
+                <p>This filing is past the cutoff time. Please enter the authorization passcode to continue.</p>
+            </div>
+            <form id="passcode-form" autocomplete="off">
+                <!-- Hidden username field for accessibility -->
+                <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true">
+                <div class="form-group">
+                    <label class="form-label">Passcode <span class="input-required">*</span></label>
+                    <input type="password" class="form-control" id="late-filing-passcode" placeholder="Enter passcode" autocomplete="current-password">
+                    <span class="error-message" id="passcode-error"></span>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-passcode-modal">Cancel</button>
+            <button class="btn btn-primary" id="verify-passcode-btn">
+                <i class="fa-solid fa-check"></i>
+                Verify & Submit
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="confirm-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-sm">
+        <div class="modal-body">
+            <div class="confirmation-content">
+                <div class="confirmation-icon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h4 id="confirm-title">Confirm Action</h4>
+                <p id="confirm-message">Are you sure you want to proceed?</p>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-confirm-modal">Cancel</button>
+            <button class="btn btn-error" id="confirm-action-btn">
+                <i class="fa-solid fa-check"></i>
+                Confirm
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="duplicate-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-copy"></i> Duplicate Entries Found</h3>
+            <button class="modal-close" id="close-duplicate-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="duplicate-warning">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>The following subordinates already have overtime filings for the same schedule. Do you want to update their existing entries?</p>
+            </div>
+            <div class="duplicate-list-container">
+                <table class="Unisync-table" id="duplicate-table">
+                    <thead>
+                        <tr>
+                            <th>Employee</th>
+                            <th>Department</th>
+                            <th>Existing Date</th>
+                            <th>Current Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="duplicate-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-duplicate-modal">Cancel</button>
+            <button class="btn btn-primary" id="update-duplicates-btn">
+                <i class="fa-solid fa-sync"></i>
+                Update Existing
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="success-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-sm">
+        <div class="modal-header">
+            <h3>Success</h3>
+            <button class="modal-close" id="close-success-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="success-content">
+                <div class="success-icon">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <p id="success-message">Overtime filing submitted successfully!</p>
+                <div class="success-countdown">
+                    <span>Closing in <span id="success-countdown">10</span> seconds...</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" id="close-success-btn">
+                <i class="fa-solid fa-check"></i>
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="status-select-modal-overlay">
+    <div class="modal-container ot-modal ot-modal-sm">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-user-check"></i> Select Status</h3>
+            <button class="modal-close" id="close-status-select-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="status-select-info">
+                <p>Choose a status to apply to <strong id="status-select-count">0</strong> selected subordinate(s):</p>
+            </div>
+            <div class="status-select-options">
+                <label class="status-option">
+                    <input type="radio" name="bulk-status" value="not_ot">
+                    <span class="status-option-label">
+                        <span class="status-indicator status-gray"></span>
+                        Not OT
+                    </span>
+                </label>
+                <label class="status-option">
+                    <input type="radio" name="bulk-status" value="ot" checked>
+                    <span class="status-option-label">
+                        <span class="status-indicator status-green"></span>
+                        OT
+                    </span>
+                </label>
+                <label class="status-option">
+                    <input type="radio" name="bulk-status" value="absent">
+                    <span class="status-option-label">
+                        <span class="status-indicator status-red"></span>
+                        Absent
+                    </span>
+                </label>
+                <label class="status-option">
+                    <input type="radio" name="bulk-status" value="leave">
+                    <span class="status-option-label">
+                        <span class="status-indicator status-yellow"></span>
+                        Leave
+                    </span>
+                </label>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancel-status-select-modal">Cancel</button>
+            <button class="btn btn-primary" id="confirm-status-select-btn">
+                <i class="fa-solid fa-check"></i>
+                Add Subordinates
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="missing-shifting-modal-overlay">
+    <div class="modal-container ot-modal">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-triangle-exclamation"></i> Shifting Schedule Required</h3>
+            <button class="modal-close" id="close-missing-shifting-modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="duplicate-warning">
+                <i class="fa-solid fa-calendar-xmark"></i>
+                <p>The following employees do not have a filed shifting schedule that covers the selected daily overtime date. Please file shifting overtime for these employees first before submitting daily overtime.</p>
+            </div>
+            <div class="duplicate-list-container">
+                <table class="Unisync-table" id="missing-shifting-table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Employee Name</th>
+                            <th>Department</th>
+                        </tr>
+                    </thead>
+                    <tbody id="missing-shifting-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" id="close-missing-shifting-btn">
+                <i class="fa-solid fa-check"></i>
+                Understood
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="{% static 'js/overtime/overtime.js' %}"></script>
+{% endblock %}

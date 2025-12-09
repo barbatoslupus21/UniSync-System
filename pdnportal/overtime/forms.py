@@ -1,222 +1,290 @@
-# overtime/forms.py
 from django import forms
 from django.core.exceptions import ValidationError
 from portalusers.models import Users
-from .models import Employee, EmployeeGroup, OTFiling, ShiftingOT, DailyOT, EmployeeOTStatus, LateFilingPassword
+from .models import (
+    ShuttleVehicle,
+    ShuttleProvider,
+    Destination,
+    DestinationGroup,
+    UserShuttleAssignment,
+    SubordinateGroup,
+    OvertimeFiling,
+    OvertimePasscode,
+    Holiday
+)
 
-class EmployeeForm(forms.ModelForm):
+
+class ShuttleVehicleForm(forms.ModelForm):
     class Meta:
-        model = Employee
-        fields = ['id_number', 'name', 'department', 'line']
-
-    def clean_id_number(self):
-        id_number = self.cleaned_data.get('id_number')
-
-        if Employee.objects.filter(id_number=id_number).exclude(pk=self.instance.pk if self.instance.pk else None).exists():
-            raise ValidationError("An employee with this ID number already exists.")
-
-        return id_number
+        model = ShuttleVehicle
+        fields = ['name', 'capacity', 'is_active']
 
     def clean_name(self):
         name = self.cleaned_data.get('name')
-        return name.title() if name else name
+        # Only check against active vehicles
+        qs = ShuttleVehicle.objects.filter(name__iexact=name, is_active=True)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("A shuttle vehicle with this name already exists.")
+        return name
 
-class EmployeeGroupForm(forms.ModelForm):
+    def clean_capacity(self):
+        capacity = self.cleaned_data.get('capacity')
+        if capacity and capacity < 1:
+            raise ValidationError("Capacity must be at least 1.")
+        return capacity
+
+
+class ShuttleProviderForm(forms.ModelForm):
     class Meta:
-        model = EmployeeGroup
-        fields = ['name', 'employees']
+        model = ShuttleProvider
+        fields = ['name', 'contact_person', 'contact_number', 'is_active']
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        qs = ShuttleProvider.objects.filter(name__iexact=name, is_active=True)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("A shuttle provider with this name already exists.")
+        return name
+
+
+class DestinationForm(forms.ModelForm):
+    """Form for individual destinations"""
+    class Meta:
+        model = Destination
+        fields = ['name', 'is_active']
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        qs = Destination.objects.filter(name__iexact=name, is_active=True)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("A destination with this name already exists.")
+        return name
+
+
+class DestinationGroupForm(forms.ModelForm):
+    """Form for destination groups (provider + vehicle + multiple destinations)"""
+    destination_ids = forms.CharField(required=False, widget=forms.HiddenInput())
+    
+    class Meta:
+        model = DestinationGroup
+        fields = ['name', 'shuttle_provider', 'shuttle_vehicle', 'is_active']
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        # Only check against active destination groups
+        qs = DestinationGroup.objects.filter(name__iexact=name, is_active=True)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise ValidationError("A destination group with this name already exists.")
+        return name
+
+
+class SubordinateGroupForm(forms.ModelForm):
+    class Meta:
+        model = SubordinateGroup
+        fields = ['name', 'employee_ids']
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
-        self.fields['employees'].queryset = Employee.objects.all()
-        self.fields['employees'].widget = forms.CheckboxSelectMultiple()
+
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if self.user:
+            if SubordinateGroup.objects.filter(
+                name__iexact=name,
+                created_by=self.user
+            ).exclude(pk=self.instance.pk if self.instance.pk else None).exists():
+                raise ValidationError("You already have a group with this name.")
+        return name
+
+    def clean_employee_ids(self):
+        employee_ids = self.cleaned_data.get('employee_ids')
+        if not employee_ids or len(employee_ids) == 0:
+            raise ValidationError("At least one employee must be selected.")
+        return employee_ids
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         if self.user and not instance.pk:
             instance.created_by = self.user
-
+        # Ensure is_active is True for new groups
+        if not instance.pk:
+            instance.is_active = True
         if commit:
             instance.save()
-            self.save_m2m()
-
         return instance
 
-class ShuttleAssignmentForm(forms.Form):
-    employee_id = forms.IntegerField(required=True)
-    shuttle_service = forms.CharField(required=False)
 
-    def clean_employee_id(self):
-        employee_id = self.cleaned_data.get('employee_id')
-
-        try:
-            employee = Employee.objects.get(pk=employee_id)
-        except Employee.DoesNotExist:
-            raise ValidationError("Employee does not exist.")
-
-        return employee_id
-
-class ShiftingOTForm(forms.Form):
-    group_id = forms.IntegerField(required=True)
-    start_date = forms.DateField(required=True)
-    end_date = forms.DateField(required=True)
-    shift_type = forms.ChoiceField(choices=[('AM', 'AM Shift'), ('PM', 'PM Shift')], required=True)
-    employee_statuses = forms.Field(required=True)  # Changed from JSONField to Field to accept both string and list
-    late_filing_password = forms.CharField(required=False)
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        self.late_filing = kwargs.pop('late_filing', False)
-        super().__init__(*args, **kwargs)
-
-    def clean_group_id(self):
-        group_id = self.cleaned_data.get('group_id')
-
-        try:
-            group = EmployeeGroup.objects.get(pk=group_id)
-
-            if self.user and group.created_by != self.user:
-                raise ValidationError("You don't have permission to use this group.")
-
-        except EmployeeGroup.DoesNotExist:
-            raise ValidationError("Employee group does not exist.")
-
-        return group_id
-
-    def clean_end_date(self):
-        start_date = self.cleaned_data.get('start_date')
-        end_date = self.cleaned_data.get('end_date')
-
-        if start_date and end_date and end_date < start_date:
-            raise ValidationError("End date must be after start date.")
-
-        return end_date
-
-    def clean_late_filing_password(self):
-        password = self.cleaned_data.get('late_filing_password')
-
-        if self.late_filing:
-            if not password:
-                raise ValidationError("Password is required for late filing.")
-
-            try:
-                stored_password = LateFilingPassword.objects.get(password_type='SHIFTING')
-                if password != stored_password.password:
-                    raise ValidationError("Invalid password for late filing.")
-            except LateFilingPassword.DoesNotExist:
-                raise ValidationError("Late filing system is not properly configured.")
-
-        return password
-
-class DailyOTForm(forms.Form):
-    group_id = forms.IntegerField(required=True)
-    date = forms.DateField(required=True)
-    schedule_type = forms.ChoiceField(choices=DailyOT.SCHEDULE_CHOICES, required=True)
-    start_time = forms.TimeField(required=True)
-    end_time = forms.TimeField(required=True)
-    reason = forms.CharField(required=True)
-    employee_statuses = forms.Field(required=True)  # Changed from JSONField to Field to accept both string and list
-    late_filing_password = forms.CharField(required=False)
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        self.late_filing = kwargs.pop('late_filing', False)
-        super().__init__(*args, **kwargs)
-
-    def clean_group_id(self):
-        group_id = self.cleaned_data.get('group_id')
-
-        try:
-            group = EmployeeGroup.objects.get(pk=group_id)
-
-            # Ensure group belongs to user
-            if self.user and group.created_by != self.user:
-                raise ValidationError("You don't have permission to use this group.")
-
-        except EmployeeGroup.DoesNotExist:
-            raise ValidationError("Employee group does not exist.")
-
-        return group_id
-
-    def clean(self):
-        cleaned_data = super().clean()
-        start_time = cleaned_data.get('start_time')
-        end_time = cleaned_data.get('end_time')
-
-        if start_time and end_time and start_time >= end_time:
-            self.add_error('end_time', "End time must be after start time.")
-
-        return cleaned_data
-
-    def clean_late_filing_password(self):
-        password = self.cleaned_data.get('late_filing_password')
-        schedule_type = self.cleaned_data.get('schedule_type')
-
-        if self.late_filing:
-            if not password:
-                raise ValidationError("Password is required for late filing.")
-
-            password_type = 'DAILY'
-            if schedule_type in ['SUNDAY', 'SATURDAY', 'HOLIDAY']:
-                password_type = 'WEEKEND'
-
-            try:
-                stored_password = LateFilingPassword.objects.get(password_type=password_type)
-                if password != stored_password.password:
-                    raise ValidationError("Invalid password for late filing.")
-            except LateFilingPassword.DoesNotExist:
-                raise ValidationError("Late filing system is not properly configured.")
-
-        return password
-
-class LateFilingPasswordForm(forms.ModelForm):
-    confirm_password = forms.CharField(max_length=50, required=True)
-
+class OvertimeFilingForm(forms.ModelForm):
     class Meta:
-        model = LateFilingPassword
-        fields = ['password_type', 'password']
+        model = OvertimeFiling
+        fields = [
+            'filing_type', 'employee_id', 'employee_name', 'department',
+            'line_name', 'shift', 'time_in', 'time_out', 'date_from',
+            'date_to', 'status'
+        ]
 
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
+        self.is_late_filing = kwargs.pop('is_late_filing', False)
         super().__init__(*args, **kwargs)
 
     def clean(self):
         cleaned_data = super().clean()
-        password = cleaned_data.get('password')
-        confirm = cleaned_data.get('confirm_password')
+        filing_type = cleaned_data.get('filing_type')
+        date_from = cleaned_data.get('date_from')
+        date_to = cleaned_data.get('date_to')
+        time_in = cleaned_data.get('time_in')
+        time_out = cleaned_data.get('time_out')
 
-        if password and confirm and password != confirm:
-            self.add_error('confirm_password', "Passwords do not match.")
+        if filing_type == 'shifting' and not date_to:
+            raise ValidationError("Date range is required for shifting filings.")
 
-        if password and (len(password) < 6 or
-                         not any(char.isalpha() for char in password) or
-                         not any(char.isdigit() for char in password)):
-            self.add_error('password', "Password must be at least 6 characters and contain at least one letter and one number.")
+        if date_from and date_to and date_to < date_from:
+            raise ValidationError("End date must be after or equal to start date.")
 
         return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         if self.user:
-            instance.updated_by = self.user
-
+            instance.filed_by = self.user
+        instance.is_late_filing = self.is_late_filing
         if commit:
             instance.save()
-
         return instance
 
-class ExcelImportForm(forms.Form):
-    file = forms.FileField(required=True)
 
-    def clean_file(self):
-        file = self.cleaned_data.get('file')
+class OvertimePasscodeForm(forms.ModelForm):
+    confirm_passcode = forms.CharField(max_length=50, required=True)
 
-        if file:
-            valid_extensions = ['.xlsx', '.xls']
-            import os
-            ext = os.path.splitext(file.name)[1]
-            if ext.lower() not in valid_extensions:
-                raise ValidationError("Invalid file format. Please upload an Excel file (.xlsx or .xls).")
+    class Meta:
+        model = OvertimePasscode
+        fields = ['passcode', 'is_active']
 
-        return file
+    def clean(self):
+        cleaned_data = super().clean()
+        passcode = cleaned_data.get('passcode')
+        confirm = cleaned_data.get('confirm_passcode')
+
+        if passcode and confirm and passcode != confirm:
+            raise ValidationError("Passcodes do not match.")
+
+        if passcode and len(passcode) < 4:
+            raise ValidationError("Passcode must be at least 4 characters.")
+
+        return cleaned_data
+
+
+class HolidayForm(forms.ModelForm):
+    class Meta:
+        model = Holiday
+        fields = ['name', 'date', 'is_active']
+
+    def clean_date(self):
+        date = self.cleaned_data.get('date')
+        if Holiday.objects.filter(date=date).exclude(pk=self.instance.pk if self.instance.pk else None).exists():
+            raise ValidationError("A holiday with this date already exists.")
+        return date
+
+
+class UserShuttleAssignmentForm(forms.Form):
+    employee_id = forms.IntegerField(required=True)
+    destination_group_id = forms.IntegerField(required=False)
+
+    def clean_destination_group_id(self):
+        destination_group_id = self.cleaned_data.get('destination_group_id')
+        if destination_group_id:
+            try:
+                DestinationGroup.objects.get(pk=destination_group_id, is_active=True)
+            except DestinationGroup.DoesNotExist:
+                raise ValidationError("Destination group does not exist or is inactive.")
+        return destination_group_id
+
+
+class BulkOvertimeFilingForm(forms.Form):
+    filing_type = forms.ChoiceField(choices=OvertimeFiling.FILING_TYPE_CHOICES)
+    employee_data = forms.JSONField()
+    shift = forms.ChoiceField(choices=OvertimeFiling.SHIFT_CHOICES)
+    time_in = forms.TimeField()
+    time_out = forms.TimeField()
+    date_from = forms.DateField()
+    date_to = forms.DateField(required=False)
+    passcode = forms.CharField(required=False, max_length=50)
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        self.is_late_filing = kwargs.pop('is_late_filing', False)
+        super().__init__(*args, **kwargs)
+
+    def clean_passcode(self):
+        passcode = self.cleaned_data.get('passcode')
+        if self.is_late_filing:
+            if not passcode:
+                raise ValidationError("Passcode is required for late filing.")
+            try:
+                stored_passcode = OvertimePasscode.objects.filter(is_active=True).first()
+                if not stored_passcode or passcode != stored_passcode.passcode:
+                    raise ValidationError("Invalid passcode.")
+            except OvertimePasscode.DoesNotExist:
+                raise ValidationError("Late filing system is not configured.")
+        return passcode
+
+    def clean_employee_data(self):
+        employee_data = self.cleaned_data.get('employee_data')
+        if not employee_data or len(employee_data) == 0:
+            raise ValidationError("At least one employee must be selected.")
+        return employee_data
+
+    def clean(self):
+        cleaned_data = super().clean()
+        filing_type = cleaned_data.get('filing_type')
+        date_from = cleaned_data.get('date_from')
+        date_to = cleaned_data.get('date_to')
+
+        if filing_type == 'shifting' and not date_to:
+            raise ValidationError("Date range is required for shifting filings.")
+
+        if date_from and date_to and date_to < date_from:
+            raise ValidationError("End date must be after or equal to start date.")
+
+        return cleaned_data
+
+
+class ExportOvertimeForm(forms.Form):
+    EXPORT_TYPE_CHOICES = [
+        ('shifting', 'Shifting'),
+        ('daily', 'Daily'),
+        ('sunday', 'Sunday'),
+        ('saturday_off', 'Saturday Off'),
+        ('holiday', 'Holiday'),
+    ]
+
+    export_type = forms.ChoiceField(choices=EXPORT_TYPE_CHOICES)
+    date = forms.DateField(required=False)
+    week_number = forms.IntegerField(required=False)
+    year = forms.IntegerField(required=False)
+
+    def clean(self):
+        cleaned_data = super().clean()
+        export_type = cleaned_data.get('export_type')
+        date = cleaned_data.get('date')
+        week_number = cleaned_data.get('week_number')
+        year = cleaned_data.get('year')
+
+        if export_type == 'shifting':
+            if not week_number or not year:
+                raise ValidationError("Week number and year are required for shifting export.")
+        else:
+            if not date:
+                raise ValidationError("Date is required for this export type.")
+
+        return cleaned_data

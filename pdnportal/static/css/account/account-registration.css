@@ -1305,6 +1305,11 @@
     color: var(--um-stock-color, #f57f17);
 }
 
+.UM-overtime-pill {
+    background-color: var(--um-overtime-light, #fce4ec);
+    color: var(--um-overtime-color, #c2185b);
+}
+
 .UM-docunotification-pill {
     background-color: var(--um-docu-light, #e8f5e9);
     color: var(--um-docu-color, #2e7d32);

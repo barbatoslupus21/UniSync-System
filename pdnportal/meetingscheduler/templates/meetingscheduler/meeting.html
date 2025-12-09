@@ -234,6 +234,23 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="meeting-repetition">Repetition</label>
+                    <select id="meeting-repetition" name="repetition" class="form-control">
+                        <option value="once">Once (No Repeat)</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                    </select>
+                </div>
+
+                <div class="form-group repetition-end-group" id="repetition-end-group" style="display: none;">
+                    <label for="repetition-end-date">Repeat Until <span class="input-required">*</span></label>
+                    <input type="date" id="repetition-end-date" name="repetition_end_date" class="form-control">
+                    <small class="form-help-text">Meetings will be created until this date</small>
+                </div>
+
+                <div class="form-group">
                     <label for="meeting-description">
                         <i class="fas fa-align-left"></i> Add description
                     </label>

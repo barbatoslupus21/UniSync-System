@@ -68,10 +68,8 @@ class Users(AbstractUser):
     # Overtime Permission
     overtime_user = models.BooleanField(default=False)
     overtime_requestor = models.BooleanField(default=False)
-    overtime_supervisor = models.BooleanField(default=False)
-    overtime_importer = models.BooleanField(default=False)
-    overtime_allocator = models.BooleanField(default=False)
     overtime_facilitator = models.BooleanField(default=False)
+    overtime_shuttle_admin = models.BooleanField(default=False)
 
     # WIP Permission
     wip_user = models.BooleanField(default=False)
