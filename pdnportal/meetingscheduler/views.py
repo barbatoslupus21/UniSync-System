@@ -225,9 +225,6 @@ def create_meeting(request):
             while True:
                 if repetition == 'daily':
                     current_date = current_date + timedelta(days=1)
-                    # Skip weekends for daily repetition (0=Monday, 6=Sunday)
-                    while current_date.weekday() >= 5:  # Saturday(5) or Sunday(6)
-                        current_date = current_date + timedelta(days=1)
                 elif repetition == 'weekly':
                     current_date = current_date + timedelta(weeks=1)
                 elif repetition == 'monthly':

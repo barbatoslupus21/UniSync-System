@@ -1554,8 +1554,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Render vehicle requirements
         renderVehicleRequirements(data.vehicle_requirements);
         
-        // Render shift summary cards (for daily and shifting filing types)
-        if ((filingType === 'daily' || filingType === 'shifting') && data.shift_summary) {
+        // Render shift summary cards (for all filing types that have shift data)
+        if ((filingType === 'daily' || filingType === 'shifting' || filingType === 'sunday' || filingType === 'saturday_off' || filingType === 'holiday') && data.shift_summary) {
             renderShiftSummary(data.shift_summary, filingType);
             if (elements.shiftSummarySection) {
                 elements.shiftSummarySection.style.display = 'block';
@@ -1577,14 +1577,16 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderShiftSummary(summaryData, filingType = 'daily') {
         if (!summaryData) return;
         
-        const isShifting = filingType === 'shifting';
+        // For Shifting, Sunday, Saturday Off, and Holiday: only show OT vehicles (total shuttle)
+        // For Daily: show both Not OT and OT vehicles
+        const isOTOnlyType = filingType === 'shifting' || filingType === 'sunday' || filingType === 'saturday_off' || filingType === 'holiday';
         
         // Get the totals containers
         const dayshiftTotalsContainer = document.getElementById('dayshift-totals');
         const nightshiftTotalsContainer = document.getElementById('nightshift-totals');
         
-        if (isShifting) {
-            // For Shifting: Only show total shuttle needed (OT vehicles only)
+        if (isOTOnlyType) {
+            // For Shifting/Sunday/Saturday Off/Holiday: Only show total shuttle needed (OT vehicles only)
             if (dayshiftTotalsContainer) {
                 dayshiftTotalsContainer.className = 'shift-totals single-total';
                 dayshiftTotalsContainer.innerHTML = `
@@ -1647,10 +1649,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const isShifting = filingType === 'shifting';
+        // For Shifting, Sunday, Saturday Off, and Holiday: only show OT data
+        const isOTOnlyType = filingType === 'shifting' || filingType === 'sunday' || filingType === 'saturday_off' || filingType === 'holiday';
         
-        if (isShifting) {
-            // For Shifting: Show only OT employees count and total vehicles
+        if (isOTOnlyType) {
+            // For Shifting/Sunday/Saturday Off/Holiday: Show only OT employees count and total vehicles
             container.innerHTML = breakdown.map(provider => {
                 const totalOTEmployees = provider.ot_employees || 0;
                 return `

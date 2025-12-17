@@ -741,13 +741,30 @@ def get_user_contacts(user):
     for contact in contacts:
         contact_user = contact.contact
 
+        # Get the last message time between user and contact
+        last_message_time = None
+        try:
+            # Find direct chat between user and contact
+            chat = Chat.objects.filter(
+                chat_type='direct',
+                participants=user
+            ).filter(participants=contact_user).first()
+
+            if chat:
+                last_message = Message.objects.filter(chat=chat).order_by('-timestamp').first()
+                if last_message:
+                    last_message_time = last_message.timestamp.isoformat()
+        except Exception as e:
+            print(f"Error getting last message time for contact {contact_user.id}: {str(e)}")
+
         result.append({
             'id': contact_user.id,
             'name': contact_user.name or contact_user.username,
             'avatar_url': contact_user.avatar.url if contact_user.avatar else None,
             'title': getattr(contact_user.profile, 'title', '') if hasattr(contact_user, 'profile') else '',
             'department': getattr(contact_user.profile, 'department', '') if hasattr(contact_user, 'profile') else '',
-            'online': get_user_online_status(contact_user)
+            'online': get_user_online_status(contact_user),
+            'last_message_time': last_message_time
         })
 
     return result
@@ -1257,3 +1274,233 @@ def get_user_online_status(user):
         # If no status record exists, create one and mark as offline
         UserOnlineStatus.objects.create(user=user, is_online=False)
         return False
+
+
+# ========================================
+# AJAX Long Polling Views for Chat
+# ========================================
+
+@login_required
+@require_GET
+def poll_messages(request):
+    """
+    Long polling endpoint for new messages.
+    Returns new messages since the provided timestamp.
+    Note: For SQLite, we use short polling to avoid database locking.
+    """
+    from django.db import connection
+    
+    last_timestamp = request.GET.get('since')
+    
+    # Parse the timestamp
+    if last_timestamp:
+        try:
+            last_time = datetime.datetime.fromisoformat(last_timestamp.replace('Z', '+00:00'))
+        except (ValueError, TypeError):
+            last_time = timezone.now() - datetime.timedelta(seconds=5)
+    else:
+        last_time = timezone.now() - datetime.timedelta(seconds=5)
+    
+    # Update user's online status
+    update_user_online_status(request.user)
+    
+    # Get user's chat IDs
+    user_chats = list(Chat.objects.filter(participants=request.user).values_list('id', flat=True))
+    
+    # Query for new messages (no blocking loop to avoid SQLite locking)
+    new_messages = Message.objects.filter(
+        chat_id__in=user_chats,
+        timestamp__gt=last_time
+    ).exclude(
+        sender=request.user
+    ).select_related('sender', 'chat', 'reply_to').order_by('timestamp')
+    
+    messages_data = []
+    for msg in new_messages:
+        msg_data = {
+            'id': msg.id,
+            'chat_id': msg.chat_id,
+            'content': msg.content,
+            'timestamp': msg.timestamp.isoformat(),
+            'sender': {
+                'id': msg.sender.id,
+                'name': msg.sender.name or msg.sender.username,
+                'avatar_url': msg.sender.avatar.url if msg.sender.avatar else None
+            },
+            'file': None,
+            'reply_to': None,
+            'unread': msg.unread
+        }
+        
+        if msg.file:
+            msg_data['file'] = {
+                'url': msg.file.url,
+                'name': msg.file_name or os.path.basename(msg.file.name),
+                'size': msg.file_size or 0,
+                'type': os.path.splitext(msg.file.name)[1].lower()
+            }
+        
+        if msg.reply_to:
+            msg_data['reply_to'] = {
+                'id': msg.reply_to.id,
+                'content': msg.reply_to.content,
+                'sender': {
+                    'id': msg.reply_to.sender.id,
+                    'name': msg.reply_to.sender.name or msg.reply_to.sender.username
+                }
+            }
+        
+        messages_data.append(msg_data)
+    
+    # Close database connection to prevent locking
+    connection.close()
+    
+    return JsonResponse({
+        'messages': messages_data,
+        'timestamp': timezone.now().isoformat()
+    })
+
+
+@login_required
+@require_GET
+def poll_typing(request, chat_id):
+    """
+    Long polling endpoint for typing indicators.
+    """
+    # Verify user has access to this chat
+    chat = get_object_or_404(Chat, id=chat_id, participants=request.user)
+    
+    # Get typing users from cache/session (simplified - in production use Redis/cache)
+    typing_users = get_typing_users(chat_id, request.user.id)
+    
+    return JsonResponse({
+        'typing': typing_users,
+        'timestamp': timezone.now().isoformat()
+    })
+
+
+@login_required
+@require_POST
+def set_typing(request, chat_id):
+    """
+    Set typing status for a user in a chat.
+    """
+    from django.db import connection
+    
+    # Verify user has access to this chat
+    chat = get_object_or_404(Chat, id=chat_id, participants=request.user)
+    
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = {}
+    
+    is_typing = data.get('typing', True)
+    
+    # Store typing status (simplified - in production use Redis/cache)
+    set_user_typing(chat_id, request.user.id, is_typing)
+    
+    # Close database connection to prevent locking
+    connection.close()
+    
+    return JsonResponse({'success': True})
+
+
+@login_required
+@require_GET
+def poll_online_status(request):
+    """
+    Poll for online status of user's contacts.
+    """
+    from django.db import connection
+    
+    # Update requesting user's online status
+    update_user_online_status(request.user)
+    
+    # Get user's contacts
+    contacts = list(Contact.objects.filter(user=request.user).select_related('contact'))
+    
+    online_statuses = {}
+    for contact in contacts:
+        online_statuses[contact.contact.id] = get_user_online_status(contact.contact)
+    
+    # Close database connection to prevent locking
+    connection.close()
+    
+    return JsonResponse({
+        'statuses': online_statuses,
+        'timestamp': timezone.now().isoformat()
+    })
+
+
+@login_required
+@require_POST  
+def update_heartbeat(request):
+    """
+    Update user's online status (heartbeat).
+    Called periodically to keep user marked as online.
+    """
+    from django.db import connection
+    
+    update_user_online_status(request.user)
+    
+    # Close database connection to prevent locking
+    connection.close()
+    
+    return JsonResponse({
+        'success': True,
+        'timestamp': timezone.now().isoformat()
+    })
+
+
+def update_user_online_status(user):
+    """
+    Helper function to update user's online status and last activity.
+    """
+    from .models import UserOnlineStatus
+    status, created = UserOnlineStatus.objects.get_or_create(user=user)
+    status.is_online = True
+    status.last_activity = timezone.now()
+    status.save()
+
+
+# Simple in-memory typing storage (for demo - use Redis in production)
+_typing_users = {}
+
+def set_user_typing(chat_id, user_id, is_typing):
+    """Set user typing status."""
+    key = f"chat_{chat_id}"
+    if key not in _typing_users:
+        _typing_users[key] = {}
+    
+    if is_typing:
+        _typing_users[key][user_id] = timezone.now()
+    elif user_id in _typing_users[key]:
+        del _typing_users[key][user_id]
+
+
+def get_typing_users(chat_id, exclude_user_id):
+    """Get list of users currently typing in a chat."""
+    key = f"chat_{chat_id}"
+    if key not in _typing_users:
+        return []
+    
+    # Clean up old typing entries (older than 5 seconds)
+    now = timezone.now()
+    cutoff = now - datetime.timedelta(seconds=5)
+    
+    typing_users = []
+    users_to_remove = []
+    
+    for user_id, timestamp in _typing_users[key].items():
+        if user_id != exclude_user_id:
+            if timestamp >= cutoff:
+                typing_users.append(user_id)
+            else:
+                users_to_remove.append(user_id)
+    
+    # Clean up old entries
+    for user_id in users_to_remove:
+        del _typing_users[key][user_id]
+    
+    return typing_users

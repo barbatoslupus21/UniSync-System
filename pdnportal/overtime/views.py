@@ -1891,9 +1891,9 @@ def get_overview_data(request):
                     'destinations': destination_names
                 })
     
-    # Calculate shift summary for daily and shifting filing types
+    # Calculate shift summary for all filing types that have shift data
     shift_summary = None
-    if filing_type in ['daily', 'shifting']:
+    if filing_type in ['daily', 'shifting', 'sunday', 'saturday_off', 'holiday']:
         shift_summary = calculate_shift_summary(filings, math)
     
     return JsonResponse({
@@ -1999,7 +1999,6 @@ def export_overview_data(request):
     )
     
     if with_vehicle_employee_ids:
-        logger.info(f"Standard export: Excluding {len(with_vehicle_employee_ids)} employees with vehicles")
         filings = [f for f in filings if str(f.employee_id) not in with_vehicle_employee_ids]
         employee_ids = [str(f.employee_id) for f in filings]
     

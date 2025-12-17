@@ -20,5 +20,12 @@ urlpatterns = [
     path('api/chats/<int:chat_id>/messages/', views.send_message, name='send_message'),
     path('api/chats/<int:chat_id>/read/', views.mark_messages_read, name='mark_messages_read'),
     path('api/messages/<int:message_id>/file/', views.get_message_file, name='get_message_file'),
-    path('api/messages/<int:message_id>/', views.delete_message, name='delete_message')
+    path('api/messages/<int:message_id>/', views.delete_message, name='delete_message'),
+    
+    # Long Polling endpoints
+    path('api/poll/messages/', views.poll_messages, name='poll_messages'),
+    path('api/poll/typing/<int:chat_id>/', views.poll_typing, name='poll_typing'),
+    path('api/poll/online/', views.poll_online_status, name='poll_online_status'),
+    path('api/typing/<int:chat_id>/', views.set_typing, name='set_typing'),
+    path('api/heartbeat/', views.update_heartbeat, name='update_heartbeat'),
 ]

@@ -43,3 +43,18 @@ INFO 2025-12-04 14:43:43,001 apps 23536 18336 Document notification scheduler in
 INFO 2025-12-04 14:44:25,246 scheduler 18344 21468 Starting document notification scheduler loop
 INFO 2025-12-04 14:44:25,246 scheduler 18344 20820 Document notification scheduler started - will run daily at 08:00:00
 INFO 2025-12-04 14:44:25,246 apps 18344 20820 Document notification scheduler initialized successfully
+INFO 2025-12-10 13:25:00,680 scheduler 8984 29808 Starting document notification scheduler loop
+INFO 2025-12-10 13:25:00,680 scheduler 8984 14260 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-12-10 13:25:00,680 apps 8984 14260 Document notification scheduler initialized successfully
+INFO 2025-12-10 13:25:28,622 scheduler 31424 28360 Starting document notification scheduler loop
+INFO 2025-12-10 13:25:28,622 scheduler 31424 21392 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-12-10 13:25:28,622 apps 31424 21392 Document notification scheduler initialized successfully
+INFO 2025-12-10 13:29:01,392 scheduler 18500 31504 Starting document notification scheduler loop
+INFO 2025-12-10 13:29:01,392 scheduler 18500 31120 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-12-10 13:29:01,392 apps 18500 31120 Document notification scheduler initialized successfully
+INFO 2025-12-10 13:33:29,232 scheduler 3816 2684 Starting document notification scheduler loop
+INFO 2025-12-10 13:33:29,232 scheduler 3816 13316 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-12-10 13:33:29,232 apps 3816 13316 Document notification scheduler initialized successfully
+INFO 2025-12-10 13:33:51,500 scheduler 15292 26844 Starting document notification scheduler loop
+INFO 2025-12-10 13:33:51,500 scheduler 15292 11072 Document notification scheduler started - will run daily at 08:00:00
+INFO 2025-12-10 13:33:51,500 apps 15292 11072 Document notification scheduler initialized successfully
