@@ -277,6 +277,41 @@ def receive_stock_declaration(request, declaration_id):
 
 
 @login_required
+@require_POST
+def mark_arrived_stock_declaration(request, declaration_id):
+    """Mark a stock declaration as arrived"""
+    declaration = get_object_or_404(StockDeclaration, id=declaration_id)
+    
+    # Check if user has purchasing permission
+    if not getattr(request.user, 'stock_declaration_purchasing', False):
+        return JsonResponse({
+            'success': False,
+            'message': 'You do not have permission to mark declarations as arrived.'
+        }, status=403)
+    
+    # Check if status allows marking as arrived (should be in_transit)
+    if declaration.status != 'in_transit':
+        return JsonResponse({
+            'success': False,
+            'message': f'Only declarations with "In Transit" status can be marked as arrived.'
+        }, status=400)
+    
+    try:
+        declaration.status = 'arrived'
+        declaration.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Stock declaration {declaration.control_number} has been marked as arrived.'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error updating declaration: {str(e)}'
+        }, status=500)
+
+
+@login_required
 def export_stock_declaration_report(request):
     """Export stock declaration report to Excel"""
     date_from = request.GET.get('date_from')

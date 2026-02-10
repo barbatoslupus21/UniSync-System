@@ -41,23 +41,122 @@ def counter_dashboard(request):
     
     user_sessions = InventorySession.objects.filter(created_by=request.user)
     
-    total_sessions = user_sessions.count()
-    lines = Line.objects.all()
-    total_items = InventoryEntry.objects.filter(session__in=user_sessions).count()
-    checked_sessions = user_sessions.filter(status='CHECKED').count()
-    pending_sessions = user_sessions.filter(status='FOR_CHECKING').count()
+    # Get distinct dates from sessions
+    from django.db.models.functions import TruncDate
+    distinct_dates = user_sessions.annotate(
+        date_only=TruncDate('created_at')
+    ).values('date_only').distinct().order_by('-date_only')
+    
+    # Format dates for display
+    formatted_dates = []
+    for date_obj in distinct_dates:
+        if date_obj['date_only']:
+            formatted_date = date_obj['date_only'].strftime('%b %d, %Y')
+            formatted_dates.append({
+                'value': date_obj['date_only'].isoformat(),
+                'display': formatted_date
+            })
+    
+    # Filter by selected date if provided
+    selected_date = request.GET.get('date', '')
+    if selected_date:
+        from datetime import datetime
+        try:
+            filter_date = datetime.fromisoformat(selected_date).date()
+            user_sessions = user_sessions.filter(created_at__date=filter_date)
+        except:
+            pass
+    
+    # Annotate with entry count for each session
+    user_sessions = user_sessions.annotate(entries_count=Count('entries')).order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(user_sessions, 10)  # 10 records per page
+    page_number = request.GET.get('page', 1)
+    sessions = paginator.get_page(page_number)
+    
+    total_sessions = InventorySession.objects.filter(created_by=request.user).count()
+    # Get user's assigned lines
+    user_lines = request.user.line.all()
+    
+    # Also include any lines from the user's existing sessions (for backward compatibility in edit modal)
+    session_lines = InventorySession.objects.filter(created_by=request.user).values_list('line_id', flat=True).distinct()
+    all_available_lines = Line.objects.filter(
+        Q(id__in=user_lines.values_list('id', flat=True)) |
+        Q(id__in=session_lines)
+    ).distinct()
+    
+    total_items = InventoryEntry.objects.filter(session__created_by=request.user).count()
+    checked_sessions = InventorySession.objects.filter(created_by=request.user, status='CHECKED').count()
+    pending_sessions = InventorySession.objects.filter(created_by=request.user, status='FOR_CHECKING').count()
     
     context = {
-        'sessions': user_sessions,
+        'sessions': sessions,
         'total_sessions': total_sessions,
         'total_items': total_items,
         'checked_sessions': checked_sessions,
         'pending_sessions': pending_sessions,
         'user_type': 'counter',
-        'lines':lines
+        'lines': user_lines,  # For create modal - only user's assigned lines
+        'all_lines': all_available_lines,  # For edit modal - includes session history
+        'formatted_dates': formatted_dates,
+        'selected_date': selected_date,
+        'paginator': paginator,
     }
     
     return render(request, 'wip/counter_dashboard.html', context)
+
+@login_required(login_url="user-login")
+def search_sessions(request):
+    """AJAX endpoint for dynamic session search"""
+    if not request.user.wip_counter and not request.user.wip_checker:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    
+    search_query = request.GET.get('q', '').strip()
+    date_filter = request.GET.get('date', '')
+    page_number = request.GET.get('page', 1)
+    
+    # Start with user's sessions only (created_by = current user)
+    sessions = InventorySession.objects.filter(created_by=request.user)
+    
+    # Apply date filter if provided
+    if date_filter:
+        try:
+            filter_date = datetime.fromisoformat(date_filter).date()
+            sessions = sessions.filter(created_at__date=filter_date)
+        except Exception as e:
+            print(f"Date filter error: {e}")
+    
+    # Apply search query if provided
+    if search_query:
+        sessions = sessions.filter(
+            Q(id__icontains=search_query) |
+            Q(line__line_name__icontains=search_query) |
+            Q(person_responsible__icontains=search_query)
+        )
+    
+    # Annotate with entry count
+    sessions = sessions.annotate(entries_count=Count('entries')).order_by('-created_at')
+    
+    # Pagination
+    paginator = Paginator(sessions, 10)
+    page_obj = paginator.get_page(page_number)
+    
+    # Render the partial template
+    from django.template.loader import render_to_string
+    html = render_to_string('wip/partials/session_table_rows.html', {
+        'sessions': page_obj,
+        'search_query': search_query,
+    }, request=request)
+    
+    return JsonResponse({
+        'html': html,
+        'total_count': paginator.count,
+        'page': int(page_number),
+        'total_pages': paginator.num_pages,
+        'has_next': page_obj.has_next() if page_obj else False,
+        'has_previous': page_obj.has_previous() if page_obj else False,
+    })
 
 @login_required(login_url="user-login")
 def checker_dashboard(request):
@@ -90,20 +189,53 @@ def checker_dashboard(request):
 @login_required(login_url="user-login")
 def create_session(request):
     if not request.user.wip_counter:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'error': 'Access denied. Counter permission required.'}, status=403)
         messages.error(request, "Access denied. Counter permission required.")
         return redirect('wip_dashboard')
     
     if request.method == 'POST':
         form = InventorySessionForm(request.POST)
         if form.is_valid():
+            line = form.cleaned_data.get('line')
+            person_responsible = form.cleaned_data.get('person_responsible')
+            
+            # Check for existing session with same line, person_responsible, and created_at date
+            today = timezone.now().date()
+            existing_session = InventorySession.objects.filter(
+                line=line,
+                person_responsible=person_responsible,
+                created_at__date=today
+            ).first()
+            
+            if existing_session:
+                error_msg = f"A session with the same Line, Person Responsible, and Date already exists."
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({'error': error_msg}, status=400)
+                messages.error(request, error_msg)
+                return redirect('wip_dashboard')
+            
             session = form.save(commit=False)
             session.created_by = request.user
             session.save()
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'session_id': session.id, 'redirect_url': reverse('session_details', args=[session.id])})
+            
             messages.success(request, f"Session {session.id} created successfully!")
             return redirect('session_details', session_id=session.id)
         else:
-            for field, errors in form.errors.items():
-                for error in errors:
+            errors = []
+            for field, error_list in form.errors.items():
+                for error in error_list:
+                    errors.append(f"{field}: {error}")
+            error_msg = "; ".join(errors)
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'error': error_msg}, status=400)
+            
+            for field, field_errors in form.errors.items():
+                for error in field_errors:
                     messages.error(request, f"{field}: {error}")
         return redirect('wip_dashboard')
     return redirect('wip_dashboard')

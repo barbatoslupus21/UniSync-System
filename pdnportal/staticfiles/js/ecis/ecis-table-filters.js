@@ -3,6 +3,9 @@
  * Functionality for search and filter in ECIS tables
  */
 
+// Debounce timer for search
+let searchDebounceTimer = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize search and filter functionality
     initTableSearch();
@@ -12,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Initialize search functionality for ECIS tables
+ * Server-side search across all ECIS records
  */
 function initTableSearch() {
     const searchInputs = document.querySelectorAll('.ecis-search-input');
@@ -21,93 +25,78 @@ function initTableSearch() {
         // Add event listeners to search inputs
         searchInputs.forEach((searchInput, index) => {
             const searchButton = searchButtons[index];
-            const tableContainer = searchInput.closest('.ecis-card').querySelector('.ecis-table-container');
 
-            if (!tableContainer) return;
+            // Get current search query from URL and populate input
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentSearch = urlParams.get('search') || '';
+            if (currentSearch) {
+                searchInput.value = currentSearch;
+                searchInput.classList.add('has-text');
+            }
 
-            // Function to perform search
-            const performSearch = () => {
-                const searchTerm = searchInput.value.trim().toLowerCase();
-                const table = tableContainer.querySelector('.ecis-table');
+            // Function to perform server-side search
+            const performSearch = (immediate = false) => {
+                // Clear any pending debounce
+                if (searchDebounceTimer) {
+                    clearTimeout(searchDebounceTimer);
+                    searchDebounceTimer = null;
+                }
 
-                if (!table) return;
-
-                const rows = table.querySelectorAll('tbody tr');
-                let hasVisibleRows = false;
-
-                // Skip the empty row if it exists
-                rows.forEach(row => {
-                    if (row.querySelector('.ecis-empty-table')) return;
-
-                    // Get all cell values
-                    const cells = row.querySelectorAll('td');
-                    let rowText = '';
-
-                    cells.forEach(cell => {
-                        // Skip the actions cell
-                        if (cell.getAttribute('data-label') === 'Actions') return;
-                        rowText += cell.textContent.trim().toLowerCase() + ' ';
-                    });
-
-                    // Get current filter values
-                    const filterSelect = tableContainer.closest('.ecis-card').querySelector('.ecis-filter-select');
-                    const selectedStatus = filterSelect ? filterSelect.value.toLowerCase() : 'all';
-
-                    const categoryFilter = tableContainer.closest('.ecis-card').querySelector('.ecis-category-filter');
-                    const selectedCategory = categoryFilter ? categoryFilter.value.toUpperCase() : 'ALL';
-
-                    // Check if row matches filters
-                    const rowStatus = row.getAttribute('data-status');
-                    const rowCategory = row.getAttribute('data-category');
-
-                    const matchesStatus = selectedStatus === 'all' || rowStatus === selectedStatus;
-                    const matchesCategory = selectedCategory === 'ALL' || rowCategory === selectedCategory;
-                    const matchesSearch = searchTerm === '' || rowText.includes(searchTerm);
-
-                    // Show row only if it matches all active filters
-                    if (matchesSearch && matchesStatus && matchesCategory) {
-                        row.style.display = '';
-                        hasVisibleRows = true;
-                    } else {
-                        row.style.display = 'none';
+                const doSearch = () => {
+                    const searchTerm = searchInput.value.trim();
+                    const url = new URL(window.location.href);
+                    const currentUrlSearch = url.searchParams.get('search') || '';
+                    
+                    // Only reload if search term actually changed
+                    if (searchTerm === currentUrlSearch) {
+                        return;
                     }
-                });
+                    
+                    if (searchTerm) {
+                        url.searchParams.set('search', searchTerm);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+                    
+                    // Reset to page 1 when searching
+                    url.searchParams.delete('page');
+                    
+                    // Navigate to the new URL
+                    window.location.href = url.toString();
+                };
 
-                // Get the current filter values
-                const filterSelect = tableContainer.closest('.ecis-card').querySelector('.ecis-filter-select');
-                const selectedStatus = filterSelect ? filterSelect.value.toLowerCase() : 'all';
-
-                const categoryFilter = tableContainer.closest('.ecis-card').querySelector('.ecis-category-filter');
-                const selectedCategory = categoryFilter ? categoryFilter.value.toUpperCase() : 'ALL';
-
-                // Show appropriate empty state message
-                showEmptyStateMessage(table, hasVisibleRows, searchTerm, selectedStatus, selectedCategory);
-
-                // Update the pagination info if it exists
-                updatePaginationInfo(tableContainer);
+                if (immediate) {
+                    doSearch();
+                } else {
+                    // Debounce search for 500ms
+                    searchDebounceTimer = setTimeout(doSearch, 500);
+                }
             };
 
-            // Add event listener to search input for real-time search
-            searchInput.addEventListener('input', performSearch);
+            // Add event listener to search button - immediate search
+            searchButton.addEventListener('click', () => performSearch(true));
 
-            // Add event listener to search button
-            searchButton.addEventListener('click', performSearch);
-
-            // Add event listener for Enter key
+            // Add event listener for Enter key - immediate search
             searchInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    performSearch();
+                    performSearch(true);
                     e.preventDefault();
                 }
             });
 
-            // Add clear button functionality
+            // Real-time search with debounce as user types
             searchInput.addEventListener('input', function() {
                 if (this.value.trim() !== '') {
                     this.classList.add('has-text');
+                    // Debounced search while typing
+                    performSearch(false);
                 } else {
                     this.classList.remove('has-text');
-                    performSearch();
+                    // If there was a previous search, clear it immediately
+                    const urlParams = new URLSearchParams(window.location.search);
+                    if (urlParams.has('search')) {
+                        performSearch(true);
+                    }
                 }
             });
         });

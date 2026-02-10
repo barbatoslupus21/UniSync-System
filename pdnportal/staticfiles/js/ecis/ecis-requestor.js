@@ -3,6 +3,34 @@
  * Specific functionality for the requestor view
  */
 
+/**
+ * Refresh the ECIS table via AJAX without reloading the page
+ */
+function refreshEcisTable() {
+    const tableWrapper = document.getElementById('ecis-table-wrapper');
+    if (!tableWrapper) return Promise.resolve();
+    
+    // Get current URL with search params
+    const url = new URL(window.location.href);
+    
+    return fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        tableWrapper.innerHTML = html;
+        // Re-initialize table event listeners
+        initDetailsButtons();
+        initEditButtons();
+    })
+    .catch(error => {
+        console.error('Error refreshing table:', error);
+    });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize requestor-specific functionality
     initNewRequestButton();
@@ -12,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initDetailsButtons();
     initEditButtons();
     initModalCloseButtons();
+    initEcisDetailsModal();
 
     // Set up a MutationObserver to automatically remove any validation error messages
     const modalBody = document.querySelector('.ecis-modal-body');
@@ -49,6 +78,60 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+/**
+ * Initialize ECIS Details Modal functionality
+ */
+function initEcisDetailsModal() {
+    // Handle opening the details modal
+    const detailsModal = document.getElementById('ecis-details-modal');
+    if (detailsModal && detailsModal.classList.contains('JO-modal')) {
+        // This is a JO-modal style modal
+        // Make sure the modal close buttons work
+        const closeButtons = detailsModal.querySelectorAll('.JO-modal-close');
+        closeButtons.forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                closeEcisDetailsModal();
+            });
+        });
+        
+        // Close when clicking outside
+        detailsModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEcisDetailsModal();
+            }
+        });
+        
+        // Close with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && detailsModal.classList.contains('active')) {
+                closeEcisDetailsModal();
+            }
+        });
+    }
+}
+
+/**
+ * Close ECIS Details Modal with fade out animation
+ */
+function closeEcisDetailsModal() {
+    const detailsModal = document.getElementById('ecis-details-modal');
+    if (!detailsModal) return;
+    
+    // Fade out the entire modal (background + content)
+    detailsModal.style.transition = 'opacity 0.2s ease-out';
+    detailsModal.style.opacity = '0';
+    
+    // Remove active class after animation
+    setTimeout(() => {
+        detailsModal.classList.remove('active');
+        document.body.style.overflow = '';
+        // Reset styles for next time
+        detailsModal.style.opacity = '';
+        detailsModal.style.transition = '';
+    }, 200);
+}
+
 // Initialize New Request button
 function initNewRequestButton() {
     const newEcisBtn = document.getElementById('new-ecis-btn');
@@ -71,6 +154,12 @@ function initNewRequestButton() {
                 const categorySection = document.querySelector('.ecis-form-section:first-child');
                 if (categorySection) {
                     categorySection.style.display = 'block';
+                }
+
+                // Reset submit button text for new request
+                const submitBtn = document.getElementById('ecis-submit-btn');
+                if (submitBtn) {
+                    submitBtn.textContent = 'Submit Request';
                 }
 
                 // Reset form action
@@ -115,8 +204,8 @@ function initDetailsButtons() {
 
                 // Fetch ECIS details via AJAX
                 console.log('Fetching ECIS details for ID:', ecisId);
-                // The correct URL should be /ecis/ecis/{id}/ based on the URL configuration
-                const url = `/ecis/ecis/${ecisId}/`;
+                // The correct URL should be /ecis/{id}/ based on the URL configuration
+                const url = `/ecis/${ecisId}/`;
                 console.log('Request URL:', url);
 
                 // Add debugging for network request
@@ -190,12 +279,10 @@ function updateDetailsModal(data) {
         <div class="ecis-details-header">
             <div class="ecis-details-id">
                 <h3 id="ecis-detail-number">${data.number}</h3>
-                <span class="ecis-category-pill ecis-cat-${data.category}">${data.category}</span>
                 <span class="ecis-status ecis-status-${data.status.toLowerCase().replace(/\s+/g, '')}">${data.status}</span>
             </div>
             <div class="ecis-details-date">
-                <p>Date Prepared: <span id="ecis-detail-date">${data.date_prepared}</span></p>
-                <p>Last Updated: <span id="ecis-detail-updated">${data.last_updated}</span></p>
+                <p><span id="ecis-detail-date">${data.date_prepared}</span></p>
             </div>
         </div>
 
@@ -215,6 +302,10 @@ function updateDetailsModal(data) {
                     <span class="ecis-details-value" id="ecis-detail-customer">${data.customer || 'N/A'}</span>
                 </div>
                 <div class="ecis-details-item">
+                    <span class="ecis-details-label">Line</span>
+                    <span class="ecis-details-value" id="ecis-detail-line">${data.line || 'N/A'}</span>
+                </div>
+                <div class="ecis-details-item">
                     <span class="ecis-details-label">Line Supervisor</span>
                     <span class="ecis-details-value" id="ecis-detail-supervisor">${data.line_supervisor || 'N/A'}</span>
                 </div>
@@ -223,17 +314,19 @@ function updateDetailsModal(data) {
 
         <div class="ecis-details-section">
             <h4>Change Information</h4>
-            <div class="ecis-details-item">
-                <span class="ecis-details-label">Affected Parts</span>
-                <span class="ecis-details-value" id="ecis-detail-parts">${data.affected_parts}</span>
-            </div>
-            <div class="ecis-details-item">
-                <span class="ecis-details-label">Details of Change</span>
-                <p class="ecis-details-text" id="ecis-detail-change">${data.details_change}</p>
-            </div>
-            <div class="ecis-details-item">
-                <span class="ecis-details-label">Implementation Date</span>
-                <span class="ecis-details-value" id="ecis-detail-implementation">${data.implementation_date}</span>
+            <div class="ecis-details-grid">
+                <div class="ecis-details-item">
+                    <span class="ecis-details-label">Affected Parts</span>
+                    <span class="ecis-details-value" id="ecis-detail-parts">${data.affected_parts}</span>
+                </div>
+                <div class="ecis-details-item">
+                    <span class="ecis-details-label">Implementation Date</span>
+                    <span class="ecis-details-value" id="ecis-detail-implementation">${data.implementation_date}</span>
+                </div>
+                <div class="ecis-details-item JO-details-item-full"">
+                    <span class="ecis-details-label">Details of Change</span>
+                    <p class="ecis-details-text" id="ecis-detail-change">${data.details_change}</p>
+                </div>
             </div>
         </div>
 
@@ -325,7 +418,7 @@ function loadEditForm(ecisId) {
         openModal(newEcisModal);
 
         // Fetch ECIS data
-        fetch(`/ecis/ecis/${ecisId}/edit/`)
+        fetch(`/ecis/${ecisId}/edit/`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -338,7 +431,7 @@ function loadEditForm(ecisId) {
 
                 // Update form action
                 const form = document.getElementById('ecis-form');
-                form.action = `/ecis/ecis/${ecisId}/edit/`;
+                form.action = `/ecis/${ecisId}/edit/`;
 
                 // Fill form with data
                 if (form) {
@@ -355,9 +448,33 @@ function loadEditForm(ecisId) {
                     form.querySelector('#requested-by').value = data.requested_by;
                     form.querySelector('#customer').value = data.customer;
                     form.querySelector('#line-supervisor').value = data.line_supervisor;
+                    // Set line select to the ECIS line
+                    const usersLineSelect = form.querySelector('#users-line');
+                    const usersLineHidden = document.getElementById('users_line');
+                    if (usersLineSelect) {
+                        if (data.line_id) {
+                            // If the option exists, select it; otherwise append it then select
+                            let option = usersLineSelect.querySelector(`option[value="${data.line_id}"]`);
+                            if (!option) {
+                                option = document.createElement('option');
+                                option.value = data.line_id;
+                                option.textContent = data.line || 'Selected Line';
+                                usersLineSelect.appendChild(option);
+                            }
+                            usersLineSelect.value = data.line_id;
+                        }
+                        // Sync hidden input if present
+                        if (usersLineHidden) usersLineHidden.value = usersLineSelect.value;
+                    }
                     form.querySelector('#affected-parts').value = data.affected_parts;
                     form.querySelector('#details-change').value = data.details_change;
                     form.querySelector('#implementation-date').value = data.implementation_date;
+
+                    // Update submit button text for edit
+                    const submitBtn = document.getElementById('ecis-submit-btn');
+                    if (submitBtn) {
+                        submitBtn.textContent = 'Save Changes';
+                    }
                 }
             })
             .catch(error => {
@@ -404,7 +521,7 @@ function initCancelRequest() {
             // Submit cancel request via AJAX
             const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
-            fetch(`/ecis/ecis/${ecisId}/cancel/`, {
+            fetch(`/ecis/${ecisId}/cancel/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -432,13 +549,13 @@ function initCancelRequest() {
                     // Reset the form
                     document.getElementById('cancel-remarks').value = '';
 
-                    // Update the UI to show the request as canceled
-                    updateEcisStatus(ecisId, 'canceled');
+                    // Refresh table via AJAX
+                    refreshEcisTable();
 
                     // Close details modal if open
                     const detailsModal = document.getElementById('ecis-details-modal');
                     if (detailsModal && detailsModal.classList.contains('active')) {
-                        closeModal(detailsModal);
+                        closeEcisDetailsModal();
                     }
                 } else {
                     // Show error toast
@@ -498,6 +615,17 @@ function initFormValidation() {
             e.preventDefault();
         });
     });
+
+    // Handle line selection change
+    const usersLineSelect = document.getElementById('users-line');
+    const usersLineHidden = document.getElementById('users_line');
+    if (usersLineSelect && usersLineHidden) {
+        usersLineSelect.addEventListener('change', function() {
+            usersLineHidden.value = this.value;
+        });
+        // Set initial value
+        usersLineHidden.value = usersLineSelect.value;
+    }
 
     // Handle submit button click
     submitBtn.addEventListener('click', function() {
@@ -562,8 +690,16 @@ function validateAndSubmitForm(form, submitBtn) {
         return;
     }
 
+    // Check if line is selected
+    const usersLine = document.getElementById('users-line');
+    if (!usersLine.value || usersLine.value === '') {
+        showValidationError('Please select a line');
+        usersLine.focus();
+        return;
+    }
+
     // Show loading state on submit button
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+    submitBtn.innerHTML = form.action.includes('edit') ? '<i class="fas fa-spinner fa-spin"></i> Saving...' : '<i class="fas fa-spinner fa-spin"></i> Submitting...';
     submitBtn.disabled = true;
 
     // Get form data
@@ -591,7 +727,7 @@ function validateAndSubmitForm(form, submitBtn) {
     .then(response => response.json())
     .then(data => {
         // Reset button state
-        submitBtn.innerHTML = form.action.includes('edit') ? 'Update Request' : 'Submit Request';
+        submitBtn.innerHTML = form.action.includes('edit') ? 'Save Changes' : 'Submit Request';
         submitBtn.disabled = false;
 
         if (data.status === 'success') {
@@ -607,22 +743,24 @@ function validateAndSubmitForm(form, submitBtn) {
                     createToast('ECIS request has been successfully updated.', 'success', 5000);
                 }
 
-                // Refresh page to show updated data
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
+                // Refresh table via AJAX
+                refreshEcisTable();
             } else {
                 // Show confirmation modal for new ECIS
                 document.getElementById('new-ecis-number').textContent = data.ecis_number;
                 const confirmationModal = document.getElementById('ecis-confirmation-modal');
                 openModal(confirmationModal);
 
-                // Add new row to table
-                // We'll just refresh the page for simplicity
+                // Refresh table via AJAX when OK is clicked
                 const confirmOkBtn = document.querySelector('.ecis-confirm-ok');
                 if (confirmOkBtn) {
-                    confirmOkBtn.addEventListener('click', function() {
-                        window.location.reload();
+                    // Remove old event listeners by cloning and replacing
+                    const newConfirmOkBtn = confirmOkBtn.cloneNode(true);
+                    confirmOkBtn.parentNode.replaceChild(newConfirmOkBtn, confirmOkBtn);
+                    
+                    newConfirmOkBtn.addEventListener('click', function() {
+                        closeModal(confirmationModal);
+                        refreshEcisTable();
                     });
                 }
             }
@@ -657,7 +795,7 @@ function validateAndSubmitForm(form, submitBtn) {
     })
     .catch(error => {
         console.error('Error submitting form:', error);
-        submitBtn.innerHTML = form.action.includes('edit') ? 'Update Request' : 'Submit Request';
+        submitBtn.innerHTML = form.action.includes('edit') ? 'Save Changes' : 'Submit Request';
         submitBtn.disabled = false;
         showValidationError('Failed to submit the form. Please try again.');
     });
@@ -915,12 +1053,20 @@ function initCategoryItems() {
 
                 // Open the modal
                 const ecisDetailsModal = document.getElementById('ecis-details-modal');
-                openModal(ecisDetailsModal);
+                if (ecisDetailsModal) {
+                    ecisDetailsModal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                    // Add opening animation
+                    const modalContent = ecisDetailsModal.querySelector('.JO-modal-content');
+                    if (modalContent) {
+                        modalContent.style.animation = 'JO-modal-appear 0.3s ease-out forwards';
+                    }
+                }
 
                 // Fetch ECIS details via AJAX
                 console.log('Fetching ECIS details for ID (notification):', ecisId);
-                // The correct URL should be /ecis/ecis/{id}/ based on the URL configuration
-                const url = `/ecis/ecis/${ecisId}/`;
+                // The correct URL should be /ecis/{id}/ based on the URL configuration
+                const url = `/ecis/${ecisId}/`;
                 console.log('Request URL (notification):', url);
 
                 fetch(url)

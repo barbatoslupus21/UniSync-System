@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 from portalusers.models import Users
 from django.conf import settings
+from settings.models import Line
 
 class ECIS(models.Model):
     CATEGORY_CHOICES = [
@@ -27,6 +28,7 @@ class ECIS(models.Model):
     date_prepared = models.DateField(auto_now_add=True)
     department = models.CharField(max_length=100)
     requested_by = models.CharField(max_length=100)
+    line = models.ForeignKey(Line, on_delete=models.SET_NULL, null=True, blank=True)
     customer = models.CharField(max_length=100, blank=True)
     line_supervisor = models.CharField(max_length=100, blank=True)
     affected_parts = models.TextField()
@@ -47,7 +49,7 @@ class ECIS(models.Model):
 
 
 class CategoryCounter(models.Model):
-    category = models.CharField(max_length=2, unique=True)
+    category = models.CharField(max_length=2)
     current_sequence = models.PositiveIntegerField(default=1)
     year = models.CharField(max_length=2)
 

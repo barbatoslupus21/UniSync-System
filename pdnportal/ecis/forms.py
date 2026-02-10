@@ -4,6 +4,9 @@ from .models import ECIS
 from .utils import generate_ecis_number
 
 class ECISForm(forms.ModelForm):
+    # Add users-line field to handle the line selection from frontend
+    users_line = forms.CharField(required=False, widget=forms.HiddenInput())
+    
     class Meta:
         model = ECIS
         fields = [
@@ -18,6 +21,10 @@ class ECISForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
+        # Handle the users-line field from the form data
+        if self.data and 'users-line' in self.data:
+            self.data = self.data.copy()
+            self.data['users_line'] = self.data['users-line']
 
         # When editing an existing ECIS, we'll keep the original category
         if self.instance.pk:
@@ -35,9 +42,28 @@ class ECISForm(forms.ModelForm):
             # For new ECIS, generate number and set created_by
             ecis.number = generate_ecis_number(self.cleaned_data['category'])
             ecis.created_by = self.user
+            
+            # Set the line if provided
+            if self.cleaned_data.get('users_line'):
+                from settings.models import Line
+                try:
+                    line = Line.objects.get(id=self.cleaned_data['users_line'])
+                    ecis.line = line
+                except Line.DoesNotExist:
+                    pass  # Line not found, leave as None
         else:
             # For existing ECIS, always keep the original category
             ecis.category = self.original_category
+
+        # Update line if provided in the form (for both create and edit)
+        users_line_val = self.cleaned_data.get('users_line')
+        if users_line_val:
+            from settings.models import Line
+            try:
+                line = Line.objects.get(id=users_line_val)
+                ecis.line = line
+            except Line.DoesNotExist:
+                pass
 
         ecis.last_updated = timezone.now()
 
@@ -45,6 +71,20 @@ class ECISForm(forms.ModelForm):
             ecis.save()
 
         return ecis
+
+    def clean_users_line(self):
+        users_line = self.cleaned_data.get('users_line')
+        if users_line:
+            try:
+                line_id = int(users_line)
+                from settings.models import Line
+                # Check if the line exists and belongs to the user
+                if not self.user.line.filter(id=line_id).exists():
+                    raise forms.ValidationError("Invalid line selected.")
+                return str(line_id)
+            except (ValueError, TypeError):
+                raise forms.ValidationError("Invalid line ID.")
+        return users_line
 
 class FacilitatorReviewForm(forms.Form):
     DECISION_CHOICES = [

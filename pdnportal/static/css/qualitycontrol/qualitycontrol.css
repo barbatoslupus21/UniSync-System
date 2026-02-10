@@ -438,6 +438,10 @@
     padding: 20px;
 }
 
+.main-chart-container canvas{
+    width: 100% !important;
+}
+
 .chart-main-container {
     border-radius: var(--radius-lg);
     border: 0.5px solid var(--border-color);

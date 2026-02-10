@@ -36,22 +36,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ========== Approver Event Listeners ==========
 function setupApproverEventListeners() {
-    // View & Approve buttons
-    document.querySelectorAll('.DCF-view-approval-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const dcfId = this.getAttribute('data-id');
-            openApprovalModal(dcfId);
-        });
-    });
-
-    // Standard view details buttons
-    document.querySelectorAll('.DCF-icon-button[title="View Details"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const dcfId = this.getAttribute('data-id');
-            openApprovalModal(dcfId, true); // read-only mode
-        });
-    });
-
     // Activity feed DCF links
     document.querySelectorAll('.DCF-activity-dcf').forEach(link => {
         link.addEventListener('click', function() {
@@ -60,10 +44,35 @@ function setupApproverEventListeners() {
         });
     });
 
-    // Close approval modal buttons
+    // Close DCF approval modal (JO-modal)
+    const dcfApprovalModal = document.getElementById('dcf-approval-modal');
+    if (dcfApprovalModal) {
+        document.querySelectorAll('#dcf-approval-modal-close-btn, #dcf-approval-modal-close-footer').forEach(btn => {
+            btn.addEventListener('click', function() {
+                closeModal(dcfApprovalModal);
+            });
+        });
+        
+        // Also close when clicking outside the modal
+        dcfApprovalModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal(this);
+            }
+        });
+    }
+
+    // Close confirmation modal buttons (DCF-modal)
     document.querySelectorAll('.close-approval-modal, .DCF-modal-close').forEach(btn => {
         btn.addEventListener('click', function() {
             const modal = this.closest('.DCF-modal');
+            closeModal(modal);
+        });
+    });
+
+    // Close DCF details modal buttons
+    document.querySelectorAll('#dcf-details-modal-close, #view-dcf-details-close').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = document.getElementById('dcf-details-modal');
             closeModal(modal);
         });
     });
@@ -86,6 +95,12 @@ function setupApproverEventListeners() {
         openModal(approvalModal);
     });
 
+    // Cancel cancel button
+    document.getElementById('cancel-cancel-btn').addEventListener('click', function() {
+        const cancelModal = document.getElementById('cancel-confirmation-modal');
+        closeModal(cancelModal);
+    });
+
     // Confirm approve button
     document.getElementById('confirm-approve-btn').addEventListener('click', function() {
         approveDcf();
@@ -104,31 +119,39 @@ function setupApproverEventListeners() {
         rejectDcf(remarks);
     });
 
-    // Search functionality for Pending Approvals
-    const pendingSearchInput = document.querySelector('.DCF-approval-requests .DCF-search-input');
+    // Confirm cancel button
+    document.getElementById('confirm-cancel-btn').addEventListener('click', function() {
+        const remarks = document.getElementById('cancellation-remarks').value.trim();
+
+        if (!remarks) {
+            showToast('Please provide a reason for cancellation', 'error');
+            document.getElementById('cancellation-remarks').focus();
+            return;
+        }
+
+        cancelDcf(remarks);
+    });
+
+    // Search functionality for Pending Approvals - AJAX-based
+    let searchTimeout;
+    const pendingSearchInput = document.getElementById('dcf-search-pending');
     if (pendingSearchInput) {
-        pendingSearchInput.addEventListener('keyup', function() {
-            const searchTerm = this.value.toLowerCase();
-            const pendingTable = document.querySelector('.DCF-approval-requests .DCF-table tbody');
-            const pendingRows = pendingTable.querySelectorAll('tr');
+        pendingSearchInput.addEventListener('input', function() {
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+            
+            // Set a new timeout to avoid too many requests
+            searchTimeout = setTimeout(() => {
+                performSearch();
+            }, 300); // Wait 300ms after user stops typing
+        });
+    }
 
-            pendingRows.forEach(row => {
-                const dcfNumber = row.querySelector('td[data-label="DCF Number"]')?.textContent.trim().toLowerCase() || '';
-                const requisitioner = row.querySelector('td[data-label="Requisitioner"]')?.textContent.trim().toLowerCase() || '';
-                const documentTitle = row.querySelector('td[data-label="Document Title"]')?.textContent.trim().toLowerCase() || '';
-                const documentCode = row.querySelector('td[data-label="Document Code"]')?.textContent.trim().toLowerCase() || '';
-                const nature = row.querySelector('td[data-label="Nature"]')?.textContent.trim().toLowerCase() || '';
-
-                if (dcfNumber.includes(searchTerm) ||
-                    requisitioner.includes(searchTerm) ||
-                    documentTitle.includes(searchTerm) ||
-                    documentCode.includes(searchTerm) ||
-                    nature.includes(searchTerm)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+    // Filter select functionality
+    const filterSelect = document.querySelector('.DCF-filter-select');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            performSearch();
         });
     }
 
@@ -147,6 +170,153 @@ function setupApproverEventListeners() {
             filterProcessedRequests();
         });
     }
+
+    // Setup initial event listeners for table buttons
+    setupTableEventListeners();
+}
+
+// Function to perform AJAX search and filter
+function performSearch() {
+    const searchQuery = document.getElementById('dcf-search-pending')?.value || '';
+    const statusFilter = document.getElementById('dcf-status-filter')?.value || 'all';
+    
+    const tableWrapper = document.getElementById('dcf-table-wrapper');
+    if (!tableWrapper) return;
+
+    // Show loading indicator
+    tableWrapper.style.opacity = '0.5';
+    tableWrapper.style.pointerEvents = 'none';
+
+    // Build URL with parameters
+    const url = new URL(window.location.href);
+    url.searchParams.set('search', searchQuery);
+    if (statusFilter !== 'all') {
+        url.searchParams.set('status', statusFilter);
+    } else {
+        url.searchParams.delete('status');
+    }
+    url.searchParams.delete('page'); // Reset to first page on new search
+
+    // Fetch filtered data
+    fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Update table content
+        tableWrapper.innerHTML = html;
+        
+        // Re-attach event listeners for new buttons
+        setupTableEventListeners();
+        
+        // Restore table
+        tableWrapper.style.opacity = '1';
+        tableWrapper.style.pointerEvents = '';
+        
+        // Update URL without reloading page
+        window.history.pushState({}, '', url.toString());
+    })
+    .catch(error => {
+        console.error('Error fetching filtered data:', error);
+        tableWrapper.style.opacity = '1';
+        tableWrapper.style.pointerEvents = '';
+        showToast('Error loading data. Please try again.', 'error');
+    });
+}
+
+// Function to setup event listeners for table buttons
+function setupTableEventListeners() {
+    // Re-attach event listeners for view details buttons
+    document.querySelectorAll('button[title="View Details"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            fetchDcfDetails(dcfId);
+        });
+    });
+
+    // Re-attach event listeners for view & approve buttons
+    document.querySelectorAll('.DCF-view-approval-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            openApprovalModal(dcfId);
+        });
+    });
+
+    // Re-attach event listeners for cancel buttons
+    document.querySelectorAll('.DCF-cancel-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            openCancelConfirmation(dcfId);
+        });
+    });
+
+    // Re-attach pagination link listeners
+    document.querySelectorAll('.pagination-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = new URL(this.href);
+            loadPage(url.search);
+        });
+    });
+}
+
+// Function to load a specific page
+function loadPage(queryString) {
+    const tableWrapper = document.getElementById('dcf-table-wrapper');
+    if (!tableWrapper) return;
+
+    // Show loading indicator
+    tableWrapper.style.opacity = '0.5';
+    tableWrapper.style.pointerEvents = 'none';
+
+    const baseUrl = window.location.pathname;
+    const url = baseUrl + queryString;
+
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Update table content
+        tableWrapper.innerHTML = html;
+        
+        // Re-attach event listeners
+        setupTableEventListeners();
+        
+        // Restore table
+        tableWrapper.style.opacity = '1';
+        tableWrapper.style.pointerEvents = '';
+        
+        // Update URL
+        window.history.pushState({}, '', url);
+        
+        // Scroll to top of table
+        tableWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    })
+    .catch(error => {
+        console.error('Error loading page:', error);
+        tableWrapper.style.opacity = '1';
+        tableWrapper.style.pointerEvents = '';
+        showToast('Error loading data. Please try again.', 'error');
+    });
 }
 
 // Function to filter processed requests based on search and status filter
@@ -321,6 +491,21 @@ function openRejectConfirmation(dcfId, remarks) {
     openModal(rejectModal);
 }
 
+function openCancelConfirmation(dcfId) {
+    const cancelModal = document.getElementById('cancel-confirmation-modal');
+    const dcfNumber = document.querySelector(`button[data-id="${dcfId}"]`).closest('tr').querySelector('td[data-label="DCF Number"]').textContent.trim();
+
+    // Set DCF number in confirmation message
+    document.getElementById('cancel-dcf-confirm').textContent = dcfNumber;
+
+    // Set up form
+    const form = document.getElementById('cancel-form');
+    form.action = `/dcf/cancel-approval/${dcfId}/`;
+
+    // Open confirmation modal
+    openModal(cancelModal);
+}
+
 function approveDcf() {
     // Submit approve form
     const form = document.getElementById('approve-form');
@@ -346,6 +531,23 @@ function rejectDcf(remarks) {
     // Show loading state
     rejectBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
     rejectBtn.disabled = true;
+
+    // Submit form
+    form.submit();
+}
+
+function cancelDcf(remarks) {
+    // Get updated remarks from the textarea
+    const cancelRemarksHidden = document.getElementById('cancel-remarks-hidden');
+    cancelRemarksHidden.value = remarks;
+
+    // Submit cancel form
+    const form = document.getElementById('cancel-form');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+    // Show loading state
+    cancelBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    cancelBtn.disabled = true;
 
     // Submit form
     form.submit();
@@ -388,7 +590,7 @@ function initializeApproverChart() {
                 borderColor: 'rgba(255, 193, 7, 1)',
                 borderWidth: 2,
                 tension: 0.4,
-                fill: false, // Remove shading below the chart
+                fill: false,
                 pointBackgroundColor: 'rgba(255, 193, 7, 1)',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
@@ -402,7 +604,7 @@ function initializeApproverChart() {
                 borderColor: 'rgba(76, 175, 80, 1)',
                 borderWidth: 2,
                 tension: 0.4,
-                fill: false, // Remove shading below the chart
+                fill: false,
                 pointBackgroundColor: 'rgba(76, 175, 80, 1)',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
@@ -416,7 +618,7 @@ function initializeApproverChart() {
                 borderColor: 'rgba(244, 67, 54, 1)',
                 borderWidth: 2,
                 tension: 0.4,
-                fill: false, // Remove shading below the chart
+                fill: false,
                 pointBackgroundColor: 'rgba(244, 67, 54, 1)',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
@@ -582,11 +784,6 @@ function initializeApproverChart() {
             if (chartWrapper) {
                 chartWrapper.style.opacity = '1';
             }
-
-            // Show a toast notification
-            const periodSelector = document.getElementById('chart-period-selector');
-            const periodText = periodSelector ? periodSelector.options[periodSelector.selectedIndex].text : period;
-            showToast('Chart updated for ' + periodText, 'info');
         })
         .catch(error => {
             console.error('Error fetching chart data:', error);
@@ -629,4 +826,132 @@ function initializeApproverChart() {
         // Fetch updated data
         fetchChartData(currentPeriod);
     }, 300000); // 5 minutes
+}
+
+// ========== DCF Details Modal Functions ==========
+function fetchDcfDetails(dcfId) {
+    console.log('fetchDcfDetails called with DCF ID:', dcfId);
+    const modal = document.getElementById('dcf-details-modal');
+    const detailsContent = document.getElementById('dcf-details-content');
+
+    // Show loading state
+    detailsContent.innerHTML = `
+        <div class="DCF-loading">
+            <i class="fas fa-spinner"></i>
+            <p>Loading DCF details...</p>
+        </div>
+    `;
+
+    // Open modal
+    openModal(modal);
+
+    // Construct URL - use the correct URL pattern from urls.py
+    const url = `/dcf/view-dcf/${dcfId}/`;
+
+    // Fetch DCF details
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+        }
+
+        // Check content type to ensure we're getting HTML
+        const contentType = response.headers.get('content-type');
+
+        return response.text();
+    })
+    .then(html => {
+        // Check if the HTML is empty or contains error messages
+        if (!html || html.trim() === '') {
+            detailsContent.innerHTML = `
+                <div class="DCF-loading" style="color: var(--dcf-text);">
+                    <i class="fas fa-info-circle" style="color: var(--dcf-primary); animation: none;"></i>
+                    <p>No details available for this DCF.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Set the HTML content directly
+        detailsContent.innerHTML = html;
+
+        // If there's an issue with the content, show a simplified version
+        if (!detailsContent.innerHTML || detailsContent.innerHTML.trim() === '') {
+            // Create a direct display of the raw HTML
+            detailsContent.innerHTML = `
+                <div class="DCF-details-grid">
+                    <div class="DCF-details-section">
+                        <h4>DCF Information</h4>
+                        <div class="DCF-details-row">
+                            <div class="DCF-details-item">
+                                <span class="DCF-details-label">ID:</span>
+                                <span class="DCF-details-value">${dcfId}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Force a reflow to ensure content is displayed properly
+        detailsContent.style.display = 'none';
+        setTimeout(() => {
+            detailsContent.style.display = '';
+        }, 10);
+
+        // Clean up the footer first - remove any previously added buttons
+        const footer = modal.querySelector('.JO-modal-footer');
+
+        // Clear all buttons from the footer
+        while (footer.firstChild) {
+            footer.removeChild(footer.firstChild);
+        }
+
+        // Add close button to footer
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'btn btn-outline';
+        closeButton.id = 'view-dcf-details-close';
+        closeButton.innerHTML = '<i class="fa fa-times" aria-hidden="true"></i> Close';
+
+        closeButton.addEventListener('click', function() {
+            closeModal(modal);
+        });
+
+        footer.appendChild(closeButton);
+
+    })
+    .catch(error => {
+        console.error('Error fetching DCF details:', error);
+        detailsContent.innerHTML = `
+            <div class="DCF-loading" style="color: var(--dcf-text);">
+                <i class="fas fa-exclamation-triangle" style="color: #f44336; animation: none;"></i>
+                <p>Error loading DCF details. Please try again.</p>
+                <p style="font-size: 0.875rem; color: #666;">${error.message}</p>
+            </div>
+        `;
+
+        // Add close button even on error
+        const footer = modal.querySelector('.JO-modal-footer');
+        while (footer.firstChild) {
+            footer.removeChild(footer.firstChild);
+        }
+
+        const closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'btn btn-outline';
+        closeButton.id = 'view-dcf-details-close';
+        closeButton.innerHTML = '<i class="fa fa-times" aria-hidden="true"></i> Close';
+
+        closeButton.addEventListener('click', function() {
+            closeModal(modal);
+        });
+
+        footer.appendChild(closeButton);
+    });
 }

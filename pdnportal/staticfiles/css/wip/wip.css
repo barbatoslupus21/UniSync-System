@@ -41,6 +41,11 @@
     outline: none;
 }
 
+.card-header-action #date-filter {
+    min-width: 160px;
+    width: auto;
+}
+
 .WIP-input {
     width: 100%;
     padding: 10px 12px;
@@ -92,7 +97,7 @@
 .WIP-info-card {
     background: var(--wip-card-bg);
     border-radius: 12px;
-    box-shadow: var(--wip-shadow);
+    border: 0.5px solid var(--wip-border);
     overflow: hidden;
     animation: fadeInUp 0.5s ease-out;
 }
@@ -114,16 +119,20 @@
 }
 
 .WIP-info-grid {
-    padding: 20px;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 16px;
+    padding: 15px 0px !important;
+    display: flex;
+    gap: 5vw;
+}
+
+.JO-header-title-actions{
+    display: flex;
+    justify-content: space-between;
 }
 
 .WIP-info-item {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 8px;
 }
 
 .WIP-info-label {
@@ -770,6 +779,12 @@
 }
 
 @media (max-width: 768px) {
+    .JO-header-title-actions{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
     .main-content {
         width: 100%;
         max-width: 100%;
@@ -787,7 +802,7 @@
     
     .JO-header-actions {
         width: 100%;
-        justify-content: flex-start;
+        justify-content: end;
         order: -1;
         margin-top: 8px;
         margin-bottom: 8px;
@@ -798,9 +813,7 @@
     }
     
     .WIP-info-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
-        padding: 15px;
+        justify-content: space-between;
     }
     
     .WIP-section-header {
@@ -1287,15 +1300,11 @@
     transform: translateY(-2px);
 }
 
-/* Make all sections collapsed by default */
-
-/* --- Inventory Tabs --- */
 .WIP-inventory-tabs-container {
   margin-top: 32px;
   background: var(--wip-card-bg);
   border-radius: 12px;
-  box-shadow: var(--wip-shadow);
-  /* padding: 0 0 24px 0; */
+  border: 0.5px solid var(--wip-border);
 }
 .WIP-inventory-tabs {
   display: flex;
@@ -1326,7 +1335,7 @@
 .WIP-tab-btn[aria-selected="true"] {
   color: var(--wip-primary);
   border-bottom: 2.5px solid var(--wip-primary);
-  background: #fff;
+  background: var(--wip-primary-light);
   z-index: 2;
 }
 .WIP-tab-btn:focus {
@@ -1404,4 +1413,34 @@
 .WIP-form-row .WIP-form-group {
     flex: 1;
     margin-bottom: 0;
+}
+
+.btn {
+    white-space: nowrap;
+}
+
+.card-header-action {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.JO-search-container {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    gap: 8px;
+}
+
+.JO-search-input {
+    border: none;
+    padding: 8px 12px;
+    outline: none;
+    font-size: 0.9rem;
+    flex: 1;
+    min-width: 200px;
+    max-width: 400px;
+    white-space: nowrap;
+    display: inline-block;
 }

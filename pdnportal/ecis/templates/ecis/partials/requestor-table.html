@@ -1,0 +1,110 @@
+<div class="common-table-container">
+    <table class="Unisync-table" id="trial-run-table">
+        <thead>
+            <tr>
+                <th>CMIS Number</th>
+                <th class="hide-column">Department</th>
+                <th class="hide-column">Line</th>
+                <th>Prepared By</th>
+                <th class="hide-column">Customer</th>
+                <th class="hide-column">Implementation Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="trial-run-tbody">
+            {% for ecis in ecis_list %}
+                    <tr data-status="{{ ecis.status|lower }}" {% if ecis.status == 'On Hold' %}class="ecis-warning-row"{% endif %}>
+                        <td data-label="ECIS Number"><span class="ecis-category-pill ecis-cat-{{ ecis.category }}">{{ ecis.number }}</span></td>
+                        <td class="hide-column" data-label="Department">{{ ecis.department }}</td>
+                        <td class="hide-column" data-label="Line">{{ ecis.line.line_name }}</td>
+                        <td data-label="Prepared By">{{ ecis.requested_by }}</td>
+                        <td class="hide-column" data-label="Customer">{{ ecis.customer }}</td>
+                        <td class="hide-column" data-label="Implementation Date">{{ ecis.implementation_date|date:"M d, Y" }}</td>
+                        <td data-label="Status">
+                            <span class="ecis-status ecis-status-{{ ecis.status|lower|cut:" " }}">
+                                {% if ecis.status == "For Review" %}
+                                    <i class="fas fa-sync-alt" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "Needs Revision" %}
+                                    <i class="fas fa-edit" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "Approved" %}
+                                    <i class="fas fa-check" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "On Hold" %}
+                                    <i class="fas fa-pause" style="margin-right: 5px;"></i>
+                                {% elif ecis.status == "Canceled" %}
+                                    <i class="fas fa-times" style="margin-right: 5px;"></i>
+                                {% endif %}
+                                {{ ecis.status }}
+                            </span>
+                        </td>
+                        <td data-label="Actions">
+                            <button class="ecis-icon-button" title="View Details" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            {% if ecis.status == "Approved" or ecis.status == "On Hold" or ecis.status == "Needs Revision" %}
+                            <button class="ecis-icon-button ecis-edit-btn" title="Edit Request" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+            {% empty %}
+            <tr>
+                <td colspan="10" class="JO-empty-table">
+                    <div class="empty-state">
+                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                        <h4>No ECIS Request Found</h4>
+                        {% if search_query %}
+                            <p>No results found for "{{ search_query }}"</p>
+                        {% else %}
+                            <p>No ECIS request has been filed yet</p>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="JO-pagination">
+    <div class="JO-pagination-info">
+        Showing {{ ecis_list.start_index|default:1 }} to {{ ecis_list.end_index|default:10 }} of {{ paginator.count }} entries
+    </div>
+    {% if paginator.num_pages > 1 %}
+    <div class="JO-pagination-controls">
+        <div class="JO-pagination-nav-container">
+            {% if ecis_list.has_previous %}
+            <a href="?page={{ ecis_list.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="JO-pagination-btn pagination-link">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </span>
+            {% endif %}
+            
+            <div class="JO-pagination-pages">
+                {% for num in paginator.page_range %}
+                {% if ecis_list.number == num %}
+                <span class="JO-pagination-page active">{{ num }}</span>
+                {% elif num > ecis_list.number|add:'-3' and num < ecis_list.number|add:'3' %}
+                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="JO-pagination-page pagination-link">{{ num }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            
+            {% if ecis_list.has_next %}
+            <a href="?page={{ ecis_list.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter != 'all' %}&status={{ status_filter }}{% endif %}{% if category_filter != 'all' %}&category={{ category_filter }}{% endif %}" class="JO-pagination-btn pagination-link">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>

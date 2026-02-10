@@ -6,7 +6,6 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/dcf/dcf-requestor.css' %}">
 <link rel="stylesheet" href="{% static 'css/dcf/dcf-approver.css' %}">
-<link rel="stylesheet" href="{% static 'css/dcf/dcf-no-results.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -60,9 +59,9 @@
                 <i class="fas fa-times-circle"></i>
             </div>
             <div class="DCF-stats-content">
-                <h3>Rejected</h3>
+                <h3>Cancelled</h3>
                 <h2 class="DCF-stats-number">{{ rejected_dcfs }}</h2>
-                <p>Declined requests</p>
+                <p>Cancelled requests</p>
             </div>
         </div>
     </div>
@@ -90,11 +89,6 @@
         <div class="DCF-card DCF-recent-activity">
             <div class="DCF-card-header">
                 <h2>Recent Activity</h2>
-                <div class="DCF-card-actions">
-                    <button class="DCF-button DCF-text-button DCF-refresh-btn">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                </div>
             </div>
             <div class="DCF-activity-list">
                 {% if all_activity %}
@@ -161,219 +155,52 @@
         </div>
     </div>
 
-    <!-- Pending Approvals Section -->
-    <div class="DCF-card DCF-approval-requests">
-        <div class="DCF-card-header">
-            <h2>Pending Approval Requests</h2>
-            <div class="DCF-card-actions">
-                <div class="DCF-search-container">
-                    <input type="text" class="DCF-search-input" placeholder="Search by DCF Number, title, requisitioner...">
-                    <button class="DCF-search-button">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-                <div class="DCF-filter-container">
-                    <select class="DCF-select DCF-filter-select">
-                        <option value="all" selected>All Requests</option>
-                        <option value="my-department">My Department</option>
-                        <option value="urgent">Urgent Requests</option>
-                        <option value="recent">Recently Filed</option>
-                    </select>
-                </div>
-            </div>
-        </div>
+    <!-- DCF Request Section -->
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <!-- DCF Search Bar -->
+                        <div class="JO-search-container">
+                            <input type="text" id="dcf-search-pending" class="JO-search-input" placeholder="Search by DCF Number, title, document code..." value="{{ search_query|default:'' }}">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
 
-        <div class="DCF-table-container">
-            <table class="DCF-table">
-                <thead>
-                    <tr>
-                        <th>DCF Number</th>
-                        <th>Requisitioner</th>
-                        <th>Document Title</th>
-                        <th>Document Code</th>
-                        <th>Nature</th>
-                        <th>Filed Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="pending-approvals-body">
-                    {% if pending_approvals %}
-                        {% for dcf in pending_approvals %}
-                        {% with days_until_effectivity=dcf.effectivity_date|timeuntil:dcf.date_filed|default:"0" %}
-                        <tr class="{% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}DCF-urgent-row{% endif %}">
-                            <td data-label="DCF Number">
-                                {{ dcf.dcf_number }}
-                                {% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}
-                                <span class="DCF-tooltip">
-                                    <i class="fas fa-exclamation-triangle DCF-warning-icon"></i>
-                                    <span class="DCF-tooltip-text">Warning: Effectivity date is more than 1 week from filing date!</span>
-                                </span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Requisitioner">{{ dcf.requisitioner.name }}</td>
-                            <td data-label="Document Title">{{ dcf.document_title }}</td>
-                            <td data-label="Document Code">{{ dcf.document_code }}</td>
-                            <td data-label="Nature">{{ dcf.get_nature_display }}</td>
-                            <td data-label="Filed Date">{{ dcf.date_filed|date:"M d, Y" }}</td>
-                            <td data-label="Actions">
-                                <div class="DCF-action-buttons">
-                                    <button class="DCF-icon-button DCF-view-approval-btn" title="View & Approve" data-id="{{ dcf.id }}">
-                                        <i class="fas fa-clipboard-check"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endwith %}
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="7" class="DCF-empty-table">No pending approval requests found.</td>
-                        </tr>
-                    {% endif %}
-                    <!-- No results message - inside the table -->
-                    <tr id="pending-no-results-row" style="display: none;">
-                        <td colspan="7" class="DCF-empty-table">
-                            <div class="DCF-no-data-message">
-                                <i class="fas fa-search fa-2x"></i>
-                                <p>No matching DCF requests found</p>
-                                <span>Try adjusting your search criteria</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="DCF-pagination" id="pending-pagination">
-            <span class="DCF-pagination-info">
-                Showing {{ pending_approvals.start_index }}-{{ pending_approvals.end_index }} of {{ pending_approvals.paginator.count }} entries
-            </span>
-            <div class="DCF-pagination-pages">
-                {% if pending_approvals.has_previous %}
-                <button class="DCF-pagination-btn DCF-pagination-prev" data-page="{{ pending_approvals.previous_page_number }}">
-                    <i class="fas fa-chevron-left"></i> Previous
-                </button>
-                {% else %}
-                <button class="DCF-pagination-btn DCF-pagination-prev disabled">
-                    <i class="fas fa-chevron-left"></i> Previous
-                </button>
-                {% endif %}
-
-                <div class="DCF-pagination-numbers">
-                    {% for i in pending_approvals.paginator.page_range %}
-                        {% if pending_approvals.number == i %}
-                            <button class="DCF-pagination-page active">{{ i }}</button>
-                        {% elif i > pending_approvals.number|add:'-3' and i < pending_approvals.number|add:'3' %}
-                            <button class="DCF-pagination-page" data-page="{{ i }}">{{ i }}</button>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-
-                {% if pending_approvals.has_next %}
-                <button class="DCF-pagination-btn DCF-pagination-next" data-page="{{ pending_approvals.next_page_number }}">
-                    Next <i class="fas fa-chevron-right"></i>
-                </button>
-                {% else %}
-                <button class="DCF-pagination-btn DCF-pagination-next disabled">
-                    Next <i class="fas fa-chevron-right"></i>
-                </button>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- Recently Processed Section -->
-    <div class="DCF-card DCF-processed-requests">
-        <div class="DCF-card-header">
-            <h2>Recently Processed Requests</h2>
-            <div class="DCF-card-actions">
-                <div class="DCF-search-container">
-                    <input type="text" class="DCF-search-input" placeholder="Search by DCF Number, requisitioner, title...">
-                    <button class="DCF-search-button">
-                        <i class="fas fa-search"></i>
-                    </button>
-                </div>
-                <div class="DCF-filter-container">
-                    <select id="processed-status-filter" class="DCF-select">
-                        <option value="all" selected>All Status</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
+                        <div class="DCF-filter-container">
+                            <select class="DCF-select DCF-filter-select" id="dcf-status-filter">
+                                <option value="all" selected>All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>          
+                <div id="dcf-table-wrapper">
+                    {% include 'dcf/partials/pending_table.html' %}
                 </div>
             </div>
-        </div>
-
-        <div class="DCF-table-container">
-            <table class="DCF-table">
-                <thead>
-                    <tr>
-                        <th>DCF Number</th>
-                        <th>Requisitioner</th>
-                        <th>Document Title</th>
-                        <th>Status</th>
-                        <th>Processed Date</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="processed-approvals-body">
-                    {% if recent_approvals %}
-                        {% for approval in recent_approvals %}
-                        <tr>
-                            <td data-label="DCF Number">{{ approval.dcf.dcf_number }}</td>
-                            <td data-label="Requisitioner">{{ approval.dcf.requisitioner.name }}</td>
-                            <td data-label="Document Title">{{ approval.dcf.document_title }}</td>
-                            <td data-label="Status">
-                                <span class="DCF-status DCF-status-{{ approval.status }}">
-                                    {{ approval.get_status_display }}
-                                </span>
-                            </td>
-                            <td data-label="Processed Date">{{ approval.date_acted|date:"M d, Y" }}</td>
-                            <td data-label="Actions">
-                                <button class="DCF-icon-button" title="View Details" data-id="{{ approval.dcf.id }}">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="6" class="DCF-empty-table">No processed requests found.</td>
-                        </tr>
-                    {% endif %}
-                    <!-- No results message - inside the table -->
-                    <tr id="processed-no-results-row" style="display: none;">
-                        <td colspan="6" class="DCF-empty-table">
-                            <div class="DCF-no-data-message">
-                                <i class="fas fa-search fa-2x"></i>
-                                <p>No matching DCF requests found</p>
-                                <span>Try adjusting your search criteria</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
     </div>
 </main>
 
 <!-- DCF Approval Modal -->
-<div class="DCF-modal" id="dcf-approval-modal">
-    <div class="DCF-modal-content">
-        <div class="DCF-modal-header">
-            <h2>Review Document Change Form</h2>
-            <button class="DCF-modal-close">
+<div id="dcf-approval-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Document Change Form Details</h3>
+            <button class="JO-modal-close DCF-modal-close" id="dcf-approval-modal-close-btn">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="DCF-modal-body" id="approval-details-content">
+        <div class="JO-modal-body" id="approval-details-content">
             <div class="DCF-loading">
                 <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
                 <p>Loading DCF details...</p>
             </div>
-        </div>
-        <div class="DCF-modal-footer">
-            <button class="DCF-button DCF-secondary-button close-approval-modal">Close</button>
         </div>
     </div>
 </div>
@@ -447,6 +274,107 @@
     </div>
 </div>
 
+<!-- Cancellation Confirmation Modal -->
+<div class="DCF-modal DCF-confirmation-modal" id="cancel-confirmation-modal">
+    <div class="DCF-modal-content">
+        <div class="DCF-modal-header">
+            <h2>Confirm Cancellation</h2>
+            <button class="DCF-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="DCF-modal-body">
+            <div class="DCF-confirmation-content">
+                <div class="DCF-confirmation-icon DCF-cancelled-icon">
+                    <i class="fas fa-ban"></i>
+                </div>
+                <p class="DCF-confirmation-message">Are you sure you want to cancel <strong id="cancel-dcf-confirm"></strong>?</p>
+                <p class="DCF-confirmation-submessage">This action cannot be undone. The DCF will be marked as cancelled.</p>
+
+                <div class="DCF-form-group">
+                    <label for="cancellation-remarks">Cancellation Reason (Required)</label>
+                    <textarea id="cancellation-remarks" class="DCF-textarea" rows="3" placeholder="Provide a reason for cancellation..." required></textarea>
+                </div>
+
+                <form id="cancel-form" method="POST" action="">
+                    {% csrf_token %}
+                    <input type="hidden" name="remarks" id="cancel-remarks-hidden">
+                </form>
+            </div>
+        </div>
+        <div class="DCF-modal-footer">
+            <button class="DCF-button DCF-secondary-button" id="cancel-cancel-btn">Cancel</button>
+            <button class="DCF-button DCF-danger-button" id="confirm-cancel-btn">
+                <i class="fas fa-ban"></i> Confirm Cancellation
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- DCF Details Modal -->
+<div id="dcf-details-modal" class="JO-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <h3>Document Change Form Details</h3>
+            <button class="JO-modal-close" id="dcf-details-modal-close">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body" id="dcf-details-content">
+            <div class="modal-details-header">
+                <div class="modal-details-id">
+                    <h3 id="view-control-number"></h3>
+                    <span id="view-status" class="JO-view-value"></span>
+                </div>
+
+                <div class="JO-details-date">
+                    <p><span id="view-date-label"></span> <span id="view-date-value"></span></p>
+                </div>
+            </div>
+        
+            <div class="modal-details-section">
+                <h4>Basic Information</h4>
+                <div class="modal-details-grid">
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">document code</span>
+                        <span id="view-document-code" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">revision number</span>
+                        <span id="view-revision-number" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">document title</span>
+                        <span id="view-document-title" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">nature</span>
+                        <span id="view-nature" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">effectivity date</span>
+                        <span id="view-effectivity-date" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item">
+                        <span class="JO-details-label">prepared by</span>
+                        <span id="view-prepared-by" class="JO-view-value"></span>
+                    </div>
+                    <div class="JO-details-item JO-details-item-full">
+                        <span class="JO-details-label">details</span>
+                        <span id="view-details" class="JO-view-value"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="JO-modal-footer">
+            <button type="button" class="btn btn-outline" id="view-dcf-details-close">
+                <i class="fa fa-times" aria-hidden="true"></i>
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Toast Container for notifications -->
 <div class="toast-container" id="toast-container"></div>
 {% endblock %}
@@ -454,5 +382,4 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 <script src="{% static 'js/dcf/dcf-approver.js' %}"></script>
-<script src="{% static 'js/dcf/dcf-no-results.js' %}"></script>
 {% endblock %}

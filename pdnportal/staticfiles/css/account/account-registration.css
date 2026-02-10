@@ -1320,6 +1320,11 @@
     color: var(--um-meeting-color, #1565c0);
 }
 
+.UM-wip-pill {
+    background-color: var(--um-wip-light, #f3e5f5);
+    color: var(--um-wip-color, #6a1b9a);
+}
+
 /* Status */
 .UM-status {
     display: inline-flex;

@@ -83,6 +83,8 @@ def search_users(request):
                 users_list = users_list.filter(dcf_user=True)
             elif permission_filter == 'ecis':
                 users_list = users_list.filter(ecis_user=True)
+            elif permission_filter == 'wip':
+                users_list = users_list.filter(wip_user=True)
         
         # Paginate results
         paginator = Paginator(users_list, 10)
@@ -114,6 +116,8 @@ def search_users(request):
                 permissions.append({'type': 'docunotification', 'label': 'DocuWatcher'})
             if user.meetingscheduler_user:
                 permissions.append({'type': 'meetingscheduler', 'label': 'Meeting Scheduler'})
+            if user.wip_user:
+                permissions.append({'type': 'wip', 'label': 'WIP'})
             
             # Format lines as comma-separated string for display
             lines_list = user.line.all()
@@ -238,6 +242,8 @@ def create_user(request):
                 dcf_role = request.POST.get('dcf_role')
                 if dcf_role == 'requestor':
                     user.dcf_requestor = True
+                elif dcf_role == 'qsd':
+                    user.dcf_qsd = True
                 elif dcf_role == 'approver':
                     user.dcf_approver = True
 
@@ -314,6 +320,19 @@ def create_user(request):
                     user.meetingscheduler = True
                 elif meetingscheduler_role == 'admin':
                     user.meetingadmin = True
+
+            # WIP permissions
+            wip_user = request.POST.get('wip_user') == 'on'
+            user.wip_user = wip_user
+
+            if wip_user:
+                wip_role = request.POST.get('wip_role')
+                if wip_role == 'wip_counter':
+                    user.wip_counter = True
+                elif wip_role == 'wip_checker':
+                    user.wip_checker = True
+                elif wip_role == 'wip_facilitator':
+                    user.wip_facilitator = True
 
             user.set_password(password)
             user.save()
@@ -414,6 +433,7 @@ def edit_user(request, user_id):
             # Reset DCF permissions
             user.dcf_user = False
             user.dcf_requestor = False
+            user.dcf_qsd = False
             user.dcf_approver = False
 
             # Reset ECIS permissions
@@ -433,6 +453,28 @@ def edit_user(request, user_id):
             user.stock_declaration_production = False
             user.stock_declaration_warehouse = False
             user.stock_declaration_purchasing = False
+
+            # Reset Overtime permissions
+            user.overtime_user = False
+            user.overtime_requestor = False
+            user.overtime_facilitator = False
+            user.overtime_shuttle_admin = False
+
+            # Reset Document Notification permissions
+            user.docunotification_user = False
+            user.docunotification_requestor = False
+            user.docunotification_admin = False
+
+            # Reset Meeting Scheduler permissions
+            user.meetingscheduler_user = False
+            user.meetingscheduler = False
+            user.meetingadmin = False
+
+            # Reset WIP permissions
+            user.wip_user = False
+            user.wip_counter = False
+            user.wip_checker = False
+            user.wip_facilitator = False
 
             job_order_user = request.POST.get('job_order_user') == 'on'
             user.job_order_user = job_order_user
@@ -484,6 +526,8 @@ def edit_user(request, user_id):
                 dcf_role = request.POST.get('dcf_role')
                 if dcf_role == 'requestor':
                     user.dcf_requestor = True
+                elif dcf_role == 'qsd':
+                    user.dcf_qsd = True
                 elif dcf_role == 'approver':
                     user.dcf_approver = True
 
@@ -567,6 +611,23 @@ def edit_user(request, user_id):
                     user.meetingscheduler = True
                 elif meetingscheduler_role == 'admin':
                     user.meetingadmin = True
+
+            # WIP permissions
+            wip_user = request.POST.get('wip_user') == 'on'
+            user.wip_user = wip_user
+            # Reset roles first
+            user.wip_counter = False
+            user.wip_checker = False
+            user.wip_facilitator = False
+
+            if wip_user:
+                wip_role = request.POST.get('wip_role')
+                if wip_role == 'wip_counter':
+                    user.wip_counter = True
+                elif wip_role == 'wip_checker':
+                    user.wip_checker = True
+                elif wip_role == 'wip_facilitator':
+                    user.wip_facilitator = True
 
             user.save()
 
@@ -669,6 +730,8 @@ def get_user_data(request, user_id):
         dcf_role = None
         if user.dcf_requestor:
             dcf_role = 'requestor'
+        elif user.dcf_qsd:
+            dcf_role = 'qsd'
         elif user.dcf_approver:
             dcf_role = 'approver'
 
@@ -715,6 +778,22 @@ def get_user_data(request, user_id):
         elif user.docunotification_admin:
             docunotification_role = 'admin'
 
+        # Determine Meeting Scheduler role
+        meetingscheduler_role = None
+        if user.meetingscheduler:
+            meetingscheduler_role = 'user'
+        elif user.meetingadmin:
+            meetingscheduler_role = 'admin'
+
+        # Determine WIP role
+        wip_role = None
+        if user.wip_counter:
+            wip_role = 'wip_counter'
+        elif user.wip_checker:
+            wip_role = 'wip_checker'
+        elif user.wip_facilitator:
+            wip_role = 'wip_facilitator'
+
         # Serialize ManyToMany lines field
         lines_data = [{'id': line.id, 'line_name': line.line_name} for line in user.line.all()]
         # Include default_line information if set on the user
@@ -744,6 +823,7 @@ def get_user_data(request, user_id):
             'dcf_user': user.dcf_user,
             'dcf_role': dcf_role,
             'dcf_requestor': user.dcf_requestor,
+            'dcf_qsd': user.dcf_qsd,
             'dcf_approver': user.dcf_approver,
             'ecis_user': user.ecis_user,
             'ecis_role': ecis_role,
@@ -772,6 +852,11 @@ def get_user_data(request, user_id):
             'meetingscheduler_user': user.meetingscheduler_user,
             'meetingscheduler': user.meetingscheduler,
             'meetingadmin': user.meetingadmin,
+            'wip_user': user.wip_user,
+            'wip_role': wip_role,
+            'wip_counter': user.wip_counter,
+            'wip_checker': user.wip_checker,
+            'wip_facilitator': user.wip_facilitator,
             'default_line': default_line_data,
             'default_line_id': default_line_data['id'] if default_line_data else None,
             'approvers': approvers_data

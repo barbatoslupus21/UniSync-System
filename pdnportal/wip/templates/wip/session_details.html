@@ -14,71 +14,63 @@
 
     <div class="JO-header">
         <div class="JO-title-section">
-            <h1 class="JO-page-title">WIP Session Details - WIP-{{ session.id }}</h1>
-            <p class="JO-subtitle">
-                {{ session.line.line_name }} | Responsible: {{ session.person_responsible }}
-                {% if session.status == 'CHECKED' %} | Checked by: {{ session.checked_by.name }} on {{ session.checked_at|date:"M d, Y H:i" }}{% endif %}
-            </p>
-        </div>
-        <div class="JO-header-actions">
-            {% if user_type == 'counter' %}
-                <button class="JO-button JO-secondary-button" onclick="window.location.href='{% url 'wip_dashboard' %}'">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </button>
-            {% elif user_type == 'checker' %}
-                <button class="JO-button JO-secondary-button" onclick="window.history.back()">
-                    <i class="fas fa-arrow-left"></i> Back
-                </button>
-                {% if can_check and all_entries_checked %}
-                <button class="JO-button JO-success-button" id="checking-complete-btn" data-id="{{ session.id }}">
-                    <i class="fas fa-check-circle"></i> Checking Complete
-                </button>
-                {% endif %}
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="WIP-session-info">
-        <div class="WIP-info-card">
-            <div class="WIP-info-header">
-                <h3>Session Information</h3>
-                {% if session.status == 'FOR_CHECKING' %}
-                    <span class="JO-status JO-status-pending">Pending Check</span>
-                {% elif session.status == 'CHECKED' %}
-                    <span class="JO-status JO-status-approved">Checked</span>
-                {% else %}
-                    <span class="JO-status JO-status-rejected">{{ session.status }}</span>
-                {% endif %}
+            <div class="JO-header-title-actions">
+                <h1 class="JO-page-title">WIP Session Details - WIP-{{ session.id }}</h1>
+                <div class="JO-header-actions">
+                    {% if user_type == 'counter' %}
+                        <button class="JO-button JO-secondary-button" onclick="window.location.href='{% url 'wip_dashboard' %}'">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </button>
+                    {% elif user_type == 'checker' %}
+                        <button class="JO-button JO-secondary-button" onclick="window.history.back()">
+                            <i class="fas fa-arrow-left"></i> Back
+                        </button>
+                        {% if can_check and all_entries_checked %}
+                        <button class="JO-button JO-success-button" id="checking-complete-btn" data-id="{{ session.id }}">
+                            <i class="fas fa-check-circle"></i> Checking Complete
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </div>
             </div>
+            
             <div class="WIP-info-grid">
                 <div class="WIP-info-item">
-                    <span class="WIP-info-label">Line:</span>
+                    <span class="WIP-info-label">LINE</span>
                     <span class="WIP-info-value">{{ session.line.line_name }}</span>
                 </div>
                 <div class="WIP-info-item">
-                    <span class="WIP-info-label">Person Responsible:</span>
+                    <span class="WIP-info-label">RESPONSIBLE PERSON</span>
                     <span class="WIP-info-value">{{ session.person_responsible }}</span>
                 </div>
                 <div class="WIP-info-item">
-                    <span class="WIP-info-label">Created By:</span>
-                    <span class="WIP-info-value">{{ session.created_by.name }}</span>
+                    <span class="WIP-info-label">STATUS</span>
+                    <span class="WIP-info-value">
+                        {% if session.status == 'FOR_CHECKING' %}
+                            <span class="JO-status JO-status-pending">For Checking</span>
+                        {% elif session.status == 'CHECKED' %}
+                            <span class="JO-status JO-status-approved">Checked</span>
+                        {% else %}
+                            <span class="JO-status JO-status-rejected">Locked</span>
+                        {% endif %}
+                    </span>
                 </div>
                 <div class="WIP-info-item">
-                    <span class="WIP-info-label">Created Date:</span>
-                    <span class="WIP-info-value">{{ session.created_at|date:"M d, Y" }}</span>
-                </div>
-                <div class="WIP-info-item">
-                    <span class="WIP-info-label">Total Entries:</span>
+                    <span class="WIP-info-label">ENTRIES</span>
                     <span class="WIP-info-value">{{ session.entry_count }}</span>
+                </div>
+                <div class="WIP-info-item">
+                    <span class="WIP-info-label">Checked By</span>
+                    <span class="WIP-info-value">May Ann Libo-on</span>
                 </div>
                 {% if session.checked_by %}
                 <div class="WIP-info-item">
-                    <span class="WIP-info-label">Checked By:</span>
+                    <span class="WIP-info-label">CHECKED BY</span>
                     <span class="WIP-info-value">{{ session.checked_by.name }}</span>
                 </div>
                 {% endif %}
             </div>
-        </div>
+        </div>       
     </div>
 
     <div class="WIP-inventory-tabs-container">
@@ -88,28 +80,28 @@
         <button class="WIP-tab-btn" data-tab="wip" role="tab" aria-selected="false">WIP Products</button>
       </div>
       <div class="WIP-tab-content" id="tab-raw">
+        {% if raw_materials %}
         <div class="WIP-tab-header-row">
           <div></div>
           {% if can_edit %}
-          <button class="JO-button JO-primary-button WIP-add-entry-btn" data-type="raw">
+          <button class="btn btn-primary WIP-add-entry-btn" data-type="raw">
             <i class="fas fa-plus"></i> <span>Add Raw Materials</span>
           </button>
           {% endif %}
         </div>
-        {% if raw_materials %}
         <div class="WIP-table-container">
           <table class="JO-table">
             <thead>
               <tr>
-                <th>Count Tag</th>
-                <th>Material Name</th>
-                <th>Description</th>
-                <th>WIP Qty</th>
-                <th>UOM</th>
-                <th>Status</th>
-                {% if not all_raw_materials_checked %}
-                <th>Actions</th>
-                {% endif %}
+                    <th>Count Tag</th>
+                    <th>Material Name</th>
+                    <th>Description</th>
+                    <th>WIP Qty</th>
+                    <th>UOM</th>
+                    <th>Status</th>
+                    {% if not all_raw_materials_checked %}
+                    <th>Actions</th>
+                    {% endif %}
               </tr>
             </thead>
             <tbody>
@@ -152,12 +144,23 @@
           </table>
         </div>
         {% else %}
-        <div class="WIP-empty-section">
-          <p>No raw materials entries yet.</p>
+        <div class="empty-state">
+            <i class="fa fa-question-circle" aria-hidden="true"></i>
+            <h4>No Raw Materials Found</h4>
+            <p>No raw materials entries yet.</p>
+            {% if can_edit %}
+                <div>
+                    <button class="btn btn-primary WIP-add-entry-btn" data-type="raw">
+                        <span>Add Raw Materials</span>
+                    </button>
+                </div>
+            {% endif %}
         </div>
+        
         {% endif %}
       </div>
       <div class="WIP-tab-content" id="tab-finished" style="display:none;">
+        {% if finished_products %}
         <div class="WIP-tab-header-row">
           <div></div>
           {% if can_edit %}
@@ -166,7 +169,6 @@
           </button>
           {% endif %}
         </div>
-        {% if finished_products %}
         <div class="WIP-table-container">
           <table class="JO-table">
             <thead>
@@ -220,21 +222,31 @@
           </table>
         </div>
         {% else %}
-        <div class="WIP-empty-section">
-          <p>No finished products entries yet.</p>
+        <div class="empty-state">
+            <i class="fa fa-question-circle" aria-hidden="true"></i>
+            <h4>No Finished Products Found</h4>
+            <p>No finished products entries yet.</p>
+            {% if can_edit %}
+                <div>
+                    <button class="btn btn-primary WIP-add-entry-btn" data-type="finished">
+                        Add Finished Products
+                    </button>
+                </div>
+            {% endif %}
         </div>
+        
         {% endif %}
       </div>
       <div class="WIP-tab-content" id="tab-wip" style="display:none;">
+        {% if wip_products %}
         <div class="WIP-tab-header-row">
           <div></div>
           {% if can_edit %}
           <button class="JO-button JO-primary-button WIP-add-entry-btn" data-type="wip">
-            <i class="fas fa-plus"></i> <span>Add WIP Products</span>
+            <span>Add WIP Products</span>
           </button>
           {% endif %}
         </div>
-        {% if wip_products %}
         <div class="WIP-table-container">
           <table class="JO-table">
             <thead>
@@ -294,9 +306,19 @@
           </table>
         </div>
         {% else %}
-        <div class="WIP-empty-section">
-          <p>No WIP products entries yet.</p>
+        <div class="empty-state">
+            <i class="fa fa-question-circle" aria-hidden="true"></i>
+            <h4>No WIP Products Found</h4>
+            <p>No WIP products entries yet.</p>
+            {% if can_edit %}
+                <div>
+                    <button class="btn btn-primary WIP-add-entry-btn" data-type="wip">
+                        <span>Add WIP Products</span>
+                    </button>
+                </div>
+            {% endif %}
         </div>
+        
         {% endif %}
       </div>
     </div>

@@ -676,39 +676,38 @@ def check_duplicate_filings(request):
             
             emp_id_str = str(emp_id)
             
-            # Build query for existing filings
-            existing_query = OvertimeFiling.objects.filter(
-                employee_id=emp_id_str,
-                filed_by=request.user,
-                shift=shift,
-                time_in=filing_time_in,
-                time_out=filing_time_out
-            )
-            
             if filing_type == 'shifting':
-                # For shifting: check if date ranges overlap
-                # An overlap occurs when existing.date_from <= new.date_to AND existing.date_to >= new.date_from
+                # For shifting: check if date ranges overlap (regardless of shift/time)
+                # This allows updating shift, time_in, time_out for existing filings
+                existing_query = OvertimeFiling.objects.filter(
+                    employee_id=emp_id_str,
+                    filed_by=request.user,
+                    filing_type='shifting'
+                )
+                
                 if filing_date_to:
+                    # An overlap occurs when existing.date_from <= new.date_to AND existing.date_to >= new.date_from
                     existing_query = existing_query.filter(
-                        filing_type='shifting',
                         date_from__lte=filing_date_to,
                         date_to__gte=filing_date_from
                     )
                 else:
                     existing_query = existing_query.filter(
-                        filing_type='shifting',
                         date_from=filing_date_from
                     )
             else:
-                # For daily types: check exact date match
-                existing_query = existing_query.filter(
+                # For daily types: check exact date match (regardless of shift/time)
+                # This allows updating shift, time_in, time_out for existing filings
+                existing_query = OvertimeFiling.objects.filter(
+                    employee_id=emp_id_str,
+                    filed_by=request.user,
                     filing_type=filing_type,
                     date_from=filing_date_from
                 )
             
             existing = existing_query.first()
             if existing:
-                duplicates.append({
+                duplicate_info = {
                     'employee_id': emp_id,  # Keep original ID format for frontend
                     'employee_name': existing.employee_name,
                     'department': existing.department,
@@ -717,7 +716,12 @@ def check_duplicate_filings(request):
                     'existing_date_from': existing.date_from.strftime('%Y-%m-%d'),
                     'existing_date_to': existing.date_to.strftime('%Y-%m-%d') if existing.date_to else None,
                     'existing_status': existing.status
-                })
+                }
+                # Include existing shift/time info for display (for both shifting and daily types)
+                duplicate_info['existing_shift'] = existing.shift
+                duplicate_info['existing_time_in'] = existing.time_in.strftime('%H:%M') if existing.time_in else None
+                duplicate_info['existing_time_out'] = existing.time_out.strftime('%H:%M') if existing.time_out else None
+                duplicates.append(duplicate_info)
         
         return JsonResponse({
             'success': True,
@@ -825,28 +829,28 @@ def submit_overtime(request):
             # Check for existing filing if update_duplicates is True
             existing_filing = None
             if update_duplicates:
-                existing_query = OvertimeFiling.objects.filter(
-                    employee_id=emp_id_str,
-                    filed_by=request.user,
-                    shift=shift,
-                    time_in=filing_time_in,
-                    time_out=filing_time_out
-                )
-                
                 if filing_type == 'shifting':
+                    # For shifting: find by date range overlap (regardless of shift/time)
+                    existing_query = OvertimeFiling.objects.filter(
+                        employee_id=emp_id_str,
+                        filed_by=request.user,
+                        filing_type='shifting'
+                    )
+                    
                     if filing_date_to:
                         existing_query = existing_query.filter(
-                            filing_type='shifting',
                             date_from__lte=filing_date_to,
                             date_to__gte=filing_date
                         )
                     else:
                         existing_query = existing_query.filter(
-                            filing_type='shifting',
                             date_from=filing_date
                         )
                 else:
-                    existing_query = existing_query.filter(
+                    # For daily types: find by exact date match (regardless of shift/time)
+                    existing_query = OvertimeFiling.objects.filter(
+                        employee_id=emp_id_str,
+                        filed_by=request.user,
                         filing_type=filing_type,
                         date_from=filing_date
                     )
@@ -859,6 +863,10 @@ def submit_overtime(request):
                 existing_filing.date_from = filing_date
                 existing_filing.date_to = filing_date_to
                 existing_filing.is_late_filing = is_late
+                # Update shift, time_in, and time_out for both shifting and daily types
+                existing_filing.shift = shift
+                existing_filing.time_in = filing_time_in
+                existing_filing.time_out = filing_time_out
                 existing_filing.save()
                 updated_count += 1
             else:
@@ -1828,6 +1836,15 @@ def get_overview_data(request):
         filing['with_vehicle'] = with_vehicle_map.get(filing['employee_id'], with_vehicle_map.get(str(filing['employee_id']), False))
         filings.append(filing)
     
+    # Filter filings based on filing type and status requirements:
+    # - Daily: Show only 'not_ot' status records
+    # - Shifting: Show all records (no status filter)
+    # - Saturday Off / Sunday / Holiday: Show only 'ot' status records
+    if filing_type == 'daily':
+        filings = [f for f in filings if f.get('status') == 'not_ot']
+    elif filing_type in ['saturday_off', 'sunday', 'holiday']:
+        filings = [f for f in filings if f.get('status') == 'ot']
+    # For shifting, no filter - show all records
     
     # Calculate status counts
     status_counts = {
@@ -2589,6 +2606,19 @@ def export_shuttle_users(request):
     # Get all shuttle users
     shuttle_users = UserShuttleAssignment.objects.select_related('destination').all().order_by('employee_name')
     
+    # Get all active subordinate groups for matching
+    subordinate_groups = SubordinateGroup.objects.filter(is_active=True).values('id', 'name', 'employee_ids')
+    
+    # Create a mapping of employee_id to group names
+    employee_to_groups = {}
+    for group in subordinate_groups:
+        employee_ids = group.get('employee_ids', [])
+        for emp_id in employee_ids:
+            emp_id_str = str(emp_id)
+            if emp_id_str not in employee_to_groups:
+                employee_to_groups[emp_id_str] = []
+            employee_to_groups[emp_id_str].append(group['name'])
+    
     # Create workbook
     wb = Workbook()
     ws = wb.active
@@ -2607,7 +2637,7 @@ def export_shuttle_users(request):
     center_align = Alignment(horizontal='center', vertical='center')
     
     # Column headers
-    headers = ['ID Number', 'Employee Name', 'Department', 'Line', 'Shuttle Destination']
+    headers = ['ID Number', 'Employee Name', 'Department', 'Line', 'Shuttle Destination', 'Group']
     
     for col, header in enumerate(headers, 1):
         cell = ws.cell(row=1, column=col, value=header)
@@ -2619,8 +2649,13 @@ def export_shuttle_users(request):
     # Write data
     row = 2
     for user in shuttle_users:
+        # Get subordinate groups for this employee
+        emp_id_str = str(user.employee_id)
+        group_names = employee_to_groups.get(emp_id_str, [])
+        groups_display = ', '.join(sorted(group_names)) if group_names else ''
+        
         # Write employee_id as string to prevent Excel from treating it as a number
-        emp_id_cell = ws.cell(row=row, column=1, value=str(user.employee_id))
+        emp_id_cell = ws.cell(row=row, column=1, value=emp_id_str)
         emp_id_cell.border = thin_border
         emp_id_cell.number_format = '@'  # Text format
         
@@ -2628,6 +2663,7 @@ def export_shuttle_users(request):
         ws.cell(row=row, column=3, value=user.department or '').border = thin_border
         ws.cell(row=row, column=4, value=user.line_name or '').border = thin_border
         ws.cell(row=row, column=5, value=user.destination.name if user.destination else '').border = thin_border
+        ws.cell(row=row, column=6, value=groups_display).border = thin_border
         row += 1
     
     # Set column widths
@@ -2636,6 +2672,7 @@ def export_shuttle_users(request):
     ws.column_dimensions['C'].width = 25
     ws.column_dimensions['D'].width = 25
     ws.column_dimensions['E'].width = 25
+    ws.column_dimensions['F'].width = 30
     
     # Create response
     response = HttpResponse(

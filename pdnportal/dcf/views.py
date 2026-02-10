@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
 from django.contrib import messages
-from django.db.models import Count
+from django.db.models import Count, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.core.paginator import Paginator
@@ -22,7 +22,7 @@ def check_dcf_user(user):
     return user.dcf_user
 
 def check_dcf_requestor(user):
-    return user.dcf_requestor
+    return user.dcf_requestor or user.dcf_qsd
 
 def check_dcf_approver(user):
     return user.dcf_approver
@@ -31,31 +31,53 @@ def check_dcf_approver(user):
 
 @login_required(login_url="user-login")
 def dcf_requestor(request):
-    if not (check_dcf_user(request.user) and check_dcf_requestor(request.user)):
+    if not request.user.dcf_user:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dashboard')
 
-    total_dcfs = DCF.objects.filter(requisitioner=request.user).count()
-    on_process_dcfs = DCF.objects.filter(requisitioner=request.user, status='on_process').count()
-    approved_dcfs = DCF.objects.filter(requisitioner=request.user, status='approved').count()
-    rejected_dcfs = DCF.objects.filter(requisitioner=request.user, status='rejected').count()
-
-    recent_dcfs = DCF.objects.filter(requisitioner=request.user).order_by('-date_filed')[:3]
-
-    all_dcfs_list = DCF.objects.filter(requisitioner=request.user).order_by('-date_filed')
+    # Show all DCFs if user is dcf_qsd, otherwise show only their own
+    if request.user.dcf_qsd:
+        recent_dcfs = DCF.objects.all().order_by('-date_filed')[:3]
+        all_dcfs_list = DCF.objects.all().order_by('-date_filed')
+    else:
+        recent_dcfs = DCF.objects.filter(requisitioner=request.user).order_by('-date_filed')[:3]
+        all_dcfs_list = DCF.objects.filter(requisitioner=request.user).order_by('-date_filed')
+    
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        all_dcfs_list = all_dcfs_list.filter(
+            Q(dcf_number__icontains=search_query) |
+            Q(document_title__icontains=search_query) |
+            Q(document_code__icontains=search_query) |
+            Q(revision_number__icontains=search_query) |
+            Q(nature__icontains=search_query) |
+            Q(details__icontains=search_query) |
+            Q(prepared_by__icontains=search_query) |
+            Q(requisitioner__name__icontains=search_query) |
+            Q(status__icontains=search_query)
+        )
+    
+    # Filter by status if provided
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter and status_filter != 'all':
+        all_dcfs_list = all_dcfs_list.filter(status=status_filter)
+    
     paginator = Paginator(all_dcfs_list, 10)
     page = request.GET.get('page')
     all_dcfs = paginator.get_page(page)
 
     context = {
-        'total_dcfs': total_dcfs,
-        'on_process_dcfs': on_process_dcfs,
-        'approved_dcfs': approved_dcfs,
-        'rejected_dcfs': rejected_dcfs,
         'recent_dcfs': recent_dcfs,
         'all_dcfs': all_dcfs,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'is_dcf_qsd': request.user.dcf_qsd,
     }
 
+    # Return partial HTML for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'dcf/partials/table_and_pagination.html', context)
+    
     return render(request, 'dcf/requestor.html', context)
 
 @login_required(login_url="user-login")
@@ -144,19 +166,20 @@ def edit_dcf(request, pk):
 
 @login_required(login_url="user-login")
 @require_POST
-def delete_dcf(request, pk):
+def cancel_dcf(request, pk):
     dcf = get_object_or_404(DCF, pk=pk)
 
     if not (check_dcf_user(request.user) and check_dcf_requestor(request.user) and dcf.requisitioner == request.user):
         return HttpResponseForbidden("You don't have permission to perform this action.")
 
     if not dcf.is_editable():
-        messages.error(request, "This DCF can no longer be deleted as it has been processed.")
+        messages.error(request, "This DCF can no longer be cancelled as it has been processed.")
         return redirect('dcf_requestor')
 
     dcf_number = dcf.dcf_number
-    dcf.delete()
-    messages.success(request, f"DCF {dcf_number} has been deleted successfully.")
+    dcf.status = 'cancelled'  # Assuming 'cancelled' is a valid status
+    dcf.save()
+    messages.success(request, f"DCF {dcf_number} has been cancelled successfully.")
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'status': 'success'})
@@ -169,7 +192,9 @@ def view_dcf(request, pk):
     if not check_dcf_user(request.user):
         return HttpResponseForbidden("You don't have permission to perform this action.")
 
-    if not (check_dcf_requestor(request.user) and dcf.requisitioner == request.user) and not check_dcf_approver(request.user):
+    # Allow viewing if: user is QSD, user is approver, or user is the requisitioner
+    can_view = request.user.dcf_qsd or check_dcf_approver(request.user) or (check_dcf_requestor(request.user) and dcf.requisitioner == request.user)
+    if not can_view:
         return HttpResponseForbidden("You don't have permission to view this DCF.")
 
     approval_timeline = dcf.approvals.all().order_by('date_acted')
@@ -210,15 +235,60 @@ def dcf_approver_dashboard(request):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('dcf_approver')
 
-    pending_list = DCF.objects.filter(status='on_process').order_by('-date_filed')
+    # Get search and filter parameters
+    search_query = request.GET.get('search', '').strip()
+    status_filter = request.GET.get('status', 'all')
+
+    # Start with all DCFs
+    pending_list = DCF.objects.all().annotate(
+        priority=Case(
+            When(status='on_process', then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    )
+
+    # Apply search filter
+    if search_query:
+        pending_list = pending_list.filter(
+            Q(dcf_number__icontains=search_query) |
+            Q(document_title__icontains=search_query) |
+            Q(document_code__icontains=search_query) |
+            Q(revision_number__icontains=search_query) |
+            Q(nature__icontains=search_query) |
+            Q(prepared_by__icontains=search_query) |
+            Q(requisitioner__name__icontains=search_query)
+        )
+
+    # Apply status filter
+    if status_filter == 'pending':
+        pending_list = pending_list.filter(status='on_process')
+    elif status_filter == 'approved':
+        pending_list = pending_list.filter(status='approved')
+    elif status_filter == 'rejected':
+        pending_list = pending_list.filter(status='rejected')
+    elif status_filter == 'cancelled':
+        pending_list = pending_list.filter(status='cancelled')
+
+    pending_list = pending_list.order_by('priority', '-dcf_number')
 
     total_dcfs = DCF.objects.all().count()
-    pending_count = pending_list.count()
+    pending_count = DCF.objects.filter(status='on_process').count()
     approved_dcfs = DCF.objects.filter(status='approved').count()
-    rejected_dcfs = DCF.objects.filter(status='rejected').count()
+    rejected_dcfs = DCF.objects.filter(status='cancelled').count()
+    cancelled_dcfs = DCF.objects.filter(status='cancelled').count()
     paginator = Paginator(pending_list, 10)
     page = request.GET.get('page')
     pending_approvals = paginator.get_page(page)
+    
+    # Add can_review attribute to each DCF based on whether the user can approve it
+    for dcf in pending_approvals:
+        # User can review if DCF is on_process and they haven't already acted on it
+        if dcf.status == 'on_process':
+            user_has_acted = dcf.approvals.filter(approver=request.user).exists()
+            dcf.can_review = not user_has_acted
+        else:
+            dcf.can_review = False
 
     recent_approvals = DCFApprovalTimeline.objects.filter(approver=request.user).order_by('-date_acted')[:5]
 
@@ -244,10 +314,17 @@ def dcf_approver_dashboard(request):
         'pending_dcfs': pending_count,
         'approved_dcfs': approved_dcfs,
         'rejected_dcfs': rejected_dcfs,
+        'cancelled_dcfs': cancelled_dcfs,
         'pending_approvals': pending_approvals,
         'recent_approvals': recent_approvals,
         'all_activity': all_activity,
+        'search_query': search_query,
+        'status_filter': status_filter,
     }
+
+    # Return partial HTML for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'dcf/partials/pending_table.html', context)
 
     return render(request, 'dcf/approver.html', context)
 
@@ -322,6 +399,38 @@ def reject_dcf(request, pk):
         dcf.save()
 
     messages.success(request, f"DCF {dcf.dcf_number} has been rejected successfully.")
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'success'})
+    return redirect('dcf_approver')
+
+@login_required(login_url="user-login")
+@require_POST
+@retry_on_db_lock(max_retries=5, base_delay=0.2)
+@transaction.atomic
+def cancel_dcf_approval(request, pk):
+    dcf = get_object_or_404(DCF, pk=pk)
+
+    if not (check_dcf_user(request.user) and check_dcf_approver(request.user)):
+        return HttpResponseForbidden("You don't have permission to perform this action.")
+
+    if dcf.status != 'on_process':
+        messages.error(request, "This DCF has already been processed.")
+        return redirect('dcf_approver')
+
+    remarks = request.POST.get('remarks', '')
+
+    if not remarks:
+        messages.error(request, "Please provide a reason for cancellation.")
+        return redirect('dcf_approver')
+
+    with transaction.atomic():
+        dcf = DCF.objects.select_for_update().get(pk=pk)
+        cancellation = dcf.add_approval(request.user, 'cancelled', remarks)
+        dcf.status = 'cancelled'
+        dcf.save()
+
+    messages.success(request, f"DCF {dcf.dcf_number} has been cancelled successfully.")
 
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'status': 'success'})

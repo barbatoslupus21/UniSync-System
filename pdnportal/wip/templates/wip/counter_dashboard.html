@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/wip/wip.css' %}">
+<link rel="stylesheet" href="{% static 'css/qualitycontrol/qualitycontrol.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -14,144 +15,96 @@
             <h1 class="JO-page-title">WIP Inventory Counter</h1>
             <p class="JO-subtitle">Manage your WIP inventory counting sessions</p>
         </div>
-        <button id="new-session-btn" class="JO-button JO-primary-button">
-            <i class="fas fa-plus"></i> New Session
-        </button>
+        
     </div>
 
-    <div class="JO-stats-container">
-        <div class="JO-stats-card JO-total">
-            <div class="JO-stats-icon">
-                <i class="fas fa-list"></i>
-            </div>
-            <div class="JO-stats-content">
-                <h3>Total Sessions</h3>
-                <h2 class="JO-stats-number">{{ total_sessions }}</h2>
-                <p>Created by you</p>
-            </div>
-        </div>
-        
-        <div class="JO-stats-card JO-approved">
-            <div class="JO-stats-icon">
-                <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="JO-stats-content">
-                <h3>Items Counted</h3>
-                <h2 class="JO-stats-number">{{ total_items }}</h2>
-                <p>Total entries</p>
-            </div>
-        </div>
-        
-        <div class="JO-stats-card JO-pending">
-            <div class="JO-stats-icon">
-                <i class="fas fa-clock"></i>
-            </div>
-            <div class="JO-stats-content">
-                <h3>Pending Check</h3>
-                <h2 class="JO-stats-number">{{ pending_sessions }}</h2>
-                <p>Awaiting verification</p>
-            </div>
-        </div>
-        
-        <div class="JO-stats-card JO-approval">
-            <div class="JO-stats-icon">
-                <i class="fas fa-clipboard-check"></i>
-            </div>
-            <div class="JO-stats-content">
-                <h3>Checked Sessions</h3>
-                <h2 class="JO-stats-number">{{ checked_sessions }}</h2>
-                <p>Completed</p>
-            </div>
-        </div>
-    </div>
+    <div class="tab-content active">
+            <div>
+                <div class="card-header">
+                    <h2></h2>
+                    <div class="card-header-action">
+                        <div class="JO-search-container">
+                            <input type="text" id="stock-declaration-search" class="JO-search-input" placeholder="Search by Session ID, Line, Person Responsible..." value="{{ search_query }}">
+                            <button class="JO-search-button">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
 
-    <div class="JO-card JO-all-requests">
-        <div class="JO-card-header">
-            <h2>My WIP Sessions</h2>
-            <div class="JO-card-actions">
-                <div class="JO-search-container">
-                    <input type="text" class="JO-search-input" placeholder="Search by line, person responsible...">
-                    <button class="JO-search-button">
-                        <i class="fas fa-search"></i>
-                    </button>
+                        <select id="date-filter" class="JO-select">
+                            <option value="">All Dates</option>
+                            {% for date in formatted_dates %}
+                            <option value="{{ date.value }}" {% if date.value == selected_date %}selected{% endif %}>{{ date.display }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button id="new-session-btn" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> New Session
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="common-table-container">
+                    <table class="Unisync-table" id="trial-run-table">
+                        <thead>
+                            <tr>
+                                <th class="hide-column">Session ID</th>
+                                <th>Line</th>
+                                <th>Person Responsible</th>
+                                <th class="hide-column">Entries</th>
+                                <th>Status</th>
+                                <th class="hide-column">Checked By</th>
+                                <th style="text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trial-run-tbody">
+                            {% include 'wip/partials/session_table_rows.html' %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="JO-pagination">
+                    <div class="JO-pagination-info">
+                        Showing {% if sessions %}{{ sessions.start_index }}{% else %}0{% endif %} to {% if sessions %}{{ sessions.end_index }}{% else %}0{% endif %} of {{ paginator.count }} entries
+                    </div>
+                    {% if paginator.num_pages > 1 %}
+                    <div class="JO-pagination-controls">
+                        <div class="JO-pagination-nav-container">
+                            {% if sessions.has_previous %}
+                            <a href="?page={{ sessions.previous_page_number }}{% if selected_date %}&date={{ selected_date }}{% endif %}" class="JO-pagination-btn">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </span>
+                            {% endif %}
+                            
+                            <div class="JO-pagination-pages">
+                                {% for num in paginator.page_range %}
+                                {% if sessions.number == num %}
+                                <span class="JO-pagination-page active">{{ num }}</span>
+                                {% elif num > sessions.number|add:'-3' and num < sessions.number|add:'3' %}
+                                <a href="?page={{ num }}{% if selected_date %}&date={{ selected_date }}{% endif %}" class="JO-pagination-page">{{ num }}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            {% if sessions.has_next %}
+                            <a href="?page={{ sessions.next_page_number }}{% if selected_date %}&date={{ selected_date }}{% endif %}" class="JO-pagination-btn">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                            {% else %}
+                            <span class="JO-pagination-btn disabled">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-        </div>
-        
-        <div class="JO-table-container">
-            <table class="JO-table">
-                <thead>
-                    <tr>
-                        <th>Session ID</th>
-                        <th>Line</th>
-                        <th>Person Responsible</th>
-                        <th>Status</th>
-                        <th>Entries</th>
-                        <th>Created</th>
-                        <th>Checked By</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if sessions %}
-                        {% for session in sessions %}
-                        <tr>
-                            <td data-label="Session ID">WIP-{{ session.id }}</td>
-                            <td data-label="Line">{{ session.line.line_name }}</td>
-                            <td data-label="Person Responsible">{{ session.person_responsible }}</td>
-                            <td data-label="Status">
-                                {% if session.status == 'FOR_CHECKING' %}
-                                    <span class="JO-status JO-status-pending">For Checking</span>
-                                {% elif session.status == 'CHECKED' %}
-                                    <span class="JO-status JO-status-approved">Checked</span>
-                                {% else %}
-                                <span class="JO-status JO-status-rejected">Locked</span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Entries">{{ session.entry_count }}</td>
-                            <td data-label="Created">{{ session.created_at|date:"M d, Y" }}</td>
-                            <td data-label="Checked By">{{ session.checked_by.name }}</td>
-                            <td data-label="Actions">
-                                <div class="action-col">
-                                    <button class="JO-icon-button" title="View Details" onclick="window.location.href='{% url 'session_details' session.id %}'">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    {% if session.can_edit %}
-                                    <button class="JO-icon-button WIP-edit-btn" title="Edit Session" data-id="{{ session.id }}" data-line="{{ session.line.id }}" data-person="{{ session.person_responsible }}">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="JO-icon-button WIP-delete-btn" title="Delete Session" data-id="{{ session.id }}" data-number="WIP-{{ session.id }}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                        <tr class="JO-empty-table no-data-row" style="display:none">
-                            <td colspan="8">
-                                <div class="no-data-message">
-                                    <div class="no-data-icon"><i class="fas fa-search"></i></div>
-                                    <div class="no-data-title">No matching WIP sessions found</div>
-                                    <div class="no-data-sub">Try adjusting your search criteria</div>
-                                </div>
-                            </td>
-                        </tr>
-                    {% else %}
-                        <tr class="JO-empty-table no-session-row">
-                            <td colspan="8">
-                                <div class="no-data-message">
-                                    <div class="no-data-icon"><i class="fas fa-search"></i></div>
-                                    <div class="no-data-title">No WIP sessions found</div>
-                                    <div class="no-data-sub">Create your first session to get started!</div>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
     </div>
+
 </main>
 
 <div class="JO-modal" id="new-session-modal">

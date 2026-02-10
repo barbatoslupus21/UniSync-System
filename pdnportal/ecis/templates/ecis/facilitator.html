@@ -5,57 +5,6 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/ecis/ecis.css' %}">
-<style>
-    /* Pending Review Item Styles */
-    .ecis-pending-info {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-    }
-
-    .ecis-pending-actions {
-        display: flex;
-        gap: 10px;
-    }
-
-    .ecis-pending-actions .ecis-button {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-    }
-
-    .ecis-view-details-btn {
-        background-color: #f8f9fa;
-        color: #333;
-        border: 1px solid #e6e6e6;
-    }
-
-    .ecis-view-details-btn:hover {
-        background-color: #e9ecef;
-    }
-
-    .ecis-review-pending-btn {
-        background-color: var(--ecis-primary);
-        color: white;
-    }
-
-    .ecis-review-pending-btn:hover {
-        background-color: var(--ecis-primary-dark);
-    }
-    
-    /* Export Modal Specific Styles */
-    .ecis-form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-    }
-    
-    @media (max-width: 768px) {
-        .ecis-form-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-</style>
 {% endblock %}
 
 {% block content %}
@@ -63,8 +12,8 @@
     <!-- Header with page title and facilitator badge -->
     <div class="ecis-header">
         <div class="ecis-title-section">
-            <h1 class="ecis-page-title">ECIS Registry</h1>
-            <p class="ecis-subtitle">Review, approve and manage engineering change requests</p>
+            <h1 class="ecis-page-title">CMIS Registry</h1>
+            <p class="ecis-subtitle">Review, approve and manage change management information sheet requests</p>
         </div>
         <button id="export-ecis-btn" class="ecis-button ecis-primary-button">
             <i class="fa fa-download" aria-hidden="true"></i> Export Report
@@ -123,7 +72,7 @@
         <!-- Chart section -->
         <div class="ecis-card ecis-chart-container">
             <div class="ecis-card-header">
-                <h2>Monthly ECIS Status Breakdown</h2>
+                <h2>Monthly CMIS Status Breakdown</h2>
                 <div class="ecis-card-actions">
                     <select id="chart-period-selector" class="ecis-select">
                         <option value="3month">Last 3 Months</option>
@@ -189,7 +138,7 @@
     <!-- All ECIS Section -->
     <div class="ecis-card ecis-all-requests">
         <div class="ecis-card-header">
-            <h2>All ECIS Requests</h2>
+            <h2>All CMIS Requests</h2>
             <div class="ecis-card-actions">
                 <div class="ecis-search-container">
                     <input type="text" class="ecis-search-input" placeholder="Search by ECIS Number, department...">
@@ -199,136 +148,31 @@
                 </div>
                 <div class="ecis-filter-container">
                     <select class="ecis-select ecis-filter-select" id="status-filter">
-                        <option value="all">All Statuses</option>
-                        <option value="approved">Approved</option>
-                        <option value="onhold">On Hold</option>
-                        <option value="review">For Review</option>
-                        <option value="needsrevision">Needs Revision</option>
-                        <option value="canceled">Canceled</option>
+                        <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                        <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                        <option value="onhold" {% if status_filter == 'onhold' %}selected{% endif %}>On Hold</option>
+                        <option value="review" {% if status_filter == 'review' %}selected{% endif %}>For Review</option>
+                        <option value="needsrevision" {% if status_filter == 'needsrevision' %}selected{% endif %}>Needs Revision</option>
+                        <option value="canceled" {% if status_filter == 'canceled' %}selected{% endif %}>Canceled</option>
                     </select>
                 </div>
                 <div class="ecis-filter-container">
                     <select class="ecis-select ecis-category-filter" id="category-filter">
-                        <option value="all">All Categories</option>
-                        <option value="OR" class="ecis-cat-OR">Orange (OR)</option>
-                        <option value="YE" class="ecis-cat-YE">Yellow (YE)</option>
-                        <option value="PN" class="ecis-cat-PN">Pink (PN)</option>
-                        <option value="LG" class="ecis-cat-LG">Light Green (LG)</option>
-                        <option value="GR" class="ecis-cat-GR">Green (GR)</option>
-                        <option value="L" class="ecis-cat-L">Blue (L)</option>
-                        <option value="GY" class="ecis-cat-GY">Gray (GY)</option>
+                        <option value="all" {% if category_filter == 'all' or category_filter == 'ALL' %}selected{% endif %}>All Categories</option>
+                        <option value="OR" {% if category_filter == 'OR' %}selected{% endif %}>Orange (OR)</option>
+                        <option value="YE" {% if category_filter == 'YE' %}selected{% endif %}>Yellow (YE)</option>
+                        <option value="PN" {% if category_filter == 'PN' %}selected{% endif %}>Pink (PN)</option>
+                        <option value="LG" {% if category_filter == 'LG' %}selected{% endif %}>Light Green (LG)</option>
+                        <option value="GR" {% if category_filter == 'GR' %}selected{% endif %}>Green (GR)</option>
+                        <option value="L" {% if category_filter == 'L' %}selected{% endif %}>Blue (L)</option>
+                        <option value="GY" {% if category_filter == 'GY' %}selected{% endif %}>Gray (GY)</option>
                     </select>
                 </div>
-                <style>
-                    /* Remove background colors from dropdown options */
-                    .ecis-category-filter option {
-                        background-color: white !important;
-                    }
-                    /* Fix dropdown position */
-                    .ecis-select {
-                        appearance: menulist-button;
-                        -webkit-appearance: menulist-button;
-                        -moz-appearance: menulist-button;
-                    }
-                </style>
             </div>
         </div>
 
-        <div class="ecis-table-container">
-            <table class="ecis-table">
-                <thead>
-                    <tr>
-                        <th>ECIS Number</th>
-                        <th>Category</th>
-                        <th>Department</th>
-                        <th>Requested By</th>
-                        <th>Customer</th>
-                        <th>Implementation Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for ecis in ecis_list %}
-                    <tr data-id="{{ ecis.id }}" data-status="{{ ecis.status|lower }}" data-category="{{ ecis.category }}" {% if ecis.status == 'For Review' %}class="ecis-warning-row"{% endif %}>
-                        <td data-label="ECIS Number">{{ ecis.number }}</td>
-                        <td data-label="Category"><span class="ecis-category-pill ecis-cat-{{ ecis.category }}">{{ ecis.category }}</span></td>
-                        <td data-label="Department">{{ ecis.department }}</td>
-                        <td data-label="Requested By">{{ ecis.requested_by }}</td>
-                        <td data-label="Customer">{{ ecis.customer }}</td>
-                        <td data-label="Implementation Date">{{ ecis.implementation_date|date:"M d, Y" }}</td>
-                        <td data-label="Status">
-                            <span class="ecis-status ecis-status-{{ ecis.status|lower|cut:" " }}">
-                                {% if ecis.status == "For Review" %}
-                                    <i class="fas fa-sync-alt" style="margin-right: 5px;"></i>
-                                {% elif ecis.status == "Needs Revision" %}
-                                    <i class="fas fa-edit" style="margin-right: 5px;"></i>
-                                {% elif ecis.status == "Approved" %}
-                                    <i class="fas fa-check" style="margin-right: 5px;"></i>
-                                {% elif ecis.status == "On Hold" %}
-                                    <i class="fas fa-pause" style="margin-right: 5px;"></i>
-                                {% elif ecis.status == "Canceled" %}
-                                    <i class="fas fa-times" style="margin-right: 5px;"></i>
-                                {% endif %}
-                                {{ ecis.status }}
-                            </span>
-                        </td>
-                        <td data-label="Actions">
-                            <button class="ecis-icon-button" title="View Details" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                            {% if ecis.status == "For Review" or ecis.status == "Approved" or ecis.status == "On Hold" %}
-                            <button class="ecis-icon-button ecis-review-btn" title="Review Request" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
-                                <i class="fas fa-clipboard-check"></i>
-                            </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="8" class="ecis-empty-table">No ECIS requests found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Pagination -->
-        <div class="ecis-pagination">
-            <div class="ecis-pagination-info">
-                Showing <span>{{ page_obj.start_index }}-{{ page_obj.end_index }}</span> of <span>{{ paginator.count }}</span> entries
-            </div>
-            <div class="ecis-pagination-pages">
-                <button class="ecis-pagination-btn {% if not page_obj.has_previous %}disabled{% endif %}" id="prev-page">
-                    <i class="fas fa-chevron-left"></i> Previous
-                </button>
-                <div class="ecis-page-numbers">
-                    {% if page_obj.has_previous %}
-                        <a href="?page=1" class="ecis-pagination-page">1</a>
-                        {% if page_obj.previous_page_number != 1 %}
-                            {% if page_obj.previous_page_number != 2 %}
-                                <span class="ecis-pagination-ellipsis">...</span>
-                            {% endif %}
-                            <a href="?page={{ page_obj.previous_page_number }}" class="ecis-pagination-page">{{ page_obj.previous_page_number }}</a>
-                        {% endif %}
-                    {% endif %}
-
-                    <span class="ecis-pagination-page active">{{ page_obj.number }}</span>
-
-                    {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}" class="ecis-pagination-page">{{ page_obj.next_page_number }}</a>
-                        {% if page_obj.next_page_number != paginator.num_pages %}
-                            {% if page_obj.next_page_number != paginator.num_pages|add:"-1" %}
-                                <span class="ecis-pagination-ellipsis">...</span>
-                            {% endif %}
-                            <a href="?page={{ paginator.num_pages }}" class="ecis-pagination-page">{{ paginator.num_pages }}</a>
-                        {% endif %}
-                    {% endif %}
-                </div>
-                <button class="ecis-pagination-btn {% if not page_obj.has_next %}disabled{% endif %}" id="next-page">
-                    Next <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
+        <div id="ecis-table-wrapper">
+            {% include 'ecis/partials/facilitator-ecis-table.html' %}
         </div>
     </div>
 </main>
@@ -337,7 +181,7 @@
 <div class="ecis-modal" id="ecis-details-modal">
     <div class="ecis-modal-content">
         <div class="ecis-modal-header">
-            <h2>ECIS Details</h2>
+            <h2>CMIS Details</h2>
             <button class="ecis-modal-close">
                 <i class="fas fa-times"></i>
             </button>
@@ -346,7 +190,7 @@
             <!-- Loading state initially -->
             <div class="ecis-loading-state">
                 <i class="fas fa-spinner fa-spin fa-2x"></i>
-                <p>Loading ECIS details...</p>
+                <p>Loading CMIS details...</p>
             </div>
 
             <!-- Content will be loaded via AJAX -->
@@ -364,7 +208,7 @@
 <div class="ecis-modal" id="review-request-modal">
     <div class="ecis-modal-content">
         <div class="ecis-modal-header">
-            <h2>Review ECIS Request</h2>
+            <h2>Review CMIS Request</h2>
             <button class="ecis-modal-close">
                 <i class="fas fa-times"></i>
             </button>
@@ -426,7 +270,7 @@
 <div class="ecis-modal" id="export-ecis-modal">
     <div class="ecis-modal-content">
         <div class="ecis-modal-header">
-            <h2>Export ECIS Report</h2>
+            <h2>Export CMIS Report</h2>
             <button class="ecis-modal-close">
                 <i class="fas fa-times"></i>
             </button>

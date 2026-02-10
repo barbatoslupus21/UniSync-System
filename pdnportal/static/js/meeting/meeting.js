@@ -248,43 +248,63 @@ document.addEventListener('DOMContentLoaded', function() {
         return '';
     }
 
+    // Truncate text to a max length with ellipsis
+    function truncateTitle(title, maxLength = 15) {
+        if (title.length > maxLength) {
+            return title.substring(0, maxLength) + '...';
+        }
+        return title;
+    }
+
     async function loadCalendarEvents() {
         try {
             const year = state.currentDate.getFullYear();
             const month = state.currentDate.getMonth() + 1;
-            
+
             const data = await api.getCalendarEvents(year, month, state.selectedRoom);
             state.events = data.events || {};
-            
+
             // Add event pills to calendar days
             document.querySelectorAll('.calendar-day').forEach(dayEl => {
                 const dateStr = dayEl.dataset.date;
                 const dayEvents = state.events[dateStr] || [];
                 const eventsContainer = dayEl.querySelector('.day-events');
-                
+
                 if (eventsContainer && dayEvents.length > 0) {
-                    const maxDisplay = 2; // Show max 2 events, then "more"
-                    let eventsHtml = '';
-                    
-                    dayEvents.slice(0, maxDisplay).forEach(event => {
-                        const bgColor = event.color || event.room_color || '#8b5cf6';
-                        const textColor = getContrastColor(bgColor);
-                        eventsHtml += `
-                            <div class="calendar-event-pill" 
+                    const cellWidth = dayEl.offsetWidth;
+
+                    // If the cell is too narrow (< 80px), show compact count pill
+                    if (cellWidth < 80) {
+                        const bgColor = dayEvents[0].color || dayEvents[0].room_color || '#8b5cf6';
+                        eventsContainer.innerHTML = `
+                            <div class="day-events-compact"
                                  style="background-color: ${bgColor}20; color: ${bgColor};"
-                                 data-id="${event.id}"
-                                 title="${event.title}">
-                                ${event.title}
-                                <span class="event-time">${formatTime(event.start_time)}</span>
+                                 title="${dayEvents.map(e => e.title).join(', ')}">
+                                <i class="fas fa-calendar"></i> ${dayEvents.length}
                             </div>
                         `;
-                    });
-                    
-                    if (dayEvents.length > maxDisplay) {
-                        eventsHtml += `<span class="more-events">+${dayEvents.length - maxDisplay} more</span>`;
+                    } else {
+                        const maxDisplay = 2; // Show max 2 events, then "more"
+                        let eventsHtml = '';
+
+                        dayEvents.slice(0, maxDisplay).forEach(event => {
+                            const bgColor = event.color || event.room_color || '#8b5cf6';
+                            eventsHtml += `
+                                <div class="calendar-event-pill"
+                                     style="background-color: ${bgColor}20; color: ${bgColor};"
+                                     data-id="${event.id}"
+                                     title="${event.title}">
+                                    ${truncateTitle(event.title)}
+                                </div>
+                            `;
+                        });
+
+                        if (dayEvents.length > maxDisplay) {
+                            eventsHtml += `<span class="more-events">+${dayEvents.length - maxDisplay} more</span>`;
+                        }
+
+                        eventsContainer.innerHTML = eventsHtml;
                     }
-                    
-                    eventsContainer.innerHTML = eventsHtml;
                 }
             });
         } catch (error) {

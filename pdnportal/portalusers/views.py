@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout, authenticate
+from django.http import HttpResponse
 from .models import UserApprovers, Users
 
 @login_required(login_url="user-login")
@@ -41,3 +42,23 @@ def userlogin(request):
 def userlogout(request):
     logout(request)
     return redirect('homepage')
+
+
+def download_acknowledge_file(request):
+    """Download the Acknowledge.html file from static/images/monitoring/"""
+    import os
+    from django.conf import settings
+    
+    # Build the file path
+    file_path = os.path.join(settings.BASE_DIR, 'static', 'images', 'monitoring', 'Acknowledge.html')
+    
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as f:
+            file_content = f.read()
+        
+        response = HttpResponse(file_content, content_type='text/html')
+        response['Content-Disposition'] = 'attachment; filename="Acknowledge.html"'
+        return response
+    else:
+        return HttpResponse('File not found.', status=404)
+

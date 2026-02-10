@@ -45,6 +45,7 @@ class Users(AbstractUser):
     # DCF Permission
     dcf_user = models.BooleanField(default=False)
     dcf_requestor = models.BooleanField(default=False)
+    dcf_qsd = models.BooleanField(default=False)
     dcf_approver = models.BooleanField(default=False)
 
     # ECIS Permission

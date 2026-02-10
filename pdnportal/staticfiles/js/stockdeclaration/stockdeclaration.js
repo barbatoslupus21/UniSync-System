@@ -557,6 +557,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Mark as Arrived button functionality
+    const markArrivedBtn = document.getElementById('mark-arrived-btn');
+    if (markArrivedBtn) {
+        markArrivedBtn.addEventListener('click', function() {
+            const declarationId = document.getElementById('update-intransit-notes-declaration-id').value;
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            fetch(`/stock-declaration/arrived/${declarationId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    updateIntransitNotesModal.classList.remove('active');
+                    // Reload the page to reflect changes
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showToast(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('An error occurred while marking the declaration as arrived', 'error');
+            });
+        });
+    }
+
     // Function to view stock declaration details
     function viewStockDeclaration(declarationId) {
         // Get the data from the table row
@@ -813,7 +847,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Pre-populate the notes field with existing in-transit details
         const existingNotes = row.getAttribute('data-in-transit') || '';
-        document.getElementById('update-intransit-notes').value = existingNotes;
+        const notesTextarea = document.getElementById('update-intransit-notes');
+        notesTextarea.value = existingNotes;
+
+        // Reset button visibility: show Arrived, hide Save Changes
+        const markArrivedBtnEl = document.getElementById('mark-arrived-btn');
+        const saveChangesBtnEl = document.getElementById('save-changes-btn');
+        markArrivedBtnEl.style.display = 'inline-block';
+        saveChangesBtnEl.style.display = 'none';
+
+        // Store original notes for comparison
+        const originalNotes = existingNotes;
+
+        // Clone and replace textarea to remove all previous event listeners
+        const newTextarea = notesTextarea.cloneNode(true);
+        notesTextarea.parentNode.replaceChild(newTextarea, notesTextarea);
+
+        // Add input event listener to detect changes
+        newTextarea.addEventListener('input', function() {
+            const currentNotes = this.value;
+            if (currentNotes !== originalNotes) {
+                // Notes have been modified - show Save Changes, hide Arrived
+                markArrivedBtnEl.style.display = 'none';
+                saveChangesBtnEl.style.display = 'inline-block';
+            } else {
+                // Notes match original - show Arrived, hide Save Changes
+                markArrivedBtnEl.style.display = 'inline-block';
+                saveChangesBtnEl.style.display = 'none';
+            }
+        });
 
         updateIntransitNotesModal.classList.add('active');
     }

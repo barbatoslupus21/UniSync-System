@@ -102,7 +102,7 @@
                                     {% elif declaration.status == 'filed' %}
                                     <span class="JO-status JO-status-filed">{{ declaration.get_status_display }}</span>
                                     {% else %}
-                                    <span class="JO-status JO-status-approved">{{ declaration.get_status_display }}</span>
+                                    <span class="JO-status JO-status-completed">{{ declaration.get_status_display }}</span>
                                     {% endif %}
                                 </td>
                                 <td data-label="Actions" class="text-center">
@@ -437,8 +437,8 @@
                             <label for="edit-stock-type">Stock Type <span class="input-required">*</span></label>
                             <select id="edit-stock-type" name="stock_type" class="JO-select form-control" required>
                                 <option value="critical">Critical</option>
-                                <option value="regular">Regular</option>
-                                <option value="surplus">Surplus</option>
+                                <option value="out_of_stock">Out Of Stock</option>
+                                <option value="overstock">Overstock</option>
                             </select>
                         </div>
                     </div>
@@ -622,7 +622,11 @@
                     <i class="fa fa-times"></i>
                     Cancel
                 </button>
-                <button type="submit" class="btn btn-primary">
+                <button type="button" class="btn btn-success" id="mark-arrived-btn">
+                    <i class="fa fa-check"></i>
+                    Arrived
+                </button>
+                <button type="submit" class="btn btn-primary" id="save-changes-btn" style="display: none;">
                     <i class="fa fa-save"></i>
                     Save Changes
                 </button>

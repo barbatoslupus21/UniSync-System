@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (filteredData.length === 0) {
             elements.historyTbody.innerHTML = `
                 <tr>
-                    <td colspan="8">
+                    <td colspan="9">
                         <div class="empty-state">
                             <i class="fa-solid fa-folder-open"></i>
                             <h5>No filing history</h5>
@@ -167,6 +167,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td><span class="status-pill status-blue">${formatFilingType(filing.filing_type)}</span></td>
                     <td>${overtimeDate}</td>
                     <td>${filing.employee_name}</td>
+                    <td>${filing.line_name || '-'}</td>
                     <td>${formatShift(filing.shift)}</td>
                     <td>${filing.time_in} - ${filing.time_out}</td>
                     <td><span class="status-pill ${getStatusClass(filing.status)}">${formatStatus(filing.status)}</span></td>
@@ -331,7 +332,22 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // If 2 or more new employees, show status selection modal
+        // For shifting tab, always auto-set status to 'ot' without showing modal
+        if (type === 'shifting') {
+            newEmployees.forEach(id => {
+                const strId = String(id);
+                const sub = state.subordinates.find(s => String(s.id) === strId);
+                if (sub) {
+                    state.addedEmployees[type].unshift({ ...sub, status: 'ot' });
+                }
+            });
+            state.selectedSubordinates[type].clear();
+            renderSubordinateList(type);
+            renderEmployeeTable(type);
+            return;
+        }
+
+        // If 2 or more new employees, show status selection modal (daily tab only)
         if (newEmployees.length >= 2) {
             state.pendingAddData = {
                 type: type,
@@ -359,11 +375,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderEmployeeTable(type) {
         const tbody = type === 'shifting' ? elements.shiftingTbody : elements.dailyTbody;
         const employees = state.addedEmployees[type];
+        const colSpan = type === 'shifting' ? 4 : 5;
 
         if (employees.length === 0) {
             tbody.innerHTML = `
                 <tr class="empty-row">
-                    <td colspan="5">
+                    <td colspan="${colSpan}">
                         <div class="empty-state">
                             <i class="fa-solid fa-user-plus"></i>
                             <h5>No employees added</h5>
@@ -375,30 +392,52 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        tbody.innerHTML = employees.map((emp, index) => `
-            <tr data-index="${index}" data-employee-id="${emp.id}">
-                <td>
-                    <div class="employee-info">
-                        <span class="employee-name">${emp.full_name}</span>
-                    </div>
-                </td>
-                <td>${emp.department || '-'}</td>
-                <td>${emp.destination || '-'}</td>
-                <td>
-                    <select class="ot-status-select" data-index="${index}">
-                        <option value="not_ot" ${emp.status === 'not_ot' ? 'selected' : ''}>Not OT</option>
-                        <option value="ot" ${emp.status === 'ot' ? 'selected' : ''}>OT</option>
-                        <option value="absent" ${emp.status === 'absent' ? 'selected' : ''}>Absent</option>
-                        <option value="leave" ${emp.status === 'leave' ? 'selected' : ''}>Leave</option>
-                    </select>
-                </td>
-                <td>
-                    <button class="btn btn-sm btn-icon btn-error remove-employee" data-index="${index}">
-                        <i class="fa-solid fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = employees.map((emp, index) => {
+            // For shifting tab, don't show status column (status is always 'ot')
+            if (type === 'shifting') {
+                return `
+                    <tr data-index="${index}" data-employee-id="${emp.id}">
+                        <td>
+                            <div class="employee-info">
+                                <span class="employee-name">${emp.full_name}</span>
+                            </div>
+                        </td>
+                        <td>${emp.department || '-'}</td>
+                        <td>${emp.destination || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-icon btn-error remove-employee" data-index="${index}">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }
+            // For daily tab, show status column
+            return `
+                <tr data-index="${index}" data-employee-id="${emp.id}">
+                    <td>
+                        <div class="employee-info">
+                            <span class="employee-name">${emp.full_name}</span>
+                        </div>
+                    </td>
+                    <td>${emp.department || '-'}</td>
+                    <td>${emp.destination || '-'}</td>
+                    <td>
+                        <select class="ot-status-select" data-index="${index}">
+                            <option value="not_ot" ${emp.status === 'not_ot' ? 'selected' : ''}>Not OT</option>
+                            <option value="ot" ${emp.status === 'ot' ? 'selected' : ''}>OT</option>
+                            <option value="absent" ${emp.status === 'absent' ? 'selected' : ''}>Absent</option>
+                            <option value="leave" ${emp.status === 'leave' ? 'selected' : ''}>Leave</option>
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-icon btn-error remove-employee" data-index="${index}">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 
         tbody.querySelectorAll('.ot-status-select').forEach(select => {
             select.addEventListener('change', (e) => {
@@ -653,8 +692,37 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        elements.groupsContainer.innerHTML = state.groups.map(group => {
+        // Get search term from the groups search input
+        const searchTerm = document.getElementById('groups-search')?.value.toLowerCase() || '';
+        
+        // Filter groups based on search term
+        let filteredGroups = state.groups;
+        if (searchTerm) {
+            filteredGroups = state.groups.filter(group => {
+                // Check if any member's name contains the search term
+                const memberNames = (group.employee_ids || []).map(id => {
+                    const sub = state.allShuttleUsers.find(s => String(s.employee_id) === String(id) || String(s.id) === String(id));
+                    return sub ? sub.full_name.toLowerCase() : '';
+                });
+                return memberNames.some(name => name.includes(searchTerm));
+            });
+        }
+
+        // Show empty state if no groups match the search
+        if (filteredGroups.length === 0 && searchTerm) {
+            elements.groupsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-search"></i>
+                    <h5>No groups found</h5>
+                    <p>No groups contain an employee matching "${searchTerm}"</p>
+                </div>
+            `;
+            return;
+        }
+
+        elements.groupsContainer.innerHTML = filteredGroups.map(group => {
             const memberCount = group.employee_ids ? group.employee_ids.length : 0;
+            
             return `
                 <div class="ot-group-card" data-id="${group.id}">
                     <div class="ot-group-header">
@@ -673,7 +741,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="ot-group-members">
                         ${(group.employee_ids || []).slice(0, 5).map(id => {
-                            // Use allShuttleUsers and compare as strings for proper matching
                             const sub = state.allShuttleUsers.find(s => String(s.employee_id) === String(id) || String(s.id) === String(id));
                             return sub ? `<span class="ot-member-badge">${sub.full_name}</span>` : '';
                         }).filter(badge => badge !== '').join('')}
@@ -690,6 +757,64 @@ document.addEventListener('DOMContentLoaded', function() {
         elements.groupsContainer.querySelectorAll('.delete-group').forEach(btn => {
             btn.addEventListener('click', () => confirmDeleteGroup(parseInt(btn.dataset.id)));
         });
+
+        elements.groupsContainer.querySelectorAll('.edit-group').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                openEditGroupModal(parseInt(btn.dataset.id));
+            });
+        });
+
+        elements.groupsContainer.querySelectorAll('.delete-group').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                confirmDeleteGroup(parseInt(btn.dataset.id));
+            });
+        });
+
+        // Add click listener to open group details modal
+        elements.groupsContainer.querySelectorAll('.ot-group-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const groupId = parseInt(card.dataset.id);
+                openGroupDetailsModal(groupId);
+            });
+        });
+    }
+
+    function openGroupDetailsModal(groupId) {
+        const group = state.groups.find(g => g.id === groupId);
+        if (!group) return;
+
+        const modal = document.getElementById('group-details-modal');
+        const membersList = document.getElementById('group-details-members-list');
+        const title = document.getElementById('group-details-title');
+        const memberCount = document.getElementById('group-details-count');
+
+        title.textContent = group.name;
+        memberCount.textContent = `${group.employee_ids ? group.employee_ids.length : 0} members`;
+
+        // Generate member list
+        const membersHTML = (group.employee_ids || []).map(id => {
+            const sub = state.allShuttleUsers.find(s => String(s.employee_id) === String(id) || String(s.id) === String(id));
+            return sub ? `
+                <div class="ot-details-member-item">
+                    <div class="ot-member-info">
+                        <span class="ot-member-name">${sub.full_name}</span>
+                        <span class="ot-member-id">ID: ${sub.employee_id}</span>
+                    </div>
+                </div>
+            ` : '';
+        }).filter(item => item !== '').join('');
+
+        membersList.innerHTML = membersHTML || '<p class="text-muted">No members in this group</p>';
+
+        // Show modal
+        modal.classList.add('active');
+    }
+
+    function closeGroupDetailsModal() {
+        const modal = document.getElementById('group-details-modal');
+        modal.classList.remove('active');
     }
 
     function openGroupModal(groupId = null) {
@@ -909,7 +1034,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // If 2 or more new employees from group, show status selection modal
+        // For shifting tab, always auto-set status to 'ot' without showing modal
+        if (type === 'shifting') {
+            newEmployeeIds.forEach(id => {
+                const strId = String(id);
+                const sub = state.subordinates.find(s => String(s.id) === strId);
+                if (sub) {
+                    state.addedEmployees[type].unshift({ ...sub, status: 'ot' });
+                }
+            });
+            renderEmployeeTable(type);
+            showToast(`Loaded ${group.name}`, 'success');
+            return;
+        }
+
+        // If 2 or more new employees from group, show status selection modal (daily tab only)
         if (newEmployeeIds.length >= 2) {
             state.pendingAddData = {
                 type: type,
@@ -1022,10 +1161,53 @@ document.addEventListener('DOMContentLoaded', function() {
             'leave': 'Leave'
         };
         
+        const shiftLabels = {
+            'day': 'Day',
+            'night': 'Night',
+            'mid': 'Mid'
+        };
+        
+        // All filing types now return existing_shift info for schedule display
+        const hasScheduleInfo = duplicates.length > 0 && duplicates[0].existing_shift !== undefined;
+        
+        // Determine if this is a shifting filing based on date range (has date_to)
+        const isShifting = duplicates.length > 0 && duplicates[0].existing_date_to !== null;
+        
         tbody.innerHTML = duplicates.map(dup => {
             const dateRange = dup.existing_date_to 
                 ? `${formatDate(dup.existing_date_from)} - ${formatDate(dup.existing_date_to)}`
                 : formatDate(dup.existing_date_from);
+            
+            // Show existing shift and time for all filing types (both shifting and daily)
+            if (hasScheduleInfo) {
+                const existingShift = shiftLabels[dup.existing_shift] || dup.existing_shift || '-';
+                const existingTime = dup.existing_time_in && dup.existing_time_out 
+                    ? `${dup.existing_time_in} - ${dup.existing_time_out}` 
+                    : '-';
+                const existingStatus = statusLabels[dup.existing_status] || dup.existing_status || '-';
+                
+                return `
+                    <tr>
+                        <td>
+                            <div class="employee-info">
+                                <span class="employee-name">${dup.employee_name}</span>
+                                <span class="employee-id">${dup.employee_id}</span>
+                            </div>
+                        </td>
+                        <td>${dup.department || '-'}</td>
+                        <td>${dateRange}</td>
+                        <td>
+                            <div class="existing-schedule-info">
+                                <span class="schedule-shift">${existingShift} Shift</span>
+                                <span class="schedule-time">${existingTime}</span>
+                                ${!isShifting ? `<span class="schedule-status">${existingStatus}</span>` : ''}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // Fallback for legacy data without schedule info
             return `
                 <tr>
                     <td>
@@ -1040,6 +1222,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 </tr>
             `;
         }).join('');
+        
+        // Update modal header/description based on filing type
+        const modalHeader = modal.querySelector('.modal-header h3');
+        const warningText = modal.querySelector('.duplicate-warning p');
+        const lastColHeader = document.getElementById('duplicate-table-last-col');
+        
+        if (isShifting) {
+            if (modalHeader) modalHeader.innerHTML = '<i class="fa-solid fa-copy"></i> Existing Shifting Schedule Found';
+            if (warningText) warningText.textContent = 'The following subordinates already have shifting schedules for the same date range. Do you want to update their shift and time?';
+            if (lastColHeader) lastColHeader.textContent = 'Current Schedule';
+        } else {
+            if (modalHeader) modalHeader.innerHTML = '<i class="fa-solid fa-copy"></i> Existing Daily Filing Found';
+            if (warningText) warningText.textContent = 'The following subordinates already have overtime filings for the same date. Do you want to update their shift, time, and status?';
+            if (lastColHeader) lastColHeader.textContent = 'Current Schedule';
+        }
         
         modal.classList.add('active');
     }
@@ -1328,6 +1525,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('close-group-modal')?.addEventListener('click', () => closeModal(elements.groupModal));
         document.getElementById('cancel-group-modal')?.addEventListener('click', () => closeModal(elements.groupModal));
         document.getElementById('save-group')?.addEventListener('click', saveGroup);
+
+        // Groups search event listener
+        document.getElementById('groups-search')?.addEventListener('input', () => renderGroups());
+
+        // Group details modal close button
+        document.getElementById('group-details-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeGroupDetailsModal();
+            }
+        });
+        document.querySelector('.JO-modal-close')?.addEventListener('click', closeGroupDetailsModal);
 
         document.getElementById('group-subordinate-search')?.addEventListener('input', () => {
             renderGroupSubordinateList();

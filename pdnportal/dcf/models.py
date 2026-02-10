@@ -24,6 +24,7 @@ class DCF(models.Model):
         ('on_process', 'On Process'),
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
     ]
 
     NATURE_CHOICES = [
@@ -33,6 +34,7 @@ class DCF(models.Model):
         ('ICC', 'ICC'),
         ('Others-PDN', 'Others-PDN'),
         ('Other-QAD', 'Other-QAD'),
+        ('Others', 'Others'),
     ]
 
     dcf_number = models.CharField(max_length=50, unique=True)
@@ -83,6 +85,7 @@ class DCFApprovalTimeline(models.Model):
     STATUS_CHOICES = [
         ('approved', 'Approved'),
         ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
     ]
     
     dcf = models.ForeignKey(DCF, on_delete=models.CASCADE, related_name='approvals')

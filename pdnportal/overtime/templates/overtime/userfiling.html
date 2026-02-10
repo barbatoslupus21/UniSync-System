@@ -121,13 +121,12 @@
                                     <th>Employee</th>
                                     <th>Department</th>
                                     <th>Shuttle Destination</th>
-                                    <th>Status</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="shifting-employee-tbody">
                                 <tr class="empty-row">
-                                    <td colspan="5">
+                                    <td colspan="4">
                                         <div class="empty-state">
                                             <i class="fa-solid fa-user-plus"></i>
                                             <h5>No employees added</h5>
@@ -276,10 +275,16 @@
         <div class="JO-card">
             <div class="JO-card-header">
                 <h2><i class="fa-solid fa-users-rectangle"></i> Subordinate Groups</h2>
-                <button class="btn btn-primary" id="create-group-btn">
-                    <i class="fa-solid fa-plus"></i>
-                    Create Group
-                </button>
+                <div class="JO-card-actions">
+                    <div class="search-input-wrapper">
+                        <i class="fa-solid fa-search"></i>
+                        <input type="text" class="form-control" id="groups-search" placeholder="Search by employee ...">
+                    </div>
+                    <button class="btn btn-primary" id="create-group-btn">
+                        <i class="fa-solid fa-plus"></i>
+                        Create Group
+                    </button>
+                </div>
             </div>
             <div class="ot-groups-container" id="groups-container">
                 <div class="ot-loading">
@@ -310,7 +315,7 @@
                     <input type="date" class="form-control" id="history-filter-date">
                 </div>
             </div>
-            <div class="common-table-container">
+            <div class="common-table-container" style="border: none !important;">
                 <table class="Unisync-table" id="history-table">
                     <thead>
                         <tr>
@@ -318,6 +323,7 @@
                             <th>Type</th>
                             <th>Overtime Date</th>
                             <th>Employee</th>
+                            <th>Line</th>
                             <th>Shift</th>
                             <th>Time</th>
                             <th>Status</th>
@@ -468,7 +474,7 @@
                             <th>Employee</th>
                             <th>Department</th>
                             <th>Existing Date</th>
-                            <th>Current Status</th>
+                            <th id="duplicate-table-last-col">Current Status</th>
                         </tr>
                     </thead>
                     <tbody id="duplicate-tbody"></tbody>
@@ -600,6 +606,38 @@
         </div>
     </div>
 </div>
+
+<!-- Group Details Modal -->
+<div class="JO-modal" id="group-details-modal">
+    <div class="JO-modal-content">
+        <div class="JO-modal-header">
+            <div>
+                <h2 id="group-details-title">Group Name</h2>
+                <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--jo-text-light);">
+                    <span id="group-details-count">0 members</span>
+                </p>
+            </div>
+            <button class="JO-modal-close" onclick="closeGroupDetailsModal()">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="JO-modal-body">
+            <div id="group-details-members-list">
+                <p class="text-muted">Loading members...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Close modal when clicking outside -->
+<script>
+    document.getElementById('group-details-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeGroupDetailsModal();
+        }
+    });
+</script>
+
 {% endblock content %}
 
 {% block extra_js %}

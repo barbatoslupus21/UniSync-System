@@ -3,6 +3,34 @@
  * Specific functionality for the facilitator view
  */
 
+/**
+ * Refresh the ECIS table via AJAX without reloading the page
+ */
+function refreshEcisTable() {
+    const tableWrapper = document.getElementById('ecis-table-wrapper');
+    if (!tableWrapper) return Promise.resolve();
+    
+    // Get current URL with search params
+    const url = new URL(window.location.href);
+    
+    return fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        tableWrapper.innerHTML = html;
+        // Re-initialize table event listeners
+        initDetailsButtons();
+        initReviewModal();
+    })
+    .catch(error => {
+        console.error('Error refreshing table:', error);
+    });
+}
+
 // Custom toast notification function that uses the existing toast styles from style-ver2.css
 function showToast(title, message, type = 'info') {
     // Get the toast container
@@ -76,10 +104,15 @@ function openModalFacilitator(modal) {
     // Add active class to show the modal
     modal.classList.add('active');
 
-    // Add animation class
-    const modalContent = modal.querySelector('.ecis-modal-content');
+    // Handle both ecis-modal-content and JO-modal-content
+    const modalContent = modal.querySelector('.ecis-modal-content, .JO-modal-content');
     if (modalContent) {
-        modalContent.style.animation = 'ecis-modal-appear 0.3s ease-out forwards';
+        // Use JO-modal-appear animation if available, fallback to ecis animation
+        if (modal.classList.contains('JO-modal')) {
+            modalContent.style.animation = 'JO-modal-appear 0.3s ease-out forwards';
+        } else {
+            modalContent.style.animation = 'ecis-modal-appear 0.3s ease-out forwards';
+        }
     }
 
     // Prevent body scrolling
@@ -89,17 +122,70 @@ function openModalFacilitator(modal) {
 function closeModalFacilitator(modal) {
     if (!modal) return;
 
-    // Add closing animation
-    const modalContent = modal.querySelector('.ecis-modal-content');
-    if (modalContent) {
-        modalContent.style.animation = 'ecis-fade-out 0.2s ease-out forwards';
-    }
+    // Fade out the entire modal (background + content)
+    modal.style.transition = 'opacity 0.2s ease-out';
+    modal.style.opacity = '0';
 
     // Remove active class after animation completes
     setTimeout(() => {
         modal.classList.remove('active');
         document.body.style.overflow = '';
+        // Reset styles for next time
+        modal.style.opacity = '';
+        modal.style.transition = '';
     }, 200);
+}
+
+/**
+ * Close ECIS Details Modal with fade out animation
+ */
+function closeEcisDetailsModal() {
+    const detailsModal = document.getElementById('ecis-details-modal');
+    if (!detailsModal) return;
+    
+    // Fade out the entire modal (background + content)
+    detailsModal.style.transition = 'opacity 0.2s ease-out';
+    detailsModal.style.opacity = '0';
+    
+    // Remove active class after animation
+    setTimeout(() => {
+        detailsModal.classList.remove('active');
+        document.body.style.overflow = '';
+        // Reset styles for next time
+        detailsModal.style.opacity = '';
+        detailsModal.style.transition = '';
+    }, 200);
+}
+
+/**
+ * Initialize ECIS Details Modal close handlers
+ */
+function initEcisDetailsModalCloseHandlers() {
+    const detailsModal = document.getElementById('ecis-details-modal');
+    if (!detailsModal) return;
+    
+    // Set up close button handlers
+    const closeButtons = detailsModal.querySelectorAll('.JO-modal-close');
+    closeButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            closeEcisDetailsModal();
+        });
+    });
+    
+    // Close when clicking outside
+    detailsModal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEcisDetailsModal();
+        }
+    });
+    
+    // Close with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && detailsModal.classList.contains('active')) {
+            closeEcisDetailsModal();
+        }
+    });
 }
 
 // Initialize modal buttons
@@ -145,6 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initReviewModal();
     initPendingItems();
     initDetailsButtons();
+    initEcisDetailsModalCloseHandlers();
 });
 
 // Initialize Review Modal
@@ -380,13 +467,10 @@ function initReviewModal() {
                         // Show success toast
                         if (decision === 'approve') {
                             showToast('ECIS Approved', `ECIS ${ecisNumber} has been approved successfully.`, 'success');
-                            updateEcisStatus(ecisId, 'approved');
                         } else if (decision === 'hold') {
                             showToast('ECIS On Hold', `ECIS ${ecisNumber} has been placed on hold. The requestor will be notified.`, 'warning');
-                            updateEcisStatus(ecisId, 'onhold');
                         } else if (decision === 'revise') {
                             showToast('Revision Requested', `ECIS ${ecisNumber} has been sent back for revision. The requestor will be notified.`, 'warning');
-                            updateEcisStatus(ecisId, 'needsrevision');
                         }
 
                         // Reset form
@@ -398,8 +482,8 @@ function initReviewModal() {
                         submitButton.innerHTML = 'Submit Review';
                         submitButton.disabled = false;
 
-                        // Update pending items count
-                        updatePendingCount();
+                        // Refresh table via AJAX
+                        refreshEcisTable();
 
                         // Remove from pending items list
                         removePendingItem(ecisId);
@@ -526,6 +610,10 @@ function updateDetailsModal(data) {
                 <div class="ecis-details-item">
                     <span class="ecis-details-label">Customer</span>
                     <span class="ecis-details-value" id="ecis-detail-customer">${data.customer || 'N/A'}</span>
+                </div>
+                <div class="ecis-details-item">
+                    <span class="ecis-details-label">Line</span>
+                    <span class="ecis-details-value" id="ecis-detail-line">${data.line || 'N/A'}</span>
                 </div>
                 <div class="ecis-details-item">
                     <span class="ecis-details-label">Line Supervisor</span>

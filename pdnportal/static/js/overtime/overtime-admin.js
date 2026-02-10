@@ -1383,13 +1383,18 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.overviewDate.value = today;
         }
         
+        // Set default filing type to 'daily' if not already set
+        if (elements.overviewFilingType && !elements.overviewFilingType.value) {
+            elements.overviewFilingType.value = 'daily';
+        }
+        
         // Initialize collapsible vehicle requirements (default collapsed)
         initVehicleRequirementsCollapse();
         
         // Initialize export shift modal
         initExportShiftModal();
         
-        // Initial load
+        // Initial load with default filters
         fetchOverviewData();
     }
     
@@ -1721,6 +1726,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     filing.employee_id.toString().includes(searchTerm) ||
                     filing.employee_name.toLowerCase().includes(searchTerm) ||
                     (filing.department && filing.department.toLowerCase().includes(searchTerm)) ||
+                    (filing.line_name && filing.line_name.toLowerCase().includes(searchTerm)) ||
                     (filing.destination_name && filing.destination_name.toLowerCase().includes(searchTerm))
                 );
             });
@@ -1871,11 +1877,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!tbody) return;
         
         const filings = state.filteredFilings;
+        const filingType = elements.overviewFilingType?.value || 'daily';
+        const isShifting = filingType === 'shifting';
+        
+        // Update table header based on filing type
+        updateOverviewTableHeader(isShifting);
+        
+        const colSpan = isShifting ? 7 : 7;
         
         if (!filings || filings.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8">
+                    <td colspan="${colSpan}">
                         <div class="empty-state">
                             <i class="fas fa-inbox"></i>
                             <h5>No data found</h5>
@@ -1905,40 +1918,129 @@ document.addEventListener('DOMContentLoaded', function() {
         const endIndex = Math.min(startIndex + state.overviewItemsPerPage, totalItems);
         const paginatedFilings = filings.slice(startIndex, endIndex);
         
-        tbody.innerHTML = paginatedFilings.map(filing => {
-            const createdAt = new Date(filing.created_at);
-            const dateTimeFiled = createdAt.toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            }) + ' ' + createdAt.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-            
-            return `
-                <tr>
-                    <td>${dateTimeFiled}</td>
-                    <td>${filing.employee_id}</td>
-                    <td>${filing.employee_name}</td>
-                    <td>${filing.department || '-'}</td>
-                    <td>${filing.destination_name || '-'}</td>
-                    <td>
-                        <span class="status-badge status-${filing.status.replace('_', '-')}">
-                            ${statusLabels[filing.status] || filing.status}
-                        </span>
-                    </td>
-                    <td>${filing.time_in || '-'}</td>
-                    <td>${filing.time_out || '-'}</td>
-                </tr>
-            `;
-        }).join('');
+        if (isShifting) {
+            // Shifting layout: Date Filed, Duration, Employee ID, Employee Name, Line, Destination, Shift
+            tbody.innerHTML = paginatedFilings.map(filing => {
+                const createdAt = new Date(filing.created_at);
+                const dateTimeFiled = createdAt.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                }) + ' ' + createdAt.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                // Format duration (date_from - date_to)
+                const duration = formatShiftingDuration(filing.date_from, filing.date_to);
+                
+                // Format shift display
+                const shiftDisplay = filing.shift === 'day' ? 'Day Shift' : (filing.shift === 'night' ? 'Night Shift' : (filing.shift || '-'));
+                
+                return `
+                    <tr>
+                        <td>${dateTimeFiled}</td>
+                        <td>${duration}</td>
+                        <td>${filing.employee_id}</td>
+                        <td>${filing.employee_name}</td>
+                        <td>${filing.line_name || '-'}</td>
+                        <td>${filing.destination_name || '-'}</td>
+                        <td>${shiftDisplay}</td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            // Daily/Saturday Off/Sunday/Holiday layout: Date/Time Filed, Employee ID, Employee Name, Line, Department, Destination, Status
+            tbody.innerHTML = paginatedFilings.map(filing => {
+                const createdAt = new Date(filing.created_at);
+                const dateTimeFiled = createdAt.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                }) + ' ' + createdAt.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                
+                return `
+                    <tr>
+                        <td>${dateTimeFiled}</td>
+                        <td>${filing.employee_id}</td>
+                        <td>${filing.employee_name}</td>
+                        <td>${filing.line_name || '-'}</td>
+                        <td>${filing.department || '-'}</td>
+                        <td>${filing.destination_name || '-'}</td>
+                        <td>
+                            <span class="status-badge status-${filing.status.replace('_', '-')}">
+                                ${statusLabels[filing.status] || filing.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
         
         // Render pagination
         renderOverviewPagination(totalItems, totalPages, startIndex, endIndex);
     }
     
+    // Helper function to format shifting duration
+    function formatShiftingDuration(dateFrom, dateTo) {
+        if (!dateFrom || !dateTo) return '-';
+        
+        const from = new Date(dateFrom);
+        const to = new Date(dateTo);
+        
+        const fromYear = from.getFullYear();
+        const toYear = to.getFullYear();
+        
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (fromYear === toYear) {
+            // Same year: Jan 17 - 21, 2026
+            if (from.getMonth() === to.getMonth()) {
+                // Same month: Jan 17 - 21, 2026
+                return `${monthNames[from.getMonth()]} ${from.getDate()} - ${to.getDate()}, ${fromYear}`;
+            } else {
+                // Different months but same year: Jan 17 - Feb 21, 2026
+                return `${monthNames[from.getMonth()]} ${from.getDate()} - ${monthNames[to.getMonth()]} ${to.getDate()}, ${fromYear}`;
+            }
+        } else {
+            // Different years: Dec 30, 2025 - Jan 01, 2026
+            return `${monthNames[from.getMonth()]} ${from.getDate()}, ${fromYear} - ${monthNames[to.getMonth()]} ${to.getDate()}, ${toYear}`;
+        }
+    }
+    
+    // Helper function to update table header based on filing type
+    function updateOverviewTableHeader(isShifting) {
+        const thead = document.querySelector('#overview-table thead tr');
+        if (!thead) return;
+        
+        if (isShifting) {
+            thead.innerHTML = `
+                <th>Date Filed</th>
+                <th>Duration</th>
+                <th>Employee ID</th>
+                <th>Employee Name</th>
+                <th>Line</th>
+                <th>Destination</th>
+                <th>Shift</th>
+            `;
+        } else {
+            thead.innerHTML = `
+                <th>Date/Time Filed</th>
+                <th>Employee ID</th>
+                <th>Employee Name</th>
+                <th>Line</th>
+                <th>Department</th>
+                <th>Destination</th>
+                <th>Status</th>
+            `;
+        }
+    }
+
     function renderOverviewPagination(totalItems, totalPages, startIndex, endIndex) {
         const paginationContainer = document.getElementById('overview-pagination');
         const paginationInfo = document.getElementById('overview-pagination-info');

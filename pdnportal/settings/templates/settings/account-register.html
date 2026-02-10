@@ -84,6 +84,7 @@
                                 <option value="monitoring">Monitoring</option>
                                 <option value="dcf">DCF</option>
                                 <option value="ecis">ECIS</option>
+                                <option value="wip">WIP</option>
                             </select>
                         </div>
 
@@ -167,6 +168,10 @@
 
                                             {% if user.meetingscheduler_user %}
                                             <span class="UM-permission-pill UM-meetingscheduler-pill">Meeting Scheduler</span>
+                                            {% endif %}
+
+                                            {% if user.wip_user %}
+                                            <span class="UM-permission-pill UM-wip-pill">WIP</span>
                                             {% endif %}
                                         </div>
                                     </td>
@@ -493,12 +498,17 @@
                                 </label>
 
                                 <label class="UM-radio-container">
+                                    <input type="radio" name="dcf_role" value="qsd">
+                                    <span class="UM-radio-label">QSD Personnel</span>
+                                </label>
+
+                                <label class="UM-radio-container">
                                     <input type="radio" name="dcf_role" value="approver">
                                     <span class="UM-radio-label">Approver</span>
                                 </label>
                             </div>
                             <div class="UM-validation-message" id="dcf-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
-                                Please select either Requestor or Approver role
+                                Please select a DCF role
                             </div>
                         </div>
                     </div>
@@ -647,6 +657,35 @@
                             </div>
                             <div class="UM-validation-message" id="docunotification-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
                                 Please select either User or Admin role
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIP Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="wip-user" name="wip_user">
+                                <span class="UM-checkbox-label UM-category-label">WIP Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="wip-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="wip_role" value="wip_counter">
+                                    <span class="UM-radio-label">Counter</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="wip_role" value="wip_checker">
+                                    <span class="UM-radio-label">Checker</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="wip_role" value="wip_facilitator">
+                                    <span class="UM-radio-label">WIP Admin</span>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -997,12 +1036,17 @@
                                 </label>
 
                                 <label class="UM-radio-container">
+                                    <input type="radio" name="dcf_role" value="qsd">
+                                    <span class="UM-radio-label">QSD Personnel</span>
+                                </label>
+
+                                <label class="UM-radio-container">
                                     <input type="radio" name="dcf_role" value="approver">
                                     <span class="UM-radio-label">Approver</span>
                                 </label>
                             </div>
                             <div class="UM-validation-message" id="edit-dcf-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
-                                Please select either Requestor or Approver role
+                                Please select a DCF role
                             </div>
                         </div>
                     </div>
@@ -1151,6 +1195,35 @@
                             </div>
                             <div class="UM-validation-message" id="edit-docunotification-role-validation" style="display: none; color: #f44336; margin-top: 5px; font-size: 0.85rem;">
                                 Please select either User or Admin role
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- WIP Permissions -->
+                    <div class="UM-permission-category">
+                        <div class="UM-permission-header">
+                            <label class="UM-checkbox-container">
+                                <input type="checkbox" id="edit-wip-user" name="wip_user">
+                                <span class="UM-checkbox-label UM-category-label">WIP Module</span>
+                            </label>
+                        </div>
+
+                        <div class="UM-subpermissions" id="edit-wip-roles" style="display: none;">
+                            <div class="UM-radio-group">
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="wip_role" value="wip_counter">
+                                    <span class="UM-radio-label">Counter</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="wip_role" value="wip_checker">
+                                    <span class="UM-radio-label">Checker</span>
+                                </label>
+
+                                <label class="UM-radio-container">
+                                    <input type="radio" name="wip_role" value="wip_facilitator">
+                                    <span class="UM-radio-label">WIP Admin</span>
+                                </label>
                             </div>
                         </div>
                     </div>

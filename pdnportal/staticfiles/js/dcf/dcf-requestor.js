@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up event listeners
     setupEventListeners();
 
+    // Attach table event listeners for initial page load
+    reattachTableEventListeners();
+
     // Show success/error messages from Django messages
     initializeToasts();
 
@@ -76,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========== Modal Handling ==========
 function initializeModals() {
     // Get all modals
-    const modals = document.querySelectorAll('.DCF-modal');
+    const modals = document.querySelectorAll('.DCF-modal, .JO-modal');
     const modalTriggers = {
         'new-dcf-btn': 'new-dcf-modal',
         'cancel-dcf-btn': 'new-dcf-modal',
@@ -85,9 +88,9 @@ function initializeModals() {
     };
 
     // Add close button functionality
-    document.querySelectorAll('.DCF-modal-close').forEach(closeBtn => {
+    document.querySelectorAll('.DCF-modal-close, .JO-modal-close').forEach(closeBtn => {
         closeBtn.addEventListener('click', function() {
-            const modal = this.closest('.DCF-modal');
+            const modal = this.closest('.DCF-modal, .JO-modal');
             closeModal(modal);
         });
     });
@@ -132,7 +135,7 @@ function initializeModals() {
     // Close modals with ESC key
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            const activeModal = document.querySelector('.DCF-modal.active');
+            const activeModal = document.querySelector('.DCF-modal.active, .JO-modal.active');
             if (activeModal) {
                 closeModal(activeModal);
             }
@@ -159,9 +162,20 @@ function closeModal(modal) {
 
 // ========== Event Listeners ==========
 function setupEventListeners() {
-    // View DCF Details
-    document.querySelectorAll('.DCF-view-details-btn, .DCF-icon-button[title="View Details"]').forEach(btn => {
+    // View DCF Details - for Recent DCF Submissions section
+    document.querySelectorAll('.DCF-view-details-btn').forEach(btn => {
         btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            console.log('View button clicked for DCF:', dcfId);
+            fetchDcfDetails(dcfId);
+        });
+    });
+
+    // View DCF Details - for table buttons with title attribute
+    document.querySelectorAll('button[title="View Details"]').forEach(btn => {
+        console.log('Attaching view listener to button:', btn);
+        btn.addEventListener('click', function() {
+            console.log('View button clicked for DCF:', this.getAttribute('data-id'));
             const dcfId = this.getAttribute('data-id');
             fetchDcfDetails(dcfId);
         });
@@ -175,7 +189,7 @@ function setupEventListeners() {
         });
     });
 
-    // Delete DCF
+    // Cancel DCF
     document.querySelectorAll('.DCF-delete-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const dcfId = this.getAttribute('data-id');
@@ -184,19 +198,62 @@ function setupEventListeners() {
         });
     });
 
-    // Table filtering
-    const searchInput = document.querySelector('.DCF-search-input');
+    // Pagination via AJAX
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.pagination-link')) {
+            e.preventDefault();
+            const url = e.target.closest('.pagination-link').href;
+            fetchTableUpdate(url);
+        }
+    });
+
+    // Server-side search with debouncing
+    const searchInput = document.getElementById('dcf-search');
     if (searchInput) {
+        let searchTimeout;
         searchInput.addEventListener('input', function() {
-            filterTable(this.value);
+            const searchValue = this.value.trim();
+            
+            // Clear any existing timeout
+            clearTimeout(searchTimeout);
+            
+            // Set a new timeout to trigger search after 300ms of no typing
+            searchTimeout = setTimeout(() => {
+                const url = new URL(window.location.href);
+                
+                if (searchValue) {
+                    url.searchParams.set('search', searchValue);
+                } else {
+                    url.searchParams.delete('search');
+                }
+                
+                // Reset to page 1 when searching
+                url.searchParams.delete('page');
+                
+                // Fetch table update via AJAX instead of full page reload
+                fetchTableUpdate(url.toString());
+            }, 300);
         });
     }
 
-    // Status filter
+    // Status filter - server-side filtering
     const statusFilter = document.querySelector('.DCF-filter-select');
     if (statusFilter) {
         statusFilter.addEventListener('change', function() {
-            filterTableByStatus(this.value);
+            const filterValue = this.value;
+            const url = new URL(window.location.href);
+            
+            if (filterValue && filterValue !== 'all') {
+                url.searchParams.set('status', filterValue);
+            } else {
+                url.searchParams.delete('status');
+            }
+            
+            // Reset to page 1 when filtering
+            url.searchParams.delete('page');
+            
+            // Fetch table update via AJAX
+            fetchTableUpdate(url.toString());
         });
     }
 
@@ -213,25 +270,106 @@ function setupEventListeners() {
             }, 1000);
         });
     }
+}
 
-    // Pagination
-    document.querySelectorAll('.DCF-pagination-page, .DCF-pagination-prev, .DCF-pagination-next').forEach(btn => {
-        if (!btn.classList.contains('disabled') && !btn.classList.contains('active')) {
-            btn.addEventListener('click', function() {
-                const page = this.getAttribute('data-page');
-                if (page) {
-                    // Get the current URL and update the page parameter
-                    const url = new URL(window.location.href);
-                    url.searchParams.set('page', page);
-                    window.location.href = url.toString();
-                }
-            });
+// ========== Table Update via AJAX ==========
+function fetchTableUpdate(url) {
+    const tableWrapper = document.getElementById('dcf-table-wrapper');
+    if (!tableWrapper) return;
+
+    // Show loading state
+    tableWrapper.style.opacity = '0.6';
+    tableWrapper.style.pointerEvents = 'none';
+
+    fetch(url, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
         }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.text();
+    })
+    .then(html => {
+        // Replace the table and pagination
+        tableWrapper.innerHTML = html;
+        
+        // Re-attach event listeners for the new table elements
+        reattachTableEventListeners();
+        
+        // Restore normal state
+        tableWrapper.style.opacity = '1';
+        tableWrapper.style.pointerEvents = 'auto';
+
+        // Scroll to table
+        tableWrapper.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    })
+    .catch(error => {
+        console.error('Error fetching table update:', error);
+        tableWrapper.style.opacity = '1';
+        tableWrapper.style.pointerEvents = 'auto';
+        alert('Error loading results. Please try again.');
+    });
+}
+
+// Re-attach event listeners for dynamically loaded table elements
+function reattachTableEventListeners() {
+    // Re-attach view details button listeners for Recent DCFs
+    document.querySelectorAll('.DCF-view-details-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            console.log('Recent DCF view clicked:', dcfId);
+            fetchDcfDetails(dcfId);
+        });
+    });
+
+    // Re-attach view details button listeners for table
+    document.querySelectorAll('.DCF-icon-button[data-id]').forEach(btn => {
+        // Remove old listeners by cloning
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+    });
+
+    // Attach view details listeners
+    document.querySelectorAll('button[title="View Details"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            fetchDcfDetails(dcfId);
+        });
+    });
+
+    // Attach edit listeners
+    document.querySelectorAll('.DCF-edit-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            fetchDcfForEdit(dcfId);
+        });
+    });
+
+    // Attach cancel listeners
+    document.querySelectorAll('.DCF-delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const dcfId = this.getAttribute('data-id');
+            const dcfNumber = this.closest('tr').querySelector('[data-label="DCF Number"]').textContent;
+            openCancelConfirmation(dcfId, dcfNumber);
+        });
+    });
+
+    // Attach pagination listeners
+    document.querySelectorAll('.pagination-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const url = this.href;
+            fetchTableUpdate(url);
+        });
     });
 }
 
 // ========== DCF Actions ==========
 function fetchDcfDetails(dcfId) {
+    console.log('fetchDcfDetails called with DCF ID:', dcfId);
     const modal = document.getElementById('dcf-details-modal');
     const detailsContent = document.getElementById('dcf-details-content');
 
@@ -248,7 +386,6 @@ function fetchDcfDetails(dcfId) {
 
     // Construct URL - use the correct URL pattern from urls.py
     const url = `/dcf/view-dcf/${dcfId}/`;
-    console.log('Fetching DCF details from URL:', url); // Debug: Log the URL
 
     // Fetch DCF details
     fetch(url, {
@@ -258,21 +395,16 @@ function fetchDcfDetails(dcfId) {
         }
     })
     .then(response => {
-        console.log('Response status:', response.status); // Debug: Log response status
-
         if (!response.ok) {
             throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
         }
 
         // Check content type to ensure we're getting HTML
         const contentType = response.headers.get('content-type');
-        console.log('Content-Type:', contentType); // Debug: Log content type
 
         return response.text();
     })
     .then(html => {
-        console.log('Received HTML:', html); // Debug: Log the received HTML
-
         // Check if the HTML is empty or contains error messages
         if (!html || html.trim() === '') {
             detailsContent.innerHTML = `
@@ -305,17 +437,8 @@ function fetchDcfDetails(dcfId) {
             `;
         }
 
-        // Debug: Check what was inserted
-        console.log('Details content after setting HTML:', detailsContent.innerHTML);
-
-        // Force a reflow to ensure content is displayed properly
-        detailsContent.style.display = 'none';
-        setTimeout(() => {
-            detailsContent.style.display = '';
-        }, 10);
-
         // Clean up the footer first - remove any previously added buttons
-        const footer = modal.querySelector('.DCF-modal-footer');
+        const footer = modal.querySelector('.JO-modal-footer');
 
         // Clear all buttons from the footer
         while (footer.firstChild) {
@@ -324,8 +447,9 @@ function fetchDcfDetails(dcfId) {
 
         // Re-add the close button
         const newCloseButton = document.createElement('button');
-        newCloseButton.className = 'DCF-button DCF-secondary-button';
-        newCloseButton.textContent = 'Close';
+        newCloseButton.type = 'button';
+        newCloseButton.className = 'btn btn-outline';
+        newCloseButton.innerHTML = '<i class="fa fa-times" aria-hidden="true"></i> Close';
         newCloseButton.addEventListener('click', function() {
             closeModal(modal);
         });
@@ -333,11 +457,10 @@ function fetchDcfDetails(dcfId) {
 
         // Add edit button if DCF is editable
         const editBtn = detailsContent.querySelector('#dcf-can-edit');
-        console.log('Edit button found:', editBtn); // Debug: Check if edit button is found
 
         if (editBtn && editBtn.value === 'True') {
             const editButton = document.createElement('button');
-            editButton.className = 'DCF-button DCF-primary-button detail-edit-btn';
+            editButton.className = 'btn btn-primary';
             editButton.setAttribute('data-id', dcfId);
             editButton.innerHTML = '<i class="fas fa-edit"></i> Edit DCF';
 
@@ -387,8 +510,6 @@ function fetchDcfForEdit(dcfId) {
         return response.json();
     })
     .then(data => {
-        console.log('Received data for editing:', data);
-
         // Populate form fields
         document.getElementById('edit-prepared-by').value = data.prepared_by || data.requisitioner;
         document.getElementById('edit-document-code').value = data.document_code;
@@ -404,16 +525,16 @@ function fetchDcfForEdit(dcfId) {
     });
 }
 
-function openDeleteConfirmation(dcfId, dcfNumber) {
+function openCancelConfirmation(dcfId, dcfNumber) {
     const modal = document.getElementById('delete-dcf-modal');
     const dcfNumberSpan = document.getElementById('delete-dcf-number');
-    const deleteForm = document.getElementById('delete-dcf-form');
+    const cancelForm = document.getElementById('delete-dcf-form');
 
     // Set DCF number in message
     dcfNumberSpan.textContent = dcfNumber;
 
     // Set form action - use the correct URL pattern from urls.py
-    deleteForm.action = `/dcf/delete-dcf/${dcfId}/`;
+    cancelForm.action = `/dcf/cancel-dcf/${dcfId}/`;
 
     // Open modal
     openModal(modal);
@@ -639,8 +760,11 @@ function initializeChart() {
         });
         chart.update();
 
+        // Determine if we should show only user's data or all data
+        const userOnly = window.IS_DCF_QSD ? 'false' : 'true';
+
         // Fetch data from the server
-        fetch(`/dcf/api/stats/chart/?period=${period}&user_only=true`, {
+        fetch(`/dcf/api/stats/chart/?period=${period}&user_only=${userOnly}`, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
@@ -661,11 +785,6 @@ function initializeChart() {
                 generateSampleData(period, chart);
             }
             chart.update();
-
-            // Show a toast notification
-            const periodSelector = document.getElementById('chart-period-selector');
-            const periodText = periodSelector ? periodSelector.options[periodSelector.selectedIndex].text : period;
-            showToast('Chart updated for ' + periodText, 'info');
 
             // Restore chart wrapper opacity if it was changed for auto-refresh
             const chartWrapper = document.querySelector('.DCF-chart-wrapper');

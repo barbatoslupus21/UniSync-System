@@ -121,6 +121,10 @@ a {
     transition: transform 0.3s ease;
 }
 
+.text-center {
+    text-align: center !important;
+}
+
 .toggle-btn {
     background: none;
     border: none;

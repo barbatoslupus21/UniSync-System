@@ -1,0 +1,120 @@
+<div class="ecis-table-container">
+    <table class="ecis-table">
+        <thead>
+            <tr>
+                <th>CMIS Number</th>
+                <th>Category</th>
+                <th>Department</th>
+                <th>Requested By</th>
+                <th>Customer</th>
+                <th>Implementation Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ecis in ecis_list %}
+            <tr data-id="{{ ecis.id }}" data-status="{{ ecis.status|lower }}" data-category="{{ ecis.category }}" {% if ecis.status == 'For Review' %}class="ecis-warning-row"{% endif %}>
+                <td data-label="ECIS Number">{{ ecis.number }}</td>
+                <td data-label="Category"><span class="ecis-category-pill ecis-cat-{{ ecis.category }}">{{ ecis.category }}</span></td>
+                <td data-label="Department">{{ ecis.department }}</td>
+                <td data-label="Requested By">{{ ecis.requested_by }}</td>
+                <td data-label="Customer">{{ ecis.customer }}</td>
+                <td data-label="Implementation Date">{{ ecis.implementation_date|date:"M d, Y" }}</td>
+                <td data-label="Status">
+                    <span class="ecis-status ecis-status-{{ ecis.status|lower|cut:' ' }}">
+                        {% if ecis.status == "For Review" %}
+                            <i class="fas fa-sync-alt" style="margin-right: 5px;"></i>
+                        {% elif ecis.status == "Needs Revision" %}
+                            <i class="fas fa-edit" style="margin-right: 5px;"></i>
+                        {% elif ecis.status == "Approved" %}
+                            <i class="fas fa-check" style="margin-right: 5px;"></i>
+                        {% elif ecis.status == "On Hold" %}
+                            <i class="fas fa-pause" style="margin-right: 5px;"></i>
+                        {% elif ecis.status == "Canceled" %}
+                            <i class="fas fa-times" style="margin-right: 5px;"></i>
+                        {% endif %}
+                        {{ ecis.status }}
+                    </span>
+                </td>
+                <td data-label="Actions">
+                    <button class="ecis-icon-button" title="View Details" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    {% if ecis.status == "For Review" or ecis.status == "Approved" or ecis.status == "On Hold" %}
+                    <button class="ecis-icon-button ecis-review-btn" title="Review Request" data-id="{{ ecis.id }}" data-number="{{ ecis.number }}">
+                        <i class="fas fa-clipboard-check"></i>
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="ecis-empty-table">
+                    {% if search_query or category_filter != 'all' or status_filter != 'all' %}
+                        <div class="ecis-no-data-message">
+                            <i class="fas fa-filter fa-2x"></i>
+                            <p>No matching CMIS requests found</p>
+                            <span>Try adjusting your search or filter criteria</span>
+                        </div>
+                    {% else %}
+                        No ECIS requests found.
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="ecis-pagination">
+    <div class="ecis-pagination-info">
+        Showing <span>{{ page_obj.start_index }}-{{ page_obj.end_index }}</span> of <span>{{ paginator.count }}</span> entries
+    </div>
+    <div class="ecis-pagination-pages">
+        {% if page_obj.has_previous %}
+        <a href="javascript:void(0)" class="ecis-pagination-btn ecis-page-link" data-page="{{ page_obj.previous_page_number }}">
+            <i class="fas fa-chevron-left"></i> Previous
+        </a>
+        {% else %}
+        <span class="ecis-pagination-btn disabled">
+            <i class="fas fa-chevron-left"></i> Previous
+        </span>
+        {% endif %}
+
+        <div class="ecis-page-numbers">
+            {% if page_obj.has_previous %}
+                <a href="javascript:void(0)" class="ecis-pagination-page ecis-page-link" data-page="1">1</a>
+                {% if page_obj.previous_page_number != 1 %}
+                    {% if page_obj.previous_page_number != 2 %}
+                        <span class="ecis-pagination-ellipsis">...</span>
+                    {% endif %}
+                    <a href="javascript:void(0)" class="ecis-pagination-page ecis-page-link" data-page="{{ page_obj.previous_page_number }}">{{ page_obj.previous_page_number }}</a>
+                {% endif %}
+            {% endif %}
+
+            <span class="ecis-pagination-page active">{{ page_obj.number }}</span>
+
+            {% if page_obj.has_next %}
+                <a href="javascript:void(0)" class="ecis-pagination-page ecis-page-link" data-page="{{ page_obj.next_page_number }}">{{ page_obj.next_page_number }}</a>
+                {% if page_obj.next_page_number != paginator.num_pages %}
+                    {% if page_obj.next_page_number != paginator.num_pages|add:"-1" %}
+                        <span class="ecis-pagination-ellipsis">...</span>
+                    {% endif %}
+                    <a href="javascript:void(0)" class="ecis-pagination-page ecis-page-link" data-page="{{ paginator.num_pages }}">{{ paginator.num_pages }}</a>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        {% if page_obj.has_next %}
+        <a href="javascript:void(0)" class="ecis-pagination-btn ecis-page-link" data-page="{{ page_obj.next_page_number }}">
+            Next <i class="fas fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <span class="ecis-pagination-btn disabled">
+            Next <i class="fas fa-chevron-right"></i>
+        </span>
+        {% endif %}
+    </div>
+</div>

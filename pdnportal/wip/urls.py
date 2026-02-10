@@ -15,6 +15,7 @@ urlpatterns = [
     path('api/products/', views.get_products, name='get_products'),
     path('api/processes/', views.get_processes, name='get_processes'),
     path('api/materials/', views.get_materials, name='get_materials'),
+    path('api/search-sessions/', views.search_sessions, name='search_sessions'),
     
     # Entry management
     path('session/<int:session_id>/add-raw-materials/', views.add_raw_materials, name='add_raw_materials'),

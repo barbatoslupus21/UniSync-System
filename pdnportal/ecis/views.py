@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http import JsonResponse, HttpResponseForbidden, HttpResponse
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.core.paginator import Paginator
 from django.utils import timezone
 from datetime import datetime, timedelta
@@ -29,6 +29,36 @@ def ecis_list_requestor(request):
     review_items = all_ecis.filter(status='For Review').order_by('-last_updated')[:5]
     revision_items = all_ecis.filter(status='Needs Revision').order_by('-last_updated')[:5]
 
+    # Server-side search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        all_ecis = all_ecis.filter(
+            Q(number__icontains=search_query) |
+            Q(department__icontains=search_query) |
+            Q(requested_by__icontains=search_query) |
+            Q(customer__icontains=search_query) |
+            Q(line__line_name__icontains=search_query) |
+            Q(status__icontains=search_query)
+        )
+
+    # Server-side status filter
+    status_filter = request.GET.get('status', 'all').strip().lower()
+    if status_filter != 'all':
+        status_map = {
+            'approved': 'Approved',
+            'onhold': 'On Hold',
+            'review': 'For Review',
+            'needsrevision': 'Needs Revision',
+            'canceled': 'Canceled',
+        }
+        if status_filter in status_map:
+            all_ecis = all_ecis.filter(status=status_map[status_filter])
+
+    # Server-side category filter
+    category_filter = request.GET.get('category', 'all').strip().upper()
+    if category_filter != 'ALL':
+        all_ecis = all_ecis.filter(category=category_filter)
+
     paginator = Paginator(all_ecis, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -45,26 +75,41 @@ def ecis_list_requestor(request):
         'page_obj': page_obj,
         'paginator': paginator,
         'is_paginated': paginator.num_pages > 1,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'category_filter': category_filter,
     }
+
+    # Return partial HTML for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'ecis/partials/requestor-table.html', context)
 
     return render(request, 'ecis/requestor.html', context)
 
 @login_required(login_url="user-login")
 def ecis_create(request):
     if request.method == 'POST':
-        form = ECISForm(request.POST, user=request.user)
-        if form.is_valid():
-            ecis = form.save()
-            return JsonResponse({
-                'status': 'success',
-                'message': 'ECIS created successfully',
-                'ecis_number': ecis.number
-            })
-        else:
+        try:
+            form = ECISForm(request.POST, user=request.user)
+            if form.is_valid():
+                ecis = form.save()
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'ECIS created successfully',
+                    'ecis_number': ecis.number
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'errors': form.errors
+                }, status=400)
+        except Exception as e:
+            import traceback
             return JsonResponse({
                 'status': 'error',
-                'errors': form.errors
-            }, status=400)
+                'message': str(e),
+                'traceback': traceback.format_exc()
+            }, status=500)
 
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
 
@@ -81,6 +126,8 @@ def ecis_detail_requestor(request, pk):
         'requested_by': ecis.requested_by,
         'customer': ecis.customer,
         'line_supervisor': ecis.line_supervisor,
+        'line': ecis.line.line_name if ecis.line else None,
+        'line_id': ecis.line.id if ecis.line else None,
         'affected_parts': ecis.affected_parts,
         'details_change': ecis.details_change,
         'implementation_date': ecis.implementation_date.strftime('%Y-%m-%d'),
@@ -106,10 +153,10 @@ def ecis_edit(request, pk):
     if request.method == 'POST':
         form = ECISForm(request.POST, instance=ecis, user=request.user)
         if form.is_valid():
+            ecis = form.save(commit=False)
             if ecis.status == 'On Hold' or ecis.status == 'Needs Revision':
                 ecis.status = 'For Review'
-
-            ecis = form.save()
+            ecis.save()
 
             return JsonResponse({
                 'status': 'success',
@@ -130,6 +177,8 @@ def ecis_edit(request, pk):
         'requested_by': ecis.requested_by,
         'customer': ecis.customer,
         'line_supervisor': ecis.line_supervisor,
+        'line': ecis.line.line_name if ecis.line else None,
+        'line_id': ecis.line.id if ecis.line else None,
         'affected_parts': ecis.affected_parts,
         'details_change': ecis.details_change,
         'implementation_date': ecis.implementation_date.strftime('%Y-%m-%d'),
@@ -182,6 +231,36 @@ def ecis_list_facilitator(request):
     review_count = all_ecis.filter(status='For Review', date_prepared__month=current_month, date_prepared__year=current_year).count()
     revision_count = all_ecis.filter(status='Needs Revision', date_prepared__month=current_month, date_prepared__year=current_year).count()
 
+    # Server-side search
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        all_ecis = all_ecis.filter(
+            Q(number__icontains=search_query) |
+            Q(department__icontains=search_query) |
+            Q(requested_by__icontains=search_query) |
+            Q(customer__icontains=search_query) |
+            Q(line__line_name__icontains=search_query) |
+            Q(status__icontains=search_query)
+        )
+
+    # Server-side status filter
+    status_filter = request.GET.get('status', 'all').strip().lower()
+    if status_filter != 'all':
+        status_map = {
+            'approved': 'Approved',
+            'onhold': 'On Hold',
+            'review': 'For Review',
+            'needsrevision': 'Needs Revision',
+            'canceled': 'Canceled',
+        }
+        if status_filter in status_map:
+            all_ecis = all_ecis.filter(status=status_map[status_filter])
+
+    # Server-side category filter
+    category_filter = request.GET.get('category', 'all').strip().upper()
+    if category_filter != 'ALL':
+        all_ecis = all_ecis.filter(category=category_filter)
+
     paginator = Paginator(all_ecis, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -197,7 +276,14 @@ def ecis_list_facilitator(request):
         'page_obj': page_obj,
         'paginator': paginator,
         'is_paginated': paginator.num_pages > 1,
+        'search_query': search_query,
+        'status_filter': status_filter,
+        'category_filter': category_filter,
     }
+
+    # Return partial HTML for AJAX requests
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render(request, 'ecis/partials/facilitator-ecis-table.html', context)
 
     return render(request, 'ecis/facilitator.html', context)
 
@@ -214,6 +300,8 @@ def ecis_detail_facilitator(request, pk):
         'requested_by': ecis.requested_by,
         'customer': ecis.customer,
         'line_supervisor': ecis.line_supervisor,
+        'line': ecis.line.line_name if ecis.line else None,
+        'line_id': ecis.line.id if ecis.line else None,
         'affected_parts': ecis.affected_parts,
         'details_change': ecis.details_change,
         'implementation_date': ecis.implementation_date.strftime('%Y-%m-%d'),
@@ -478,21 +566,22 @@ def ecis_export(request):
     ws.column_dimensions['D'].width = 20
     ws.column_dimensions['E'].width = 20
     ws.column_dimensions['F'].width = 20
-    ws.column_dimensions['G'].width = 30
+    ws.column_dimensions['G'].width = 20
     ws.column_dimensions['H'].width = 30
-    ws.column_dimensions['I'].width = 20
-    ws.column_dimensions['J'].width = 15
-    ws.column_dimensions['K'].width = 30
+    ws.column_dimensions['I'].width = 30
+    ws.column_dimensions['J'].width = 20
+    ws.column_dimensions['K'].width = 15
+    ws.column_dimensions['L'].width = 30
     
     # Title
-    ws.merge_cells('A1:K1')
+    ws.merge_cells('A1:L1')
     title_cell = ws['A1']
     title_cell.value = 'Ryonan Electric Philippines Corporation'
     title_cell.font = Font(name='Arial', size=16, bold=True)
     title_cell.alignment = Alignment(horizontal='center', vertical='center')
     
     # Subtitle
-    ws.merge_cells('A2:K2')
+    ws.merge_cells('A2:L2')
     subtitle_cell = ws['A2']
     date_from_formatted = date_from_obj.strftime('%B %d, %Y')
     date_to_formatted = date_to_obj.strftime('%B %d, %Y')
@@ -508,6 +597,7 @@ def ecis_export(request):
         'ECIS Number',
         'Category',
         'Date Prepared',
+        'Line',
         'Department',
         'Requested By',
         'Customer',
@@ -555,6 +645,7 @@ def ecis_export(request):
             ecis.number,
             category_display.get(ecis.category, ecis.category),
             ecis.date_prepared.strftime('%B %d, %Y'),
+            ecis.line.line_name if ecis.line else '',
             ecis.department,
             ecis.requested_by,
             ecis.customer or '',

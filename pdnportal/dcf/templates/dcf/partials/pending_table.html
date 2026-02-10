@@ -1,0 +1,120 @@
+<!-- DCF Table -->
+<div class="common-table-container">
+    <table class="Unisync-table" id="trial-run-table">
+        <thead>
+            <tr>
+                <th>DCF Number</th>
+                <th>Requisitioner</th>
+                <th>Document Title</th>
+                <th>Document Code</th>
+                <th>Nature</th>
+                <th>Filed Date</th>
+                <th style="text-align: center;">Status</th>
+                <th style="text-align: center;">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="trial-run-tbody">
+            {% for dcf in pending_approvals %}
+                        {% with days_until_effectivity=dcf.effectivity_date|timeuntil:dcf.date_filed|default:"0" %}
+                        <tr class="{% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}DCF-urgent-row{% endif %}">
+                            <td data-label="DCF Number">
+                                {{ dcf.dcf_number }}
+                                {% if 'day' in days_until_effectivity and days_until_effectivity|slice:":2"|add:0 > 7 %}
+                                <span class="DCF-tooltip">
+                                    <i class="fas fa-exclamation-triangle DCF-warning-icon"></i>
+                                    <span class="DCF-tooltip-text">Warning: Effectivity date is more than 1 week from filing date!</span>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Requisitioner">{{ dcf.prepared_by }}</td>
+                            <td data-label="Document Title">{{ dcf.document_title }}</td>
+                            <td data-label="Document Code">{{ dcf.document_code }}</td>
+                            <td data-label="Nature">{{ dcf.get_nature_display }}</td>
+                            <td data-label="Filed Date">{{ dcf.date_filed|date:"M d, Y" }}</td>
+                            <td data-label="Status" class="text-center">
+                                <span class="DCF-status DCF-status-{{ dcf.status }}">
+                                    {{ dcf.get_status_display }}
+                                </span>
+                            </td>
+                            <td data-label="Actions">
+                                <div class="DCF-action-buttons">
+
+                                    <button class="btn btn-icon" title="View Details" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+
+                                    {% if dcf.can_review %}
+                                    <button class="btn btn-icon DCF-view-approval-btn" title="Review & Approve" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-clipboard-check"></i>
+                                    </button>
+                                    {% endif %}
+
+                                    {% if dcf.status == "on_process" %}
+                                    <button class="btn btn-icon btn-error DCF-cancel-btn" title="Cancel DCF" data-id="{{ dcf.id }}">
+                                        <i class="fas fa-times-circle"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endwith %}
+            {% empty %}
+            <tr>
+                <td colspan="7" class="JO-empty-table">
+                    <div class="empty-state">
+                        <i class="fa fa-question-circle" aria-hidden="true"></i>
+                        <h4>No DCF Request Found</h4>
+                        {% if search_query %}
+                            <p>No results found for "{{ search_query }}"</p>
+                        {% else %}
+                            <p>No DCF request has been filed yet</p>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="JO-pagination">
+    <div class="JO-pagination-info">
+        Showing {{ pending_approvals.start_index }} to {{ pending_approvals.end_index }} of {{ pending_approvals.paginator.count }} entries
+    </div>
+    {% if pending_approvals.paginator.num_pages > 1 %}
+    <div class="JO-pagination-controls">
+        <div class="JO-pagination-nav-container">
+            {% if pending_approvals.has_previous %}
+            <a href="?page={{ pending_approvals.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_type and filter_type != 'all' %}&filter={{ filter_type }}{% endif %}" class="JO-pagination-btn pagination-link">
+                <i class="fas fa-chevron-left"></i> Previous
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                <i class="fas fa-chevron-left"></i> Previous
+            </span>
+            {% endif %}
+            
+            <div class="JO-pagination-pages">
+                {% for num in pending_approvals.paginator.page_range %}
+                {% if pending_approvals.number == num %}
+                <span class="JO-pagination-page active">{{ num }}</span>
+                {% elif num > pending_approvals.number|add:'-3' and num < pending_approvals.number|add:'3' %}
+                <a href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_type and filter_type != 'all' %}&filter={{ filter_type }}{% endif %}" class="JO-pagination-page pagination-link">{{ num }}</a>
+                {% endif %}
+                {% endfor %}
+            </div>
+            
+            {% if pending_approvals.has_next %}
+            <a href="?page={{ pending_approvals.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if filter_type and filter_type != 'all' %}&filter={{ filter_type }}{% endif %}" class="JO-pagination-btn pagination-link">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="JO-pagination-btn disabled">
+                Next <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>

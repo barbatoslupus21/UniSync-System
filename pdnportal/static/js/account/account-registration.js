@@ -474,6 +474,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // WIP user checkbox - Add form
+    const wipUser = document.getElementById('wip-user');
+    const wipRoles = document.getElementById('wip-roles');
+    if (wipUser) {
+        // Set initial state
+        if (wipUser.checked && wipRoles) {
+            wipRoles.style.display = 'block';
+        }
+
+        wipUser.addEventListener('change', function() {
+            toggleSubpermissions(this, wipRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = wipRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
     // Toggle subpermissions when main permission checkbox is clicked - Edit form
     if (editJobOrderUser) {
         editJobOrderUser.addEventListener('change', function() {
@@ -688,6 +710,28 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset radio buttons when unchecked
             if (!this.checked) {
                 const radioButtons = editMeetingSchedulerRoles.querySelectorAll('input[type="radio"]');
+                radioButtons.forEach(radio => {
+                    radio.checked = false;
+                });
+            }
+        });
+    }
+
+    // WIP user checkbox - Edit form
+    const editWipUser = document.getElementById('edit-wip-user');
+    const editWipRoles = document.getElementById('edit-wip-roles');
+    if (editWipUser) {
+        // Set initial state
+        if (editWipUser.checked && editWipRoles) {
+            editWipRoles.style.display = 'block';
+        }
+
+        editWipUser.addEventListener('change', function() {
+            toggleSubpermissions(this, editWipRoles);
+
+            // Reset radio buttons when unchecked
+            if (!this.checked) {
+                const radioButtons = editWipRoles.querySelectorAll('input[type="radio"]');
                 radioButtons.forEach(radio => {
                     radio.checked = false;
                 });
@@ -1162,6 +1206,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 dcfRoleRadios.forEach(radio => {
                     if (radio.value === 'requestor' && userData.dcf_requestor) {
                         radio.checked = true;
+                    } else if (radio.value === 'qsd' && userData.dcf_qsd) {
+                        radio.checked = true;
                     } else if (radio.value === 'approver' && userData.dcf_approver) {
                         radio.checked = true;
                     }
@@ -1297,6 +1343,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         radio.checked = true;
                     }
                 });
+            }
+
+            // WIP
+            const editWipUser = document.getElementById('edit-wip-user');
+            const editWipRoles = document.getElementById('edit-wip-roles');
+            if (userData.wip_user && editWipUser) {
+                editWipUser.checked = true;
+                toggleSubpermissions(editWipUser, editWipRoles);
+
+                // Set WIP role
+                if (editWipRoles) {
+                    const wipRoleRadios = editWipRoles.querySelectorAll('input[type="radio"]');
+                    wipRoleRadios.forEach(radio => {
+                        if (radio.value === 'wip_counter' && userData.wip_counter) {
+                            radio.checked = true;
+                        } else if (radio.value === 'wip_checker' && userData.wip_checker) {
+                            radio.checked = true;
+                        } else if (radio.value === 'wip_facilitator' && userData.wip_facilitator) {
+                            radio.checked = true;
+                        }
+                    });
+                }
             }
 
             // Set approvers
