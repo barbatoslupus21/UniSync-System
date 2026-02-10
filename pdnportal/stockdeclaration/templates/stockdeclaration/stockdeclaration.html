@@ -62,12 +62,17 @@
                         </button>
                         {% endif %}
 
-                        {% if request.user.stock_declaration_warehouse or request.user.stock_declaration_purchasing %}
+                        {% comment %} {% if request.user.stock_declaration_warehouse or request.user.stock_declaration_purchasing %}
                         <button id="report-stock-declaration-btn" class="btn btn-primary">
                             <i class="fa fa-download" aria-hidden="true"></i>
                             Export Report
                         </button>
-                        {% endif %}
+                        {% endif %} {% endcomment %}
+
+                        <button id="report-stock-declaration-btn" class="btn btn-primary">
+                            <i class="fa fa-download" aria-hidden="true"></i>
+                            Export Report
+                        </button>
                     </div>
                 </div>
                 

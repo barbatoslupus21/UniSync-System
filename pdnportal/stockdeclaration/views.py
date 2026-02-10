@@ -13,11 +13,20 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from django.db.models import Q, Case, When, IntegerField, Value
 
+@login_required
 def stock_declaration_home(request):
     search_query = request.GET.get('search', '').strip()
     
     stock_declarations_list = StockDeclaration.objects.select_related('created_by').prefetch_related('lines').all()
-    
+
+    # If user is stock_declaration_production, only show declarations matching their lines
+    if hasattr(request.user, 'stock_declaration_production') and request.user.stock_declaration_production:
+        user_lines = request.user.line.all()
+        if user_lines.exists():
+            stock_declarations_list = stock_declarations_list.filter(lines__in=user_lines).distinct()
+        else:
+            stock_declarations_list = stock_declarations_list.none()
+
     if search_query:
         stock_declarations_list = stock_declarations_list.filter(
             Q(control_number__icontains=search_query) |
@@ -337,6 +346,15 @@ def export_stock_declaration_report(request):
         created_at__date__lte=date_to_obj
     ).select_related('created_by').prefetch_related('lines')
     
+    # If user is stock_declaration_production, only export declarations matching their lines
+    if hasattr(request.user, 'stock_declaration_production') and request.user.stock_declaration_production:
+        user_lines = request.user.line.all()
+        if user_lines.exists():
+            stock_declarations = stock_declarations.filter(lines__in=user_lines).distinct()
+        else:
+            # No declarations to export if user has no assigned lines
+            stock_declarations = stock_declarations.none()
+    
     # Filter by status if not 'all'
     if status != 'all':
         stock_declarations = stock_declarations.filter(status=status)
@@ -480,6 +498,20 @@ def stock_declaration_chart_data(request):
     
     today = timezone.now()
     
+    # If user is stock_declaration_production, only show data for their lines
+    production_filter = None
+    if hasattr(request.user, 'stock_declaration_production') and request.user.stock_declaration_production:
+        user_lines = request.user.line.all()
+        if user_lines.exists():
+            production_filter = Q(lines__in=user_lines)
+        else:
+            # Return empty chart for production users with no assigned lines
+            return JsonResponse({
+                'type': 'line',
+                'data': {'labels': [], 'datasets': []},
+                'options': {}
+            })
+    
     # Determine date range based on time_range parameter
     if time_range == 'today':
         start_date = today.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -553,6 +585,10 @@ def stock_declaration_chart_data(request):
         created_at__gte=start_date,
         created_at__lte=end_date
     )
+    
+    # Apply production user line filter if applicable
+    if production_filter:
+        all_declarations = all_declarations.filter(production_filter).distinct()
     
     if stock_type_filter == 'all':
         # Show separate lines for each stock type
