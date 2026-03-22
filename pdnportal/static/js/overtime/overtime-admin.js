@@ -617,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const response = await fetch('/overtime/api/passcode/');
             const data = await response.json();
             if (data.success && data.data) {
-                document.getElementById('current-passcode').value = data.data.passcode;
+                document.getElementById('current-passcode').textContent = data.data.passcode;
             }
         } catch (error) {
             console.error('Failed to load passcode');
@@ -1268,48 +1268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.classList.add('active');
     }
 
-    async function updatePasscode() {
-        const newPasscode = document.getElementById('new-passcode').value;
-        const confirmPasscode = document.getElementById('confirm-passcode').value;
 
-        if (!newPasscode || !confirmPasscode) {
-            showToast('Please fill in all fields', 'warning');
-            return;
-        }
-
-        if (newPasscode !== confirmPasscode) {
-            showToast('Passcodes do not match', 'error');
-            return;
-        }
-
-        if (newPasscode.length < 4) {
-            showToast('Passcode must be at least 4 characters', 'warning');
-            return;
-        }
-
-        try {
-            const response = await fetch('/overtime/api/passcode/update/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: JSON.stringify({ passcode: newPasscode })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-                showToast('Passcode updated successfully', 'success');
-                document.getElementById('current-passcode').value = newPasscode;
-                document.getElementById('new-passcode').value = '';
-                document.getElementById('confirm-passcode').value = '';
-            } else {
-                showToast('Failed to update passcode', 'error');
-            }
-        } catch (error) {
-            showToast('Failed to update passcode', 'error');
-        }
-    }
 
     async function loadWeeks() {
         const year = document.getElementById('export-year').value;
@@ -2337,19 +2296,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (state.confirmCallback) state.confirmCallback();
         });
 
-        document.getElementById('toggle-passcode-visibility')?.addEventListener('click', () => {
-            const input = document.getElementById('current-passcode');
-            const icon = document.querySelector('#toggle-passcode-visibility i');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        });
 
-        document.getElementById('update-passcode-btn')?.addEventListener('click', updatePasscode);
 
         document.getElementById('export-type')?.addEventListener('change', (e) => {
             const weekGroup = document.getElementById('export-week-group');

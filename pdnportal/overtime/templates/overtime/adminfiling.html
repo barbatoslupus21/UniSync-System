@@ -381,31 +381,11 @@
                         <h3>Late Filing Passcode</h3>
                     </div>
                     <div class="settings-panel-body">
-                        <form class="settings-form" id="passcode-form" autocomplete="off">
-                            <!-- Hidden username field for accessibility -->
-                            <input type="text" name="username" autocomplete="username" style="display:none;" aria-hidden="true">
-                            <div class="form-group">
-                                <label class="form-label">Current Passcode</label>
-                                <div class="passcode-display">
-                                    <input type="password" class="form-control" id="current-passcode" readonly autocomplete="off">
-                                    <button type="button" class="btn btn-icon" id="toggle-passcode-visibility">
-                                        <i class="fa-solid fa-eye"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">New Passcode</label>
-                                <input type="password" class="form-control" id="new-passcode" placeholder="Enter new passcode" autocomplete="new-password">
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Confirm Passcode</label>
-                                <input type="password" class="form-control" id="confirm-passcode" placeholder="Confirm new passcode" autocomplete="new-password">
-                            </div>
-                            <button type="button" class="btn btn-primary" id="update-passcode-btn">
-                                <i class="fa-solid fa-save"></i>
-                                Update Passcode
-                            </button>
-                        </form>
+                        <div class="form-group">
+                            <label class="form-label">Today's Passcode</label>
+                            <strong id="current-passcode" class="passcode-text"></strong>
+                            <p class="form-hint">Passcode is automatically regenerated every day at 7:00 AM</p>
+                        </div>
                     </div>
                 </div>
             </div>

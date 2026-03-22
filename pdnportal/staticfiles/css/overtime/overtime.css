@@ -15,6 +15,13 @@
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
+.passcode-text{
+    font-size: 2rem !important;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-variant-numeric: slashed-zero;
+    letter-spacing: 0.15em;
+}
+
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
@@ -506,15 +513,16 @@ tr.missing-shifting td {
     display: flex;
     flex-direction: column;
     height: 100%;
-    overflow: hidden;
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .ot-filing-main .JO-card {
     display: flex;
     flex-direction: column;
     flex: 1;
-    height: 100%;
-    overflow: hidden;
+    min-height: 0;
+    overflow: visible;
 }
 
 .ot-search-container {
@@ -628,7 +636,7 @@ tr.missing-shifting td {
 .ot-employee-table-container {
     flex: 1;
     overflow-y: auto;
-    min-height: 0;
+    min-height: 250px;
 }
 
 .ot-filing-actions {

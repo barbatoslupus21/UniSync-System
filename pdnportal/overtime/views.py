@@ -1360,7 +1360,8 @@ def delete_holiday(request, holiday_id):
 @login_required
 @require_http_methods(["GET"])
 def get_passcode(request):
-    passcode = OvertimePasscode.objects.filter(is_active=True).first()
+    from .utils import get_or_refresh_passcode
+    passcode = get_or_refresh_passcode()
     if passcode:
         return JsonResponse({
             'success': True,

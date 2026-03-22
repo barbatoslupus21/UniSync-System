@@ -104,6 +104,8 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 /* ==========================================================================
@@ -748,6 +750,8 @@ a.ecis-pagination-btn:hover {
     border-radius: 6px;
     overflow: hidden;
     transition: var(--ecis-transition);
+    min-width: 250px;
+    flex-shrink: 1;
 }
 
 .ecis-search-container:focus-within {
@@ -760,7 +764,8 @@ a.ecis-pagination-btn:hover {
     padding: 8px 12px;
     outline: none;
     font-size: 0.9rem;
-    width: 250px;
+    width: 100%;
+    min-width: 150px;
     transition: var(--ecis-transition);
 }
 
@@ -798,6 +803,9 @@ a.ecis-pagination-btn:hover {
     background-color: white;
     cursor: pointer;
     transition: var(--ecis-transition);
+    appearance: menulist-button;
+    -webkit-appearance: menulist-button;
+    -moz-appearance: menulist-button;
 }
 
 .ecis-select:focus {
@@ -1859,4 +1867,52 @@ select:invalid {
     font-size: 0.9rem;
     color: var(--ecis-text-light);
     font-style: normal;
+}
+
+/* ==========================================================================
+   Pending Review Item Styles (Facilitator)
+   ========================================================================== */
+
+.ecis-pending-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.ecis-pending-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.ecis-pending-actions .ecis-button {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.ecis-view-details-btn {
+    background-color: #f8f9fa;
+    color: #333;
+    border: 1px solid #e6e6e6;
+}
+
+.ecis-view-details-btn:hover {
+    background-color: #e9ecef;
+}
+
+.ecis-review-pending-btn {
+    background-color: var(--ecis-primary);
+    color: white;
+}
+
+.ecis-review-pending-btn:hover {
+    background-color: var(--ecis-primary-dark);
+}
+
+/* ==========================================================================
+   Category Filter Dropdown
+   ========================================================================== */
+
+.ecis-category-filter option {
+    background-color: white !important;
 }

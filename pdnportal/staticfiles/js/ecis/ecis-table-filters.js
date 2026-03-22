@@ -1,82 +1,150 @@
 /**
  * ECIS Registry - Table Filters JavaScript
- * Functionality for search and filter in ECIS tables
+ * Server-side search, filter, and AJAX pagination for ECIS tables
  */
 
 // Debounce timer for search
 let searchDebounceTimer = null;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize search and filter functionality
     initTableSearch();
-    initStatusFilter();
-    initCategoryFilter();
+    initServerSideStatusFilter();
+    initServerSideCategoryFilter();
+    initAjaxPagination();
+    syncFiltersFromUrl();
 });
 
 /**
- * Initialize search functionality for ECIS tables
- * Server-side search across all ECIS records
+ * Sync filter dropdowns with current URL params on page load
+ */
+function syncFiltersFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const statusFilter = document.getElementById('status-filter');
+    const categoryFilter = document.getElementById('category-filter');
+    const searchInput = document.querySelector('.ecis-search-input');
+
+    if (statusFilter) {
+        const statusVal = urlParams.get('status') || 'all';
+        statusFilter.value = statusVal;
+    }
+
+    if (categoryFilter) {
+        const categoryVal = urlParams.get('category') || 'all';
+        categoryFilter.value = categoryVal;
+    }
+
+    if (searchInput) {
+        const searchVal = urlParams.get('search') || '';
+        if (searchVal) {
+            searchInput.value = searchVal;
+            searchInput.classList.add('has-text');
+        }
+    }
+}
+
+/**
+ * Build the query string from current filter/search/page state
+ */
+function buildQueryParams(page) {
+    const params = new URLSearchParams();
+
+    const searchInput = document.querySelector('.ecis-search-input');
+    const statusFilter = document.getElementById('status-filter');
+    const categoryFilter = document.getElementById('category-filter');
+
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
+    const statusVal = statusFilter ? statusFilter.value : 'all';
+    const categoryVal = categoryFilter ? categoryFilter.value : 'all';
+
+    if (searchTerm) params.set('search', searchTerm);
+    if (statusVal && statusVal !== 'all') params.set('status', statusVal);
+    if (categoryVal && categoryVal !== 'all') params.set('category', categoryVal);
+    if (page && page > 1) params.set('page', page);
+
+    return params;
+}
+
+/**
+ * Fetch filtered/paginated table content via AJAX and replace #ecis-table-wrapper
+ */
+function fetchTableContent(page) {
+    const wrapper = document.getElementById('ecis-table-wrapper');
+    if (!wrapper) return;
+
+    const params = buildQueryParams(page);
+    const url = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+
+    // Update browser URL without reload
+    history.replaceState(null, '', url);
+
+    // Show loading state
+    wrapper.style.opacity = '0.5';
+    wrapper.style.pointerEvents = 'none';
+
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.text())
+    .then(html => {
+        wrapper.innerHTML = html;
+        wrapper.style.opacity = '1';
+        wrapper.style.pointerEvents = '';
+
+        // Re-bind pagination links inside the new content
+        initAjaxPagination();
+
+        // Re-initialize table row event listeners (details/review buttons)
+        if (typeof initDetailsButtons === 'function') {
+            initDetailsButtons();
+        }
+        if (typeof initReviewModal === 'function') {
+            initReviewModal();
+        }
+    })
+    .catch(error => {
+        console.error('Error fetching table:', error);
+        wrapper.style.opacity = '1';
+        wrapper.style.pointerEvents = '';
+    });
+}
+
+/**
+ * Initialize search functionality – server-side via AJAX
  */
 function initTableSearch() {
     const searchInputs = document.querySelectorAll('.ecis-search-input');
     const searchButtons = document.querySelectorAll('.ecis-search-button');
 
     if (searchInputs.length && searchButtons.length) {
-        // Add event listeners to search inputs
         searchInputs.forEach((searchInput, index) => {
             const searchButton = searchButtons[index];
 
-            // Get current search query from URL and populate input
-            const urlParams = new URLSearchParams(window.location.search);
-            const currentSearch = urlParams.get('search') || '';
-            if (currentSearch) {
-                searchInput.value = currentSearch;
-                searchInput.classList.add('has-text');
-            }
-
-            // Function to perform server-side search
+            // Perform AJAX search (reset to page 1)
             const performSearch = (immediate = false) => {
-                // Clear any pending debounce
                 if (searchDebounceTimer) {
                     clearTimeout(searchDebounceTimer);
                     searchDebounceTimer = null;
                 }
 
                 const doSearch = () => {
-                    const searchTerm = searchInput.value.trim();
-                    const url = new URL(window.location.href);
-                    const currentUrlSearch = url.searchParams.get('search') || '';
-                    
-                    // Only reload if search term actually changed
-                    if (searchTerm === currentUrlSearch) {
-                        return;
-                    }
-                    
-                    if (searchTerm) {
-                        url.searchParams.set('search', searchTerm);
-                    } else {
-                        url.searchParams.delete('search');
-                    }
-                    
-                    // Reset to page 1 when searching
-                    url.searchParams.delete('page');
-                    
-                    // Navigate to the new URL
-                    window.location.href = url.toString();
+                    fetchTableContent(1);
                 };
 
                 if (immediate) {
                     doSearch();
                 } else {
-                    // Debounce search for 500ms
                     searchDebounceTimer = setTimeout(doSearch, 500);
                 }
             };
 
-            // Add event listener to search button - immediate search
+            // Click search button
             searchButton.addEventListener('click', () => performSearch(true));
 
-            // Add event listener for Enter key - immediate search
+            // Enter key
             searchInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     performSearch(true);
@@ -84,289 +152,63 @@ function initTableSearch() {
                 }
             });
 
-            // Real-time search with debounce as user types
+            // Real-time search with debounce
             searchInput.addEventListener('input', function() {
                 if (this.value.trim() !== '') {
                     this.classList.add('has-text');
-                    // Debounced search while typing
-                    performSearch(false);
                 } else {
                     this.classList.remove('has-text');
-                    // If there was a previous search, clear it immediately
-                    const urlParams = new URLSearchParams(window.location.search);
-                    if (urlParams.has('search')) {
-                        performSearch(true);
-                    }
                 }
+                performSearch(false);
             });
         });
     }
 }
 
 /**
- * Initialize status filter functionality for ECIS tables
+ * Initialize status filter – server-side via AJAX
  */
-function initStatusFilter() {
-    const filterSelects = document.querySelectorAll('.ecis-filter-select');
+function initServerSideStatusFilter() {
+    const statusFilter = document.getElementById('status-filter');
+    if (!statusFilter) return;
 
-    if (filterSelects.length) {
-        filterSelects.forEach(filterSelect => {
-            const tableContainer = filterSelect.closest('.ecis-card').querySelector('.ecis-table-container');
-
-            if (!tableContainer) return;
-
-            filterSelect.addEventListener('change', function() {
-                const selectedStatus = this.value.toLowerCase();
-                const table = tableContainer.querySelector('.ecis-table');
-
-                if (!table) return;
-
-                const rows = table.querySelectorAll('tbody tr');
-                let hasVisibleRows = false;
-
-                // Skip the empty row if it exists
-                rows.forEach(row => {
-                    if (row.querySelector('.ecis-empty-table')) return;
-
-                    const rowStatus = row.getAttribute('data-status');
-                    const rowCategory = row.getAttribute('data-category');
-
-                    // Get the current category filter value
-                    const categoryFilter = tableContainer.closest('.ecis-card').querySelector('.ecis-category-filter');
-                    const selectedCategory = categoryFilter ? categoryFilter.value.toUpperCase() : 'ALL';
-
-                    // Check if the row matches both status and category filters
-                    const matchesStatus = selectedStatus === 'all' || rowStatus === selectedStatus;
-                    const matchesCategory = selectedCategory === 'ALL' || rowCategory === selectedCategory;
-
-                    if (matchesStatus && matchesCategory) {
-                        row.style.display = '';
-                        hasVisibleRows = true;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-
-                // Get the current search term and category filter if any
-                const searchInput = tableContainer.closest('.ecis-card').querySelector('.ecis-search-input');
-                const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
-                const categoryFilter = tableContainer.closest('.ecis-card').querySelector('.ecis-category-filter');
-                const selectedCategory = categoryFilter ? categoryFilter.value.toUpperCase() : 'ALL';
-
-                // Show appropriate empty state message
-                showEmptyStateMessage(table, hasVisibleRows, searchTerm, selectedStatus, selectedCategory);
-
-                // Update the pagination info if it exists
-                updatePaginationInfo(tableContainer);
-            });
-        });
-    }
-}
-
-/**
- * Update pagination info based on visible rows
- */
-function updatePaginationInfo(tableContainer) {
-    const paginationInfo = tableContainer.closest('.ecis-card').querySelector('.ecis-pagination-info');
-
-    if (paginationInfo) {
-        const table = tableContainer.querySelector('.ecis-table');
-        const visibleRows = table.querySelectorAll('tbody tr:not([style*="display: none"]):not(.ecis-search-empty-row):not(.ecis-filter-empty-row)');
-        const totalRows = table.querySelectorAll('tbody tr:not(.ecis-search-empty-row):not(.ecis-filter-empty-row)').length;
-
-        // Update the pagination info
-        const startIndex = visibleRows.length > 0 ? 1 : 0;
-        const endIndex = visibleRows.length;
-
-        paginationInfo.innerHTML = `Showing <span>${startIndex}-${endIndex}</span> of <span>${totalRows}</span> entries`;
-    }
-}
-
-/**
- * Initialize category filter functionality for ECIS tables
- */
-function initCategoryFilter() {
-    const categoryFilters = document.querySelectorAll('.ecis-category-filter');
-
-    if (categoryFilters.length) {
-        categoryFilters.forEach(categoryFilter => {
-            const tableContainer = categoryFilter.closest('.ecis-card').querySelector('.ecis-table-container');
-
-            if (!tableContainer) return;
-
-            categoryFilter.addEventListener('change', function() {
-                const selectedCategory = this.value.toUpperCase();
-                const table = tableContainer.querySelector('.ecis-table');
-
-                if (!table) return;
-
-                const rows = table.querySelectorAll('tbody tr');
-                let hasVisibleRows = false;
-
-                // Skip the empty row if it exists
-                rows.forEach(row => {
-                    if (row.querySelector('.ecis-empty-table')) return;
-
-                    const rowCategory = row.getAttribute('data-category');
-
-                    // We need to reset all rows first when changing category filter
-                    // and then apply both status and category filters
-
-                    // Get the current status filter
-                    const statusFilter = tableContainer.closest('.ecis-card').querySelector('.ecis-filter-select');
-                    const selectedStatus = statusFilter ? statusFilter.value.toLowerCase() : 'all';
-
-                    // Check if the row matches both filters
-                    const matchesStatus = selectedStatus === 'all' || row.getAttribute('data-status') === selectedStatus;
-                    const matchesCategory = selectedCategory === 'ALL' || rowCategory === selectedCategory;
-
-                    if (matchesStatus && matchesCategory) {
-                        row.style.display = '';
-                        hasVisibleRows = true;
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-
-                // Get the current search term and status filter if any
-                const searchInput = tableContainer.closest('.ecis-card').querySelector('.ecis-search-input');
-                const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
-
-                const statusFilter = tableContainer.closest('.ecis-card').querySelector('.ecis-filter-select');
-                const selectedStatus = statusFilter ? statusFilter.value.toLowerCase() : 'all';
-
-                // Show appropriate empty state message
-                showEmptyStateMessage(table, hasVisibleRows, searchTerm, selectedStatus, selectedCategory);
-
-                // Update the pagination info if it exists
-                updatePaginationInfo(tableContainer);
-            });
-        });
-    }
-}
-
-/**
- * Show appropriate empty state message based on current filters and search
- */
-function showEmptyStateMessage(table, hasVisibleRows, searchTerm = '', selectedStatus = 'all', selectedCategory = 'all') {
-    console.log('showEmptyStateMessage called:', {
-        table,
-        hasVisibleRows,
-        searchTerm,
-        selectedStatus,
-        selectedCategory,
-        tableId: table.closest('.ecis-card').id || table.closest('.ecis-card').className
+    statusFilter.addEventListener('change', function() {
+        fetchTableContent(1); // Reset to page 1 on filter change
     });
+}
 
-    // Find the empty row that's part of the original table
-    let emptyRow = null;
-    const emptyTds = table.querySelectorAll('td.ecis-empty-table');
-    for (const td of emptyTds) {
-        if (td.parentElement && !td.parentElement.classList.contains('ecis-search-empty-row') &&
-            !td.parentElement.classList.contains('ecis-filter-empty-row')) {
-            emptyRow = td.parentElement;
-            break;
-        }
-    }
+/**
+ * Initialize category filter – server-side via AJAX
+ */
+function initServerSideCategoryFilter() {
+    const categoryFilter = document.getElementById('category-filter');
+    if (!categoryFilter) return;
 
-    // Find existing empty rows that we've added
-    const existingSearchEmptyRow = table.querySelector('.ecis-search-empty-row');
-    const existingFilterEmptyRow = table.querySelector('.ecis-filter-empty-row');
+    categoryFilter.addEventListener('change', function() {
+        fetchTableContent(1); // Reset to page 1 on filter change
+    });
+}
 
-    // Hide all empty state messages first
-    if (existingSearchEmptyRow) existingSearchEmptyRow.style.display = 'none';
-    if (existingFilterEmptyRow) existingFilterEmptyRow.style.display = 'none';
-    if (emptyRow && emptyRow.parentElement) emptyRow.style.display = 'none';
+/**
+ * Initialize AJAX pagination – binds click handlers on .ecis-page-link elements
+ */
+function initAjaxPagination() {
+    const wrapper = document.getElementById('ecis-table-wrapper');
+    if (!wrapper) return;
 
-    if (!hasVisibleRows) {
-        const colspan = table.querySelector('thead th') ?
-            table.querySelectorAll('thead th').length :
-            (table.querySelector('tbody td[colspan]') ?
-                parseInt(table.querySelector('tbody td[colspan]').getAttribute('colspan')) : 8);
-
-        // Determine which empty state to show based on search and filters
-        const hasSearchFilter = searchTerm !== '';
-        const hasStatusFilter = selectedStatus !== 'all';
-        const hasCategoryFilter = selectedCategory !== 'ALL';
-
-        // Create filter description text
-        let filterDescription = '';
-        if (hasStatusFilter && hasCategoryFilter) {
-            const statusText = `status "${selectedStatus}"`;
-            const categoryText = `category "${selectedCategory}"`;
-            filterDescription = `${statusText} and ${categoryText}`;
-        } else if (hasStatusFilter) {
-            filterDescription = `status "${selectedStatus}"`;
-        } else if (hasCategoryFilter) {
-            filterDescription = `category "${selectedCategory}"`;
-        }
-
-        if (hasSearchFilter && (hasStatusFilter || hasCategoryFilter)) {
-            // Both search and at least one filter are active
-            if (existingSearchEmptyRow) {
-                existingSearchEmptyRow.style.display = '';
-            } else {
-                const newEmptyRow = document.createElement('tr');
-                newEmptyRow.className = 'ecis-search-empty-row';
-                newEmptyRow.innerHTML = `
-                    <td colspan="${colspan}" class="ecis-empty-table">
-                        <div class="ecis-no-data-message">
-                            <i class="fas fa-search fa-2x"></i>
-                            <p>No matching ECIS requests found</p>
-                            <span>Try adjusting your search criteria or filter selections</span>
-                        </div>
-                    </td>
-                `;
-                const tbody = table.querySelector('tbody');
-                console.log('Appending empty row to tbody:', tbody);
-                tbody.appendChild(newEmptyRow);
+    const pageLinks = wrapper.querySelectorAll('.ecis-page-link');
+    pageLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const page = this.getAttribute('data-page');
+            if (page) {
+                fetchTableContent(parseInt(page));
+                // Scroll to table top
+                const allRequestsCard = document.querySelector('.ecis-all-requests');
+                if (allRequestsCard) {
+                    allRequestsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
             }
-        } else if (hasSearchFilter) {
-            // Only search is active
-            if (existingSearchEmptyRow) {
-                existingSearchEmptyRow.style.display = '';
-            } else {
-                const newEmptyRow = document.createElement('tr');
-                newEmptyRow.className = 'ecis-search-empty-row';
-                newEmptyRow.innerHTML = `
-                    <td colspan="${colspan}" class="ecis-empty-table">
-                        <div class="ecis-no-data-message">
-                            <i class="fas fa-search fa-2x"></i>
-                            <p>No matching ECIS requests found</p>
-                            <span>Try adjusting your search criteria</span>
-                        </div>
-                    </td>
-                `;
-                const tbody = table.querySelector('tbody');
-                console.log('Appending search empty row to tbody:', tbody);
-                tbody.appendChild(newEmptyRow);
-            }
-        } else if (hasStatusFilter || hasCategoryFilter) {
-            // At least one filter is active
-            if (existingFilterEmptyRow) {
-                existingFilterEmptyRow.style.display = '';
-            } else {
-                const newEmptyRow = document.createElement('tr');
-                newEmptyRow.className = 'ecis-filter-empty-row';
-                newEmptyRow.innerHTML = `
-                    <td colspan="${colspan}" class="ecis-empty-table">
-                        <div class="ecis-no-data-message">
-                            <i class="fas fa-filter fa-2x"></i>
-                            <p>No ECIS requests with ${filterDescription} found</p>
-                            <span>Try selecting different filter options</span>
-                        </div>
-                    </td>
-                `;
-                const tbody = table.querySelector('tbody');
-                console.log('Appending filter empty row to tbody:', tbody);
-                tbody.appendChild(newEmptyRow);
-            }
-        } else {
-            // No search or filter, show original empty row
-            if (emptyRow && emptyRow.parentElement) {
-                emptyRow.style.display = '';
-            }
-        }
-    }
+        });
+    });
 }

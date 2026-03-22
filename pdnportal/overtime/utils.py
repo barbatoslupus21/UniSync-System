@@ -1,10 +1,57 @@
 import openpyxl
+import random
+import string
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from django.http import HttpResponse
 from datetime import datetime, time, timedelta
 from django.utils import timezone
-from .models import SystemActivity
+from .models import OvertimePasscode
+
+PASSCODE_REFRESH_HOUR = 7   # 7:00 AM
+PASSCODE_REFRESH_MINUTE = 0
+
+
+def generate_passcode():
+    """Generate a secure 6-character passcode with uppercase, lowercase, digit, and special char."""
+    special_chars = '!@#$%^&*'
+    chars = [
+        random.choice(string.ascii_uppercase),
+        random.choice(string.ascii_lowercase),
+        random.choice(string.digits),
+        random.choice(special_chars),
+    ]
+    pool = string.ascii_uppercase + string.ascii_lowercase + string.digits + special_chars
+    chars += random.choices(pool, k=2)
+    random.shuffle(chars)
+    return ''.join(chars)
+
+
+def get_or_refresh_passcode():
+    """
+    Return the current active passcode, auto-generating a new one if stale.
+    A passcode is stale when its last update date is before today AND
+    the current local time is at or past PASSCODE_REFRESH_HOUR:PASSCODE_REFRESH_MINUTE.
+    """
+    now = timezone.localtime(timezone.now())
+    refresh_due = now.hour * 60 + now.minute >= PASSCODE_REFRESH_HOUR * 60 + PASSCODE_REFRESH_MINUTE
+
+    passcode_obj = OvertimePasscode.objects.filter(is_active=True).first()
+
+    stale = (
+        passcode_obj is None
+        or (
+            refresh_due
+            and timezone.localtime(passcode_obj.updated_at).date() < now.date()
+        )
+    )
+
+    if stale:
+        new_passcode = generate_passcode()
+        OvertimePasscode.objects.filter(is_active=True).update(is_active=False)
+        passcode_obj = OvertimePasscode.objects.create(passcode=new_passcode, is_active=True)
+
+    return passcode_obj
 
 def is_late_filing(filing_type, filing_date, schedule_type=None):
     current_date = timezone.now().date()
@@ -58,13 +105,6 @@ def proper_case(text):
     
     return ' '.join(result)
 
-
-def create_system_activity(user, activity_type, description):
-    return SystemActivity.objects.create(
-        user=user,
-        activity_type=activity_type,
-        description=description
-    )
 
 def generate_excel_file(headers, data, filename):
 

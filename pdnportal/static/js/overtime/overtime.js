@@ -1145,10 +1145,28 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function openPasscodeModal() {
         const modal = elements.passcodeModal;
-        document.getElementById('late-filing-passcode').value = '';
+        const passcodeInput = document.getElementById('late-filing-passcode');
+        passcodeInput.value = '';
+        passcodeInput.type = 'password';
+        const icon = document.getElementById('toggle-passcode-icon');
+        if (icon) {
+            icon.className = 'fa-solid fa-eye';
+        }
         document.getElementById('passcode-error').textContent = '';
         modal.classList.add('active');
     }
+
+    document.getElementById('toggle-passcode-visibility').addEventListener('click', function () {
+        const input = document.getElementById('late-filing-passcode');
+        const icon = document.getElementById('toggle-passcode-icon');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'fa-solid fa-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'fa-solid fa-eye';
+        }
+    });
 
     function openDuplicateModal(duplicates) {
         const modal = elements.duplicateModal;

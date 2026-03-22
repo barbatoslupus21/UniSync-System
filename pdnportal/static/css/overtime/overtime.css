@@ -15,6 +15,13 @@
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
+.passcode-text{
+    font-size: 2rem !important;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-variant-numeric: slashed-zero;
+    letter-spacing: 0.15em;
+}
+
 .modal-overlay.active {
     opacity: 1;
     visibility: visible;
@@ -1248,6 +1255,9 @@ tr.missing-shifting td {
     .ot-filing-layout {
         grid-template-columns: 1fr;
         gap: 16px;
+        height: auto;
+        max-height: none;
+        min-height: none;
     }
 
     .ot-filing-sidebar {
@@ -1263,12 +1273,9 @@ tr.missing-shifting td {
         flex: none;
     }
 
-    .ot-filing-main {
-        height: auto;
-    }
-
     .ot-filing-main .JO-card {
         height: auto;
+        min-height: 100%;
     }
 
     .ot-employee-table-container {
@@ -2107,6 +2114,27 @@ tr.missing-shifting td {
 }
 
 @media (max-width: 768px) {
+
+    .ot-filing-sidebar .JO-card-header,
+    .ot-filing-main .JO-card-header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .JO-card-header h2 {
+        white-space: nowrap;
+    }
+
+    .JO-card-header .JO-card-actions {
+        white-space: nowrap;
+        width: auto;
+    }
+
+    .ot-filing-main {
+        height: auto;
+    }
+    
     .history-pagination {
         flex-direction: column;
         gap: 12px;
@@ -2884,6 +2912,7 @@ tr.missing-shifting td {
 }
 
 @media (max-width: 768px) {
+
     .shift-summary-row {
         flex-direction: column;
     }
